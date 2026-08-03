@@ -190,7 +190,6 @@
         white-space: nowrap;
     }
     .tagline { font-size: 0.875rem; text-transform: uppercase; color: var(--gray-300); letter-spacing: 2px; margin-bottom: 2rem; }
-    .catalog-tag { font-family: var(--font-mono); font-size: 0.72rem; color: var(--gray-300); text-transform: uppercase; letter-spacing: 1px; }
 
     .input-group { width: 100%; display: flex; gap: 0; flex-wrap: wrap; }
     input[type="text"], input[type="password"] {
@@ -572,7 +571,6 @@
                         <button type="button" class="chip" data-fill="https://github.com/oso95/scroll-world">Try a target repo</button>
                     </div>
 
-                    <div class="catalog-tag" id="catalog-tag">59 checks · 9 agents</div>
 
                     <div class="recent-section">
                         <div class="recent-header">
@@ -1059,9 +1057,7 @@
         var targetInput = document.getElementById('target-input');
         var patInput = document.getElementById('pat-input');
         var patStatus = document.getElementById('pat-status');
-        var catalogTag = document.getElementById('catalog-tag');
 
-        catalogTag.textContent = catalogCheckCount() + ' checks · ' + catalogAgents().length + ' agents';
 
         document.getElementById('brand-home-btn').addEventListener('click', function () {
             navigate('#/');
