@@ -136,6 +136,16 @@
         footer { padding: 1rem; font-size: 0.68rem; }
     }
 
+    @media (max-width: 640px) {
+        #target-form { flex-wrap: wrap; }
+        #target-form input[type="text"] { border-bottom: 3px solid var(--black); }
+        #target-form button[type="submit"] { width: 100%; text-align: center; }
+        .pat-row { flex-wrap: wrap; }
+        .pat-row input[type="password"] { border-bottom: 3px solid var(--black); width: 100%; }
+        .pat-row button { border-left: none; border-top: 3px solid var(--black); flex: 1; text-align: center; }
+        .pat-row button#pat-clear-btn { border-left: 3px solid var(--black); }
+    }
+
     /* Splash Screen */
     #view-splash {
         text-align: center;
@@ -157,7 +167,6 @@
         margin: 0 auto 0.5rem auto;
     }
     #target-form {
-        max-width: 100%;
         width: 100%;
         border: 3px solid var(--black);
         box-shadow: 6px 6px 0px var(--black);
@@ -169,13 +178,16 @@
         border: none;
         padding: 1.25rem 1.75rem;
         font-size: 1rem;
+        min-width: 0;
+        flex: 1;
     }
     #target-form button[type="submit"] {
         border: none;
-        padding: 1.25rem 2.25rem;
+        padding: 1.25rem 1.75rem;
         font-size: 1.05rem;
         font-family: var(--font-display);
         font-weight: 700;
+        white-space: nowrap;
     }
     .tagline { font-size: 0.875rem; text-transform: uppercase; color: var(--gray-300); letter-spacing: 2px; }
     .catalog-tag { font-family: var(--font-mono); font-size: 0.72rem; color: var(--gray-300); text-transform: uppercase; letter-spacing: 1px; }
@@ -261,7 +273,6 @@
     .pat-field summary { cursor: pointer; font-family: var(--font-mono); font-size: 0.72rem; color: var(--gray-400); text-transform: uppercase; margin-bottom: 0.5rem; }
     .pat-row {
         width: 100%;
-        max-width: 100%;
         border: 3px solid var(--black);
         box-shadow: 6px 6px 0px var(--black);
         display: flex;
@@ -270,9 +281,10 @@
     }
     .pat-row input[type="password"] {
         border: none;
-        padding: 1.25rem 1.75rem;
+        padding: 1.25rem 1.25rem;
         font-size: 1rem;
         flex: 1;
+        min-width: 0;
         outline: none;
         background: var(--white);
         color: var(--black);
@@ -281,8 +293,8 @@
     .pat-row button {
         border: none;
         border-left: 3px solid var(--black);
-        padding: 1.25rem 1.75rem;
-        font-size: 0.9rem;
+        padding: 1.25rem 1rem;
+        font-size: 0.85rem;
         font-family: var(--font-display);
         font-weight: 700;
         cursor: pointer;
@@ -291,6 +303,7 @@
         background: var(--black);
         color: var(--white);
         transition: background 0.2s;
+        flex-shrink: 0;
     }
     .pat-row button:hover {
         background: var(--gray-400);
