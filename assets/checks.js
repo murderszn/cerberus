@@ -584,6 +584,7 @@ window.CERBERUS_CHECKS = {
       },
       "detector": {
         "kind": "path_forbidden",
+        "exclude_tests": true,
         "paths": [
           "**/.env",
           "**/.env.local",
@@ -610,6 +611,7 @@ window.CERBERUS_CHECKS = {
       "remediation": "Revoke and reissue, then deliver keys through a secret mount or KMS at deploy time.",
       "detector": {
         "kind": "path_forbidden",
+        "exclude_tests": true,
         "paths": [
           "**/*.pem",
           "**/*.key",
@@ -641,6 +643,7 @@ window.CERBERUS_CHECKS = {
       "remediation": "Remove the file, gitignore the pattern, and seed local databases from a fixtures script instead.",
       "detector": {
         "kind": "path_forbidden",
+        "exclude_tests": true,
         "paths": [
           "**/*.sqlite",
           "**/*.sqlite3",
@@ -1560,6 +1563,7 @@ window.CERBERUS_CHECKS = {
       },
       "detector": {
         "kind": "path_forbidden",
+        "exclude_tests": true,
         "paths": [
           "**/*.tfstate",
           "**/*.tfstate.backup",

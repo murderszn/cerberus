@@ -17,3 +17,6 @@ ceberus-classic.html
 
 # Prose documentation that quotes the checks (describing "verify=False" is not doing it).
 documentation/agents.html
+
+# Ignore generated HTML scan reports which contain check signatures
+cerberus-report.html

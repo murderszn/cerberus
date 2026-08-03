@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="logo.jpg" alt="Cerberus Labs Logo" width="360" />
+  <img src="logo.png" alt="Cerberus Labs Logo" width="360" />
 </p>
 
 <h1 align="center">Cerberus</h1>
 
 <p align="center">
-  <strong>zero-trust &middot; autonomous &middot; always-on</strong><br>
+  <strong>HIGH-RIGOR REPO EXAMINATIONS | ZERO TRUST | AGENT ORCHESTRATED</strong><br>
   <em>Rigorous, real-time security certification for vibe-coded and rapid-deployment applications.</em>
 </p>
 
@@ -200,7 +200,7 @@ If you add, remove, or modify checks in [`checks.json`](file:///Users/jahflyx/ce
 * [ceberus-classic.html](file:///Users/jahflyx/cerberus/ceberus-classic.html) — The legacy static HTML scanner page.
 * [examine.py](file:///Users/jahflyx/cerberus/examine.py) — The Python CLI scanner.
 * [checks.json](file:///Users/jahflyx/cerberus/checks.json) — The unified check catalog rules engine.
-* [logo.jpg](file:///Users/jahflyx/cerberus/logo.jpg) — The official Cerberus Labs logo.
+* [logo.png](file:///Users/jahflyx/cerberus/logo.png) — The official Cerberus Labs logo.
 * [assets/](file:///Users/jahflyx/cerberus/assets/) — Core JS assets including [`scanner.js`](file:///Users/jahflyx/cerberus/assets/scanner.js) and [`checks.js`](file:///Users/jahflyx/cerberus/assets/checks.js).
 * [documentation/](file:///Users/jahflyx/cerberus/documentation/) — Static documentation site.
 * [docs/](file:///Users/jahflyx/cerberus/docs/) — Additional specification docs (e.g. [`brand.md`](file:///Users/jahflyx/cerberus/docs/brand.md), [`IMPROVEMENTS.md`](file:///Users/jahflyx/cerberus/docs/IMPROVEMENTS.md), compliance guides).

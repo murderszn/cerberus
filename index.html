@@ -73,7 +73,7 @@
         top: 0;
         background-color: var(--white);
         border-bottom: 1px solid var(--gray-200);
-        padding: 1rem 2.5rem;
+        padding: 1rem 1.5rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -93,6 +93,9 @@
         color: var(--black);
         cursor: pointer;
         padding: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
     }
 
     header nav { display: flex; gap: 1.5rem; flex-wrap: wrap; }
@@ -108,7 +111,7 @@
 
     main {
         flex: 1;
-        padding: 3rem 2.5rem;
+        padding: 3rem 1.5rem;
         max-width: 1500px;
         margin: 0 auto;
         width: 100%;
@@ -116,7 +119,7 @@
 
     footer {
         border-top: 1px solid var(--gray-200);
-        padding: 1.5rem 2.5rem;
+        padding: 1.5rem 1.5rem;
         display: flex;
         justify-content: space-between;
         flex-wrap: wrap;
@@ -134,8 +137,50 @@
     }
 
     /* Splash Screen */
-    #view-splash { text-align: center; max-width: 900px; margin: 2rem auto; display: flex; flex-direction: column; align-items: center; gap: 2rem; }
-    .hero-logo { width: 200px; max-width: 60vw; height: auto; display: block; }
+    #view-splash {
+        text-align: center;
+        max-width: 900px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+        padding-top: 5rem;
+        padding-bottom: 5rem;
+    }
+    .nav-logo {
+        height: 28px;
+        width: auto;
+        display: block;
+    }
+    .hero-logo {
+        width: 200px;
+        max-width: 60vw;
+        height: auto;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    #target-form {
+        max-width: 680px;
+        width: 100%;
+        border: 3px solid var(--black);
+        box-shadow: 6px 6px 0px var(--black);
+        margin: 0 auto;
+        display: flex;
+        flex-wrap: nowrap;
+    }
+    #target-form input[type="text"] {
+        border: none;
+        padding: 1.25rem 1.75rem;
+        font-size: 1rem;
+    }
+    #target-form button[type="submit"] {
+        border: none;
+        padding: 1.25rem 2.25rem;
+        font-size: 1.05rem;
+        font-family: var(--font-display);
+        font-weight: 700;
+    }
     .tagline { font-size: 0.875rem; text-transform: uppercase; color: var(--gray-300); letter-spacing: 2px; }
     .catalog-tag { font-family: var(--font-mono); font-size: 0.72rem; color: var(--gray-300); text-transform: uppercase; letter-spacing: 1px; }
 
@@ -216,10 +261,53 @@
     .recent-empty { color: var(--gray-300); font-family: var(--font-mono); font-size: 0.78rem; padding: 1rem 0; }
 
     /* PAT field */
-    .pat-field { width: 100%; text-align: left; }
-    .pat-field summary { cursor: pointer; font-family: var(--font-mono); font-size: 0.72rem; color: var(--gray-400); text-transform: uppercase; }
-    .pat-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
-    .pat-note { font-size: 0.7rem; color: var(--gray-300); margin-top: 0.35rem; font-family: var(--font-mono); }
+    .pat-field { width: 100%; text-align: left; max-width: 680px; margin: 0 auto; }
+    .pat-field summary { cursor: pointer; font-family: var(--font-mono); font-size: 0.72rem; color: var(--gray-400); text-transform: uppercase; margin-bottom: 0.5rem; }
+    .pat-row {
+        width: 100%;
+        border: 3px solid var(--black);
+        box-shadow: 6px 6px 0px var(--black);
+        display: flex;
+        flex-wrap: nowrap;
+        margin-bottom: 0.75rem;
+    }
+    .pat-row input[type="password"] {
+        border: none;
+        padding: 1.25rem 1.75rem;
+        font-size: 1rem;
+        flex: 1;
+        outline: none;
+        background: var(--white);
+        color: var(--black);
+        font-family: var(--font-mono);
+    }
+    .pat-row button {
+        border: none;
+        border-left: 3px solid var(--black);
+        padding: 1.25rem 1.75rem;
+        font-size: 0.9rem;
+        font-family: var(--font-display);
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        border-radius: 0;
+        background: var(--black);
+        color: var(--white);
+        transition: background 0.2s;
+    }
+    .pat-row button:hover {
+        background: var(--gray-400);
+    }
+    .pat-row button#pat-clear-btn {
+        background: var(--white);
+        color: var(--black);
+        border-left: 3px solid var(--black);
+        transition: background 0.2s;
+    }
+    .pat-row button#pat-clear-btn:hover {
+        background: var(--gray-100);
+    }
+    .pat-note { font-size: 0.7rem; color: var(--gray-300); margin-top: 0.75rem; font-family: var(--font-mono); text-align: left; }
 
     /* Scan / Progress view */
     #view-scan { max-width: 1200px; margin: 1.5rem auto; width: 100%; }
@@ -338,6 +426,11 @@
     .score-meta-label { font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; color: var(--gray-400); }
     .score-number-big { font-family: var(--font-display); font-size: 3rem; font-weight: 800; line-height: 1; letter-spacing: -1.5px; }
     .score-grade-box { font-family: var(--font-mono); font-size: 2.25rem; font-weight: 700; padding: 0.4rem 1.2rem; background: var(--black); color: var(--white); }
+    .score-grade-box.grade-a { background: #39FF14; color: var(--black); }
+    .score-grade-box.grade-b { background: #DFFF00; color: var(--black); }
+    .score-grade-box.grade-c { background: #DFFF00; color: var(--black); }
+    .score-grade-box.grade-d { background: var(--gray-400); color: var(--white); }
+    .score-grade-box.grade-f { background: var(--black); color: var(--white); }
 
     .report-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 
@@ -356,10 +449,30 @@
     .badge.high { background: var(--gray-400); color: var(--white); }
     .badge.medium { background: var(--gray-300); color: var(--white); }
     .badge.low { background: var(--gray-100); color: var(--black); border-color: var(--gray-200); }
-    .badge.status-pass { background: #e8f7ea; color: #1c7c2e; border-color: #b9e3bf; }
-    .badge.status-fail { background: var(--black); color: var(--white); }
-    .badge.status-not_applicable { background: var(--gray-100); color: var(--gray-400); border-color: var(--gray-200); }
-    .badge.status-skipped { background: var(--gray-100); color: var(--gray-400); border-color: var(--gray-200); border-style: dashed; }
+    .badge.status-pass, .badge.status-fail, .badge.status-not_applicable, .badge.status-skipped {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        flex-shrink: 0;
+        border-radius: 0;
+    }
+    .badge.status-pass { background: transparent; color: var(--black); border: 2px solid var(--black); }
+    .badge.status-fail { background: var(--black); color: var(--white); border: 2px solid var(--black); }
+    .badge.status-not_applicable { background: transparent; color: var(--gray-300); border: 2px solid var(--gray-200); }
+    .badge.status-skipped { background: transparent; color: var(--gray-300); border: 2px dashed var(--gray-200); }
+    .status-icon {
+        width: 14px;
+        height: 14px;
+        display: block;
+    }
+    .badge.grade-a { background: #39FF14; color: var(--black); border-color: #39FF14; }
+    .badge.grade-b { background: #DFFF00; color: var(--black); border-color: #DFFF00; }
+    .badge.grade-c { background: #DFFF00; color: var(--black); border-color: #DFFF00; }
+    .badge.grade-d { background: var(--gray-400); color: var(--white); border-color: var(--gray-400); }
+    .badge.grade-f { background: var(--black); color: var(--white); border-color: var(--black); }
 
     .details-agent { margin-bottom: 1.25rem; border: 1px solid var(--gray-200); background: var(--white); }
     .details-agent-header { background: var(--gray-100); padding: 0.75rem 1rem; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
@@ -410,18 +523,21 @@
 </head>
 <body>
     <header>
-        <button class="brand" id="brand-home-btn" type="button">Cerberus Labs</button>
+        <button class="brand" id="brand-home-btn" type="button">
+            <img src="logo.png" alt="Cerberus Logo" class="nav-logo" id="nav-logo">
+            <span>Cerberus Labs</span>
+        </button>
         <nav>
             <a href="documentation/index.html">Docs</a>
-            <a href="cerberus.html">Console</a>
+            <a href="index.html">Console</a>
         </nav>
     </header>
 
     <main id="main-content">
         <!-- Splash / target entry -->
         <section id="view-splash" hidden>
-            <img src="logo.jpg" alt="Cerberus Labs Logo" class="hero-logo" id="hero-logo">
-            <div class="tagline">Real security examinations. No mock data.</div>
+            <img src="logo.png" alt="Cerberus Labs Logo" class="hero-logo" id="hero-logo">
+            <div class="tagline">HIGH-RIGOR REPO EXAMINATIONS | ZERO TRUST | AGENT ORCHESTRATED</div>
 
             <form id="target-form" class="input-group" novalidate>
                 <label for="target-input" class="visually-hidden">GitHub repository URL</label>
@@ -634,6 +750,67 @@
                 else node.appendChild(c);
             });
             return node;
+        }
+
+        function svgIcon(status) {
+            var svgNS = "http://www.w3.org/2000/svg";
+            var svg = document.createElementNS(svgNS, "svg");
+            svg.setAttribute("class", "status-icon icon-" + status);
+            svg.setAttribute("viewBox", "0 0 24 24");
+            svg.setAttribute("fill", "none");
+            svg.setAttribute("stroke", "currentColor");
+            svg.setAttribute("stroke-linecap", "round");
+            svg.setAttribute("stroke-linejoin", "round");
+
+            if (status === 'pass') {
+                svg.setAttribute("stroke-width", "3");
+                var polyline = document.createElementNS(svgNS, "polyline");
+                polyline.setAttribute("points", "20 6 9 17 4 12");
+                svg.appendChild(polyline);
+            } else if (status === 'fail') {
+                svg.setAttribute("stroke-width", "3");
+                var line1 = document.createElementNS(svgNS, "line");
+                line1.setAttribute("x1", "18");
+                line1.setAttribute("y1", "6");
+                line1.setAttribute("x2", "6");
+                line1.setAttribute("y2", "18");
+                var line2 = document.createElementNS(svgNS, "line");
+                line2.setAttribute("x1", "6");
+                line2.setAttribute("y1", "6");
+                line2.setAttribute("x2", "18");
+                line2.setAttribute("y2", "18");
+                svg.appendChild(line1);
+                svg.appendChild(line2);
+            } else if (status === 'not_applicable') {
+                svg.setAttribute("stroke-width", "2.5");
+                var line = document.createElementNS(svgNS, "line");
+                line.setAttribute("x1", "5");
+                line.setAttribute("y1", "12");
+                line.setAttribute("x2", "19");
+                line.setAttribute("y2", "12");
+                svg.appendChild(line);
+            } else {
+                svg.setAttribute("stroke-width", "2");
+                svg.setAttribute("stroke-dasharray", "3");
+                var circle = document.createElementNS(svgNS, "circle");
+                circle.setAttribute("cx", "12");
+                circle.setAttribute("cy", "12");
+                circle.setAttribute("r", "10");
+                var line1 = document.createElementNS(svgNS, "line");
+                line1.setAttribute("x1", "12");
+                line1.setAttribute("y1", "12");
+                line1.setAttribute("x2", "12");
+                line1.setAttribute("y2", "16");
+                var line2 = document.createElementNS(svgNS, "line");
+                line2.setAttribute("x1", "12");
+                line2.setAttribute("y1", "8");
+                line2.setAttribute("x2", "12");
+                line2.setAttribute("y2", "8");
+                svg.appendChild(circle);
+                svg.appendChild(line1);
+                svg.appendChild(line2);
+            }
+            return svg;
         }
 
         function formatRelativeTime(iso) {
@@ -933,7 +1110,7 @@
                     ]),
                     el('div', { class: 'recent-item-score' }, [
                         el('span', { class: 'num' }, [String(Math.round(entry.score)) + '/100']),
-                        el('span', { class: 'badge ' + severityForGrade(entry.grade) }, [entry.grade])
+                        el('span', { class: 'badge grade-' + String(entry.grade || '').toLowerCase() }, [entry.grade])
                     ])
                 ]);
                 btn.addEventListener('click', function () {
@@ -1232,6 +1409,7 @@
             reportTargetText.textContent = 'TARGET: ' + report.target.display + '  ·  SHA ' + (report.target.sha || '').slice(0, 10);
             finalScoreEl.textContent = Math.round(report.score * 10) / 10 + '/100';
             finalGradeEl.textContent = report.grade;
+            finalGradeEl.className = 'score-grade-box grade-' + String(report.grade || '').toLowerCase();
             reportScoreFill.style.width = Math.max(0, Math.min(100, report.score)) + '%';
             reportCliCommand.textContent = 'python3 examine.py ' + report.target.url;
 
@@ -1378,7 +1556,7 @@
                 type: 'button', class: 'check-header-btn',
                 'aria-expanded': 'false', 'data-check-id': check.id
             }, [
-                el('span', { class: 'badge status-' + check.status }, [check.status.replace('_', ' ')]),
+                el('span', { class: 'badge status-' + check.status, title: check.status.replace('_', ' ') }, [svgIcon(check.status)]),
                 check.severity ? el('span', { class: 'badge ' + check.severity }, [check.severity]) : null,
                 el('span', { class: 'check-name' }, [check.name]),
                 el('span', { class: 'check-id mono' }, [check.id]),
@@ -1589,9 +1767,18 @@
         window.addEventListener('DOMContentLoaded', route);
         if (document.readyState !== 'loading') route();
 
-        document.getElementById('hero-logo').addEventListener('error', function () {
-            this.style.display = 'none';
-        });
+        var navLogo = document.getElementById('nav-logo');
+        if (navLogo) {
+            navLogo.addEventListener('error', function () {
+                this.style.display = 'none';
+            });
+        }
+        var heroLogo = document.getElementById('hero-logo');
+        if (heroLogo) {
+            heroLogo.addEventListener('error', function () {
+                this.style.display = 'none';
+            });
+        }
     })();
     </script>
 </body>

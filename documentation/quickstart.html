@@ -12,11 +12,11 @@
 
 <header class="docs-header">
   <nav class="left">
-    <a class="brand-mini" href="../cerberus.html">
+    <a class="brand-mini" href="../index.html">
       <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
       <span>CERBERUS DOCS</span>
     </a>
-    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="../index.html">Platform</a>
     <a class="nav-link" href="agents.html">Agents</a>
     <a class="nav-link" href="checks.html">Checks</a>
   </nav>
@@ -25,7 +25,7 @@
       <svg class="search-icon"><use href="#i-search"/></svg>
       <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
     </form>
-    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank" rel="noopener noreferrer">Sample Report</a>
     <button class="menu-toggle" aria-label="Open menu">☰</button>
   </nav>
 </header>
@@ -64,7 +64,7 @@
     <p class="lead">There are two ways to run Cerberus: the web app (no install, GitHub targets only) and the CLI (any local directory or GitHub URL, scriptable for CI). Both share the same 58-check catalog in <code>checks.json</code>.</p>
 
     <h2>Option A: Web app</h2>
-    <p>The web app is a static site — no build step, no server required. Open <code>cerberus.html</code> in a browser and paste a GitHub repository URL.</p>
+    <p>The web app is a static site — no build step, no server required. Open <code>index.html</code> in a browser and paste a GitHub repository URL.</p>
     <div class="callout warning">
       <div class="callout-title">GitHub only in the browser</div>
       <p>Browsers cannot fetch arbitrary origins due to CORS, so the web app can only scan public GitHub repositories. To scan a local directory, a private repo, or a non-GitHub target, use the CLI below.</p>

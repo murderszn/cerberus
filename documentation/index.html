@@ -12,11 +12,11 @@
 
 <header class="docs-header">
   <nav class="left">
-    <a class="brand-mini" href="../cerberus.html">
+    <a class="brand-mini" href="../index.html">
       <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
       <span>CERBERUS DOCS</span>
     </a>
-    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="../index.html">Platform</a>
     <a class="nav-link" href="agents.html">Agents</a>
     <a class="nav-link" href="checks.html">Checks</a>
   </nav>
@@ -25,7 +25,7 @@
       <svg class="search-icon"><use href="#i-search"/></svg>
       <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
     </form>
-    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank" rel="noopener noreferrer">Sample Report</a>
     <button class="menu-toggle" aria-label="Open menu">☰</button>
   </nav>
 </header>
@@ -187,7 +187,7 @@
     </div>
 
     <h2>Quickstart</h2>
-    <p>The web app needs nothing installed — open <code>cerberus.html</code> and paste a GitHub URL. To run the same 58-check catalog from the command line (a local clone or CI), use the Python CLI, <code>examine.py</code>. It shares <code>checks.json</code> with the web app, so both produce the identical report shape.</p>
+    <p>The web app needs nothing installed — open <code>index.html</code> and paste a GitHub URL. To run the same 58-check catalog from the command line (a local clone or CI), use the Python CLI, <code>examine.py</code>. It shares <code>checks.json</code> with the web app, so both produce the identical report shape.</p>
     <pre><code>python3 examine.py &lt;path-or-github-url&gt; --html report.html</code></pre>
     <p>The scanner honours <code>global_exclude</code> and <code>test_paths</code> from <code>checks.json</code> — dependency folders, build output, lockfiles, and test/fixture/example paths are never scanned.</p>
     <p>For the full flag reference and a CI example, see the <a href="scanner.html">CLI Scanner</a> page.</p>
@@ -213,7 +213,7 @@
 <footer class="docs-footer">
   <div class="inner">
     <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
-    <span><a href="../cerberus.html">Back to platform</a> · <a href="security.html">Security</a> · <a href="faq.html">FAQ</a></span>
+    <span><a href="../index.html">Back to platform</a> · <a href="security.html">Security</a> · <a href="faq.html">FAQ</a></span>
   </div>
 </footer>
 

@@ -77,11 +77,11 @@ def page_header(active="checks", agent_order=None):
 
     return f'''<header class="docs-header">
   <nav class="left">
-    <a class="brand-mini" href="../cerberus.html">
+    <a class="brand-mini" href="../index.html">
       <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
       <span>CERBERUS DOCS</span>
     </a>
-    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="../index.html">Platform</a>
     <a class="nav-link" href="agents.html">Agents</a>
     <a class="nav-link" href="checks.html">Checks</a>
   </nav>
@@ -90,7 +90,7 @@ def page_header(active="checks", agent_order=None):
       <svg class="search-icon"><use href="#i-search"/></svg>
       <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
     </form>
-    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank" rel="noopener noreferrer">Sample Report</a>
     <button class="menu-toggle" aria-label="Open menu">☰</button>
   </nav>
 </header>

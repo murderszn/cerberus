@@ -646,7 +646,11 @@
 
     if (det.kind === 'path_forbidden') {
       var forbidden = ctx.allPaths.filter(function (p) {
-        return matchesAny(p, det.paths) && !(det.exclude && matchesAny(p, det.exclude));
+        var isMatch = matchesAny(p, det.paths) && !(det.exclude && matchesAny(p, det.exclude));
+        if (isMatch && det.exclude_tests) {
+          return !matchesAny(p, catalog.test_paths || []);
+        }
+        return isMatch;
       });
       if (forbidden.length === 0) {
         return { status: 'pass', findings: [], totalFindings: 0, deduction: 0 };

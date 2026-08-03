@@ -510,6 +510,8 @@ class Evaluator:
         exclude = det.get("exclude", [])
         if exclude:
             matches = [f for f in matches if not any_glob_match(f, exclude)]
+        if det.get("exclude_tests"):
+            matches = [f for f in matches if not self.is_test_path(f)]
         if not matches:
             return "pass", [], None
         hit_cap = det.get("hit_cap", self.default_hit_cap)
@@ -807,8 +809,33 @@ def html_escape(s):
 
 
 def render_html(report):
+    import base64
+    logo_base64 = ""
+    try:
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.png")
+        if os.path.exists(logo_path):
+            with open(logo_path, "rb") as f:
+                logo_base64 = base64.b64encode(f.read()).decode("utf-8")
+    except Exception:
+        pass
+
+    logo_img = ""
+    if logo_base64:
+        logo_img = f'<img class="report-logo" src="data:image/png;base64,{logo_base64}" alt="Cerberus Labs Logo">'
+
     target = report["target"]
     display = html_escape(target.get("display", ""))
+    
+    def get_status_svg(status):
+        if status == "pass":
+            return '<svg class="status-icon icon-pass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+        elif status == "fail":
+            return '<svg class="status-icon icon-fail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
+        elif status == "not_applicable":
+            return '<svg class="status-icon icon-na" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>'
+        else: # skipped
+            return '<svg class="status-icon icon-skipped" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="12" x2="12" y2="16"></line><line x1="12" y1="8" x2="12" y2="8"></line></svg>'
+
     agents_rows = []
     details = []
     for agent in report["agents"]:
@@ -845,12 +872,15 @@ def render_html(report):
                 f"<div class='reason'>{html_escape(c.get('reason', ''))}</div>"
                 if c.get("reason") else ""
             )
+            
+            status_svg = get_status_svg(c['status'])
             check_blocks.append(
                 f"<div class='check status-{c['status']}'>"
-                f"<div class='check-head'><span class='badge sev-{c['severity']}'>{c['severity']}</span>"
-                f"<span class='badge status'>{c['status']}</span>"
-                f"<span class='check-id'>{html_escape(c['id'])}</span>"
+                f"<div class='check-head'>"
+                f"<span class='badge status-{c['status']}' title='{c['status']}'>{status_svg}</span>"
+                f"<span class='badge sev-{c['severity']}'>{c['severity']}</span>"
                 f"<span class='check-name'>{html_escape(c['name'])}</span>"
+                f"<span class='check-id'>{html_escape(c['id'])}</span>"
                 f"<span class='deduction'>-{c['deduction']}</span></div>"
                 f"<div class='summary'>{html_escape(c.get('summary',''))}</div>"
                 f"{reason_html}{findings_html}</div>"
@@ -860,45 +890,319 @@ def render_html(report):
             f"<small>{html_escape(agent['domain'])}</small></h2>{''.join(check_blocks)}</section>"
         )
 
+    grade_class = f"grade-{str(report['grade']).lower()}"
+
     doc = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cerberus Report - {display}</title>
 <style>
-:root {{ color-scheme: light dark; }}
-body {{ font-family: -apple-system, Segoe UI, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem;
-  background:#fff; color:#111; }}
-@media (prefers-color-scheme: dark) {{ body {{ background:#0b0b0d; color:#eaeaea; }} }}
-h1 {{ margin-bottom: 0; }}
-.meta {{ color: #777; font-family: monospace; margin-bottom: 1.5rem; }}
-.score-banner {{ display:flex; align-items:center; gap:1rem; margin-bottom:2rem; }}
-.score-num {{ font-size: 3rem; font-weight: 700; }}
-.grade {{ font-size:2rem; font-weight:700; padding:.25rem .75rem; border:2px solid currentColor; }}
-table {{ width:100%; border-collapse: collapse; margin-bottom:2rem; }}
-td, th {{ border-bottom:1px solid #8888; padding:.5rem; text-align:left; }}
-.domain {{ display:block; font-size:.75rem; color:#888; }}
-.agent-section {{ margin-bottom: 2rem; }}
-.check {{ border:1px solid #8886; border-radius:6px; padding:.75rem 1rem; margin-bottom:.75rem; }}
-.check.status-pass {{ opacity: .7; }}
-.check-head {{ display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }}
-.badge {{ font-family: monospace; font-size:.7rem; text-transform:uppercase; padding:.15rem .4rem; border-radius:4px; background:#8883; }}
-.sev-critical {{ background:#7a1a1a; color:#fff; }}
-.sev-high {{ background:#a15c00; color:#fff; }}
-.sev-medium {{ background:#8a8a1a; color:#fff; }}
-.sev-low {{ background:#3a6; color:#fff; }}
-.check-id {{ font-family: monospace; color:#888; }}
-.check-name {{ font-weight:600; flex:1; }}
-.deduction {{ font-family: monospace; color:#c33; }}
-.summary {{ color:#666; font-size:.9rem; margin:.4rem 0; }}
-.reason {{ font-style: italic; color:#888; }}
-.finding {{ margin-top:.5rem; }}
-.finding-loc a {{ font-family: monospace; font-size:.85rem; }}
-.snippet {{ background:#8881; padding:.5rem; overflow-x:auto; border-radius:4px; font-size:.8rem; }}
-.truncated {{ color:#888; font-size:.8rem; }}
+:root {{
+    --black: #0A0A0C;
+    --white: #FFFFFF;
+    --gray-100: #FAFAFC;
+    --gray-200: #E2E2E8;
+    --gray-300: #888894;
+    --gray-400: #555560;
+    --gray-500: #2C2C35;
+    --accent-green: #39FF14;
+    --accent-yellow: #DFFF00;
+    --font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: SFMono-Regular, Consolas, Menlo, monospace;
+}}
+@media (prefers-color-scheme: dark) {{
+    :root {{
+        --white: #0A0A0C;
+        --black: #FFFFFF;
+        --gray-100: #141416;
+        --gray-200: #2C2C35;
+        --gray-300: #888894;
+        --gray-400: #AAAAAB;
+        --gray-500: #FAFAFC;
+    }}
+}}
+body {{
+    font-family: var(--font-body);
+    max-width: 960px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+    background: var(--white);
+    color: var(--black);
+    line-height: 1.5;
+}}
+h1, h2, h3, h4, th, .report-title {{
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+}}
+header {{
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 3px solid var(--black);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}}
+.report-logo {{
+    height: 48px;
+    width: auto;
+    display: block;
+}}
+.header-text {{
+    flex: 1;
+}}
+.report-title {{
+    font-size: 1.75rem;
+    margin: 0;
+    line-height: 1.1;
+}}
+.meta {{
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--gray-300);
+    margin-top: 0.5rem;
+}}
+.score-banner {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 3px solid var(--black);
+    box-shadow: 6px 6px 0px var(--black);
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    background: var(--gray-100);
+}}
+.score-left {{
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}}
+.score-label {{
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    letter-spacing: 1px;
+}}
+.score-num {{
+    font-family: var(--font-mono);
+    font-size: 3.5rem;
+    font-weight: 700;
+    line-height: 1;
+}}
+.grade-box {{
+    font-family: var(--font-display);
+    font-size: 3rem;
+    font-weight: 700;
+    width: 72px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid var(--black);
+    box-shadow: 4px 4px 0px var(--black);
+}}
+.grade-a {{ background: var(--accent-green); color: #0A0A0C; }}
+.grade-b {{ background: var(--accent-yellow); color: #0A0A0C; }}
+.grade-c {{ background: var(--accent-yellow); color: #0A0A0C; }}
+.grade-d {{ background: var(--gray-300); color: var(--white); }}
+.grade-f {{ background: var(--black); color: var(--white); }}
+
+.progress-container {{
+    width: 100%;
+    height: 16px;
+    background: var(--gray-200);
+    border: 3px solid var(--black);
+    box-shadow: 4px 4px 0px var(--black);
+    margin: 1.5rem 0 2.5rem;
+}}
+.progress-bar {{
+    height: 100%;
+    background: linear-gradient(90deg, #DFFF00, #39FF14, #DFFF00);
+}}
+table {{
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2.5rem;
+    border: 3px solid var(--black);
+    box-shadow: 6px 6px 0px var(--black);
+}}
+th, td {{
+    padding: 1rem;
+    text-align: left;
+    border: 1px solid var(--gray-200);
+}}
+th {{
+    background: var(--gray-100);
+    border-bottom: 3px solid var(--black);
+    font-size: 0.85rem;
+}}
+.agent-name {{
+    font-weight: 700;
+    font-size: 0.95rem;
+}}
+.domain {{
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--gray-300);
+    margin-top: 0.25rem;
+    text-transform: uppercase;
+}}
+.score-cell {{
+    font-family: var(--font-mono);
+    font-weight: 700;
+}}
+.agent-section {{
+    margin-bottom: 3rem;
+}}
+.agent-section h2 {{
+    font-size: 1.35rem;
+    border-bottom: 3px solid var(--black);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}}
+.agent-section h2 small {{
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--gray-300);
+    font-weight: normal;
+    text-transform: uppercase;
+}}
+.check {{
+    border: 1px solid var(--gray-200);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    background: var(--white);
+}}
+.check-head {{
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}}
+.badge {{
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+}}
+.badge.critical {{ background: var(--black); color: var(--white); }}
+.badge.high {{ background: var(--gray-400); color: var(--white); }}
+.badge.medium {{ background: var(--gray-300); color: var(--white); }}
+.badge.low {{ background: var(--gray-100); color: var(--black); border-color: var(--gray-200); }}
+
+.badge.status-pass, .badge.status-fail, .badge.status-not_applicable, .badge.status-skipped {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 0;
+    flex-shrink: 0;
+}}
+.badge.status-pass {{ background: transparent; color: var(--black); border: 2px solid var(--black); }}
+.badge.status-fail {{ background: var(--black); color: var(--white); border: 2px solid var(--black); }}
+.badge.status-not_applicable {{ background: transparent; color: var(--gray-300); border: 2px solid var(--gray-200); }}
+.badge.status-skipped {{ background: transparent; color: var(--gray-300); border: 2px dashed var(--gray-200); }}
+.status-icon {{
+    width: 14px;
+    height: 14px;
+    display: block;
+}}
+.check-id {{
+    font-family: var(--font-mono);
+    color: var(--gray-300);
+    font-size: 0.75rem;
+}}
+.check-name {{
+    font-weight: 700;
+    font-size: 0.95rem;
+    flex: 1;
+}}
+.deduction {{
+    font-family: var(--font-mono);
+    color: var(--black);
+    font-weight: 700;
+    font-size: 0.85rem;
+}}
+.summary {{
+    font-size: 0.88rem;
+    color: var(--gray-400);
+    margin: 0.5rem 0;
+}}
+.reason {{
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-style: italic;
+    color: var(--gray-300);
+    background: var(--gray-100);
+    padding: 0.5rem 1rem;
+    border-left: 3px solid var(--gray-300);
+    margin: 0.5rem 0;
+}}
+.finding {{
+    margin-top: 0.75rem;
+    border: 1px solid var(--gray-200);
+    background: var(--gray-100);
+}}
+.finding-loc {{
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--gray-200);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+}}
+.finding-loc a {{
+    color: var(--black);
+    text-decoration: none;
+}}
+.finding-loc a:hover {{
+    text-decoration: underline;
+}}
+.snippet {{
+    margin: 0;
+    padding: 0.75rem;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    background: var(--white);
+    color: var(--black);
+}}
+.truncated {{
+    font-family: var(--font-mono);
+    color: var(--gray-300);
+    font-size: 0.72rem;
+    margin-top: 0.5rem;
+    text-transform: uppercase;
+}}
 </style></head><body>
-<h1>Cerberus Security Report</h1>
-<div class="meta">{display} &middot; scanned {html_escape(report['scannedAt'])} &middot; engine {html_escape(report['engine']['version'])} ({html_escape(report['engine']['source'])})</div>
-<div class="score-banner"><div class="score-num">{report['score']}/100</div><div class="grade">{report['grade']}</div></div>
+<header>
+    {logo_img}
+    <div class="header-text">
+        <h1 class="report-title">Cerberus Security Report</h1>
+        <div class="meta">{display} &middot; scanned {html_escape(report['scannedAt'])} &middot; engine {html_escape(report['engine']['version'])} ({html_escape(report['engine']['source'])})</div>
+    </div>
+</header>
+<div class="score-banner">
+    <div class="score-left">
+        <div class="score-label">Examination Score</div>
+        <div class="score-num">{report['score']}/100</div>
+    </div>
+    <div class="grade-box {grade_class}">{report['grade']}</div>
+</div>
+<div class="progress-container">
+    <div class="progress-bar" style="width: {report['score']}%"></div>
+</div>
 <table><thead><tr><th>Agent</th><th>Score</th><th>Checks</th></tr></thead>
 <tbody>{''.join(agents_rows)}</tbody></table>
 {''.join(details)}

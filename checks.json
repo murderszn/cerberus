@@ -581,6 +581,7 @@
       },
       "detector": {
         "kind": "path_forbidden",
+        "exclude_tests": true,
         "paths": [
           "**/.env",
           "**/.env.local",
@@ -607,6 +608,7 @@
       "remediation": "Revoke and reissue, then deliver keys through a secret mount or KMS at deploy time.",
       "detector": {
         "kind": "path_forbidden",
+        "exclude_tests": true,
         "paths": [
           "**/*.pem",
           "**/*.key",
@@ -638,6 +640,7 @@
       "remediation": "Remove the file, gitignore the pattern, and seed local databases from a fixtures script instead.",
       "detector": {
         "kind": "path_forbidden",
+        "exclude_tests": true,
         "paths": [
           "**/*.sqlite",
           "**/*.sqlite3",
@@ -1557,6 +1560,7 @@
       },
       "detector": {
         "kind": "path_forbidden",
+        "exclude_tests": true,
         "paths": [
           "**/*.tfstate",
           "**/*.tfstate.backup",

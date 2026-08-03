@@ -12,11 +12,11 @@
 
 <header class="docs-header">
   <nav class="left">
-    <a class="brand-mini" href="../cerberus.html">
+    <a class="brand-mini" href="../index.html">
       <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
       <span>CERBERUS DOCS</span>
     </a>
-    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="../index.html">Platform</a>
     <a class="nav-link" href="agents.html">Agents</a>
     <a class="nav-link" href="checks.html">Checks</a>
   </nav>
@@ -25,7 +25,7 @@
       <svg class="search-icon"><use href="#i-search"/></svg>
       <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
     </form>
-    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank" rel="noopener noreferrer">Sample Report</a>
     <button class="menu-toggle" aria-label="Open menu">☰</button>
   </nav>
 </header>
@@ -180,7 +180,7 @@
     <ul>
       <li>Auth tokens stored in <code>localStorage</code>/<code>sessionStorage</code>, and unsanitised HTML injection sinks (<code>dangerouslySetInnerHTML</code>, <code>v-html</code>, <code>innerHTML =</code>).</li>
       <li><code>document.write</code>, and <code>postMessage</code> without origin validation.</li>
-      <li><code>target="_blank"</code> links missing <code>rel="noopener"</code>.</li>
+      <li><code>target="_blank" rel="noopener noreferrer"</code> links missing <code>rel="noopener"</code>.</li>
       <li>Credential literals embedded in files that ship to the browser.</li>
     </ul>
     <p><strong>Example finding:</strong> <code>localStorage.setItem("token", ...)</code> triggers F-01 with a <span class="badge high">HIGH</span> severity.</p>
