@@ -4,6 +4,7 @@
 __pycache__/
 .DS_Store
 *.png
+!logo.png
 cerberus-report.html
 
 # secrets
