@@ -32,8 +32,8 @@
 **Cerberus** is an automated, zero-configuration security scanner designed for modern, rapid-deployment engineering teams. As developers leverage AI assistants to ship features in minutes, security reviews are frequently compromised. Cerberus replaces slow, costly human auditing with a high-rigor, collaborative **AI agent swarm** that validates code, infrastructure, and configuration against a comprehensive checks catalog.
 
 It operates entirely client-side with **no server, no build step, and no signup**:
-- **The Web App ([index.html](file:///Users/jahflyx/cerberus/index.html))** runs completely in your browser, analyzing public GitHub repositories using the GitHub API. It features real-time progress indicators, interactive check filters, history persistence, and shareable deep links.
-- **The CLI ([examine.py](file:///Users/jahflyx/cerberus/examine.py))** is a single Python 3 file with zero third-party dependencies, perfect for local directories, private repositories, and CI/CD pipelines.
+- **The Web App ([index.html](index.html))** runs completely in your browser, analyzing public GitHub repositories using the GitHub API. It features real-time progress indicators, interactive check filters, history persistence, and shareable deep links.
+- **The CLI ([examine.py](examine.py))** is a single Python 3 file with zero third-party dependencies, perfect for local directories, private repositories, and CI/CD pipelines.
 
 Both interfaces consume the exact same unified check catalog, ensuring perfectly consistent results whether you scan from a terminal or a dashboard.
 
@@ -53,7 +53,7 @@ Cerberus is built to serve three core workflows:
 
 - **Swarm Orchestration**: Nine specialized, non-overlapping agents audit separate layers of your system, from Code Analysis to Network Config.
 - **Deterministic Verification**: Every vulnerability is mapped to a concrete, verifiable failure condition. This drastically reduces the noise and false positives common in legacy static analysis.
-- **Unified Engine**: Both the web dashboard and CLI execute the same rules from [`checks.json`](file:///Users/jahflyx/cerberus/checks.json), emitting matching `cerberus.report/2` reports.
+- **Unified Engine**: Both the web dashboard and CLI execute the same rules from [`checks.json`](checks.json), emitting matching `cerberus.report/2` reports.
 - **Frictionless Integration**: Drop a repository URL in the browser, run it locally via a terminal, or gate pull requests in CI/CD using `--fail-under`.
 
 ---
@@ -62,7 +62,7 @@ Cerberus is built to serve three core workflows:
 
 ### 🌐 Web App (GitHub repositories only)
 
-Simply open [index.html](file:///Users/jahflyx/cerberus/index.html) in any modern browser, or serve the repository root using any static file server:
+Simply open [index.html](index.html) in any modern browser, or serve the repository root using any static file server:
 
 ```bash
 python3 -m http.server 8000
@@ -169,10 +169,10 @@ The scan logic is divided among **9 specialized security agents**. Each agent ow
     HTML Report    JSON/SARIF/HTML   documentation/checks.html
 ```
 
-- **[`checks.json`](file:///Users/jahflyx/cerberus/checks.json)** is the single source of truth. It defines the ID, agent, severity, CWE mapping, and regular expression detectors for every check. No agent or UI contains hardcoded security rules.
-- **[`assets/scanner.js`](file:///Users/jahflyx/cerberus/assets/scanner.js)** reads the rules and evaluates them concurrently (up to 8 files at a time) against downloaded repository files.
-- **[`examine.py`](file:///Users/jahflyx/cerberus/examine.py)** parses the same rules and evaluates them locally.
-- **[`scripts/generate-checks-docs.py`](file:///Users/jahflyx/cerberus/scripts/generate-checks-docs.py)** compiles the JSON catalog into customer-facing markdown files (`docs/scanner-checks.md`) and HTML sites (`documentation/checks.html`).
+- **[`checks.json`](checks.json)** is the single source of truth. It defines the ID, agent, severity, CWE mapping, and regular expression detectors for every check. No agent or UI contains hardcoded security rules.
+- **[`assets/scanner.js`](assets/scanner.js)** reads the rules and evaluates them concurrently (up to 8 files at a time) against downloaded repository files.
+- **[`examine.py`](examine.py)** parses the same rules and evaluates them locally.
+- **[`scripts/generate-checks-docs.py`](scripts/generate-checks-docs.py)** compiles the JSON catalog into customer-facing markdown files (`docs/scanner-checks.md`) and HTML sites (`documentation/checks.html`).
 
 ---
 
@@ -180,7 +180,7 @@ The scan logic is divided among **9 specialized security agents**. Each agent ow
 
 ### Rebuilding Assets and Docs
 
-If you add, remove, or modify checks in [`checks.json`](file:///Users/jahflyx/cerberus/checks.json):
+If you add, remove, or modify checks in [`checks.json`](checks.json):
 
 1. **Rebuild Web Assets**:
    Run the build script to compile the JSON catalog into `assets/checks.js` for browser consumption:
@@ -204,15 +204,15 @@ If you add, remove, or modify checks in [`checks.json`](file:///Users/jahflyx/ce
 
 ## Repository Structure
 
-* [index.html](file:///Users/jahflyx/cerberus/index.html) — The web dashboard scanner.
-* [ceberus-classic.html](file:///Users/jahflyx/cerberus/ceberus-classic.html) — The legacy static HTML scanner page.
-* [examine.py](file:///Users/jahflyx/cerberus/examine.py) — The Python CLI scanner.
-* [checks.json](file:///Users/jahflyx/cerberus/checks.json) — The unified check catalog rules engine.
-* [logo.png](file:///Users/jahflyx/cerberus/logo.png) — The official Cerberus Labs logo.
-* [assets/](file:///Users/jahflyx/cerberus/assets/) — Core JS assets including [`scanner.js`](file:///Users/jahflyx/cerberus/assets/scanner.js) and [`checks.js`](file:///Users/jahflyx/cerberus/assets/checks.js).
-* [documentation/](file:///Users/jahflyx/cerberus/documentation/) — Static documentation site.
-* [docs/](file:///Users/jahflyx/cerberus/docs/) — Additional specification docs (e.g. [`brand.md`](file:///Users/jahflyx/cerberus/docs/brand.md), [`IMPROVEMENTS.md`](file:///Users/jahflyx/cerberus/docs/IMPROVEMENTS.md), compliance guides).
-* [scripts/](file:///Users/jahflyx/cerberus/scripts/) — Internal developer tools, test runners, and doc generators.
+* [index.html](index.html) — The web dashboard scanner.
+* [ceberus-classic.html](ceberus-classic.html) — The legacy static HTML scanner page.
+* [examine.py](examine.py) — The Python CLI scanner.
+* [checks.json](checks.json) — The unified check catalog rules engine.
+* [logo.png](logo.png) — The official Cerberus Labs logo.
+* [assets/](assets/) — Core JS assets including [`scanner.js`](assets/scanner.js) and [`checks.js`](assets/checks.js).
+* [documentation/](documentation/) — Static documentation site.
+* [docs/](docs/) — Additional specification docs (e.g. [`brand.md`](docs/brand.md), [`IMPROVEMENTS.md`](docs/IMPROVEMENTS.md), compliance guides).
+* [scripts/](scripts/) — Internal developer tools, test runners, and doc generators.
 
 ---
 
