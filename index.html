@@ -139,12 +139,8 @@
     /* Splash Screen */
     #view-splash {
         text-align: center;
-        max-width: 900px;
+        max-width: 1400px;
         margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2rem;
         padding-top: 5rem;
         padding-bottom: 5rem;
     }
@@ -307,6 +303,106 @@
     .pat-row button#pat-clear-btn:hover {
         background: var(--gray-100);
     }
+    /* Leaderboard & Loser Board */
+    .splash-container {
+        display: flex;
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+        gap: 3rem;
+        align-items: flex-start;
+        justify-content: center;
+    }
+    .splash-side-panel {
+        width: 250px;
+        border: 3px solid var(--black);
+        box-shadow: 6px 6px 0px var(--black);
+        background: var(--white);
+        flex-shrink: 0;
+        margin-top: 5rem;
+    }
+    .splash-side-panel h3 {
+        font-family: var(--font-display);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        padding: 0.75rem 1rem;
+        border-bottom: 3px solid var(--black);
+        margin: 0;
+        letter-spacing: 1px;
+    }
+    .splash-side-panel.leader-panel h3 {
+        background: var(--accent-green);
+        color: var(--black);
+    }
+    .splash-side-panel.loser-panel h3 {
+        background: var(--black);
+        color: var(--white);
+    }
+    .panel-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .panel-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--gray-200);
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+    }
+    .panel-item:last-child {
+        border-bottom: none;
+    }
+    .panel-item-name {
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 140px;
+        cursor: pointer;
+    }
+    .panel-item-name:hover {
+        text-decoration: underline;
+    }
+    .panel-item-score {
+        font-weight: 700;
+        padding: 0.15rem 0.4rem;
+        border: 2px solid var(--black);
+    }
+    .panel-item-score.high {
+        background: var(--accent-green);
+        color: var(--black);
+    }
+    .panel-item-score.low {
+        background: var(--black);
+        color: var(--white);
+    }
+    .panel-item-score.med {
+        background: var(--accent-yellow);
+        color: var(--black);
+    }
+    .splash-center {
+        flex: 1;
+        max-width: 760px;
+    }
+    @media (max-width: 1100px) {
+        .splash-container {
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+        .splash-side-panel {
+            width: 100%;
+            max-width: 680px;
+            margin-top: 0;
+        }
+        .splash-center {
+            width: 100%;
+        }
+    }
+
     .pat-note { font-size: 0.7rem; color: var(--gray-300); margin-top: 0.75rem; font-family: var(--font-mono); text-align: left; }
 
     /* Scan / Progress view */
@@ -536,39 +632,56 @@
     <main id="main-content">
         <!-- Splash / target entry -->
         <section id="view-splash" hidden>
-            <img src="logo.png" alt="Cerberus Labs Logo" class="hero-logo" id="hero-logo">
-            <div class="tagline">HIGH-RIGOR REPO EXAMINATIONS | ZERO TRUST | AGENT ORCHESTRATED</div>
-
-            <form id="target-form" class="input-group" novalidate>
-                <label for="target-input" class="visually-hidden">GitHub repository URL</label>
-                <input type="text" id="target-input" name="target" placeholder="Paste a GitHub repo URL to examine…" autocomplete="off">
-                <button type="submit" id="run-btn">Run Examination</button>
-            </form>
-
-            <details class="pat-field">
-                <summary>Have a GitHub token? (optional, raises rate limit)</summary>
-                <div class="pat-row">
-                    <label for="pat-input" class="visually-hidden">GitHub personal access token</label>
-                    <input type="password" id="pat-input" placeholder="ghp_... (kept in this tab only)" autocomplete="off">
-                    <button type="button" class="outline small" id="pat-save-btn">Save For This Session</button>
-                    <button type="button" class="outline small" id="pat-clear-btn">Clear</button>
+            <div class="splash-container">
+                <!-- Left: Leaderboard -->
+                <div class="splash-side-panel leader-panel">
+                    <h3>Leaderboard</h3>
+                    <ul class="panel-list" id="leaderboard-list"></ul>
                 </div>
-                <div class="pat-note" id="pat-status">No token stored. Token is kept in sessionStorage only and never saved to disk.</div>
-            </details>
+                
+                <!-- Center: Main Search -->
+                <div class="splash-center">
+                    <img src="logo.png" alt="Cerberus Labs Logo" class="hero-logo" id="hero-logo">
+                    <div class="tagline">HIGH-RIGOR REPO EXAMINATIONS | ZERO TRUST | AGENT ORCHESTRATED</div>
 
-            <div class="chips">
-                <button type="button" class="chip" data-fill="https://github.com/pallets/flask">Try a healthy repo</button>
-                <button type="button" class="chip" data-fill="https://github.com/oso95/scroll-world">Try a target repo</button>
-            </div>
+                    <form id="target-form" class="input-group" novalidate>
+                        <label for="target-input" class="visually-hidden">GitHub repository URL</label>
+                        <input type="text" id="target-input" name="target" placeholder="Paste a GitHub repo URL to examine…" autocomplete="off">
+                        <button type="submit" id="run-btn">Run Examination</button>
+                    </form>
 
-            <div class="catalog-tag" id="catalog-tag">51 checks · 9 agents</div>
+                    <details class="pat-field">
+                        <summary>Have a GitHub token? (optional, raises rate limit)</summary>
+                        <div class="pat-row">
+                            <label for="pat-input" class="visually-hidden">GitHub personal access token</label>
+                            <input type="password" id="pat-input" placeholder="ghp_... (kept in this tab only)" autocomplete="off">
+                            <button type="button" class="outline small" id="pat-save-btn">Save For This Session</button>
+                            <button type="button" class="outline small" id="pat-clear-btn">Clear</button>
+                        </div>
+                        <div class="pat-note" id="pat-status">No token stored. Token is kept in sessionStorage only and never saved to disk.</div>
+                    </details>
 
-            <div class="recent-section">
-                <div class="recent-header">
-                    <h3>Recent Scans</h3>
-                    <button type="button" class="outline small" id="clear-recent-btn">Clear All</button>
+                    <div class="chips">
+                        <button type="button" class="chip" data-fill="https://github.com/pallets/flask">Try a healthy repo</button>
+                        <button type="button" class="chip" data-fill="https://github.com/oso95/scroll-world">Try a target repo</button>
+                    </div>
+
+                    <div class="catalog-tag" id="catalog-tag">59 checks · 9 agents</div>
+
+                    <div class="recent-section">
+                        <div class="recent-header">
+                            <h3>Recent Scans</h3>
+                            <button type="button" class="outline small" id="clear-recent-btn">Clear All</button>
+                        </div>
+                        <div class="recent-list" id="recent-list"></div>
+                    </div>
                 </div>
-                <div class="recent-list" id="recent-list"></div>
+
+                <!-- Right: Loser Board -->
+                <div class="splash-side-panel loser-panel">
+                    <h3>Loser Board</h3>
+                    <ul class="panel-list" id="loserboard-list"></ul>
+                </div>
             </div>
         </section>
 
@@ -1117,6 +1230,93 @@
                     navigate('#/report/' + encodeURIComponent(entry.owner) + '/' + encodeURIComponent(entry.repo));
                 });
                 container.appendChild(btn);
+            });
+            renderLeaderboards();
+        }
+
+        function renderLeaderboards() {
+            var leadersContainer = document.getElementById('leaderboard-list');
+            var losersContainer = document.getElementById('loserboard-list');
+            if (!leadersContainer || !losersContainer) return;
+
+            var cached = CacheStore.listRecent();
+
+            var seedLeaders = [
+                { owner: 'oso95', repo: 'scroll-world', display: 'oso95/scroll-world', score: 100.0, grade: 'A' },
+                { owner: 'pallets', repo: 'flask', display: 'pallets/flask', score: 86.5, grade: 'B' }
+            ];
+            var seedLosers = [
+                { owner: 'sst', repo: 'opencode', display: 'sst/opencode', score: 44.0, grade: 'F' },
+                { owner: 'vulnerable-corp', repo: 'core-api', display: 'vulnerable-corp/core-api', score: 15.0, grade: 'F' }
+            ];
+
+            var leadersMap = {};
+            var losersMap = {};
+
+            seedLeaders.forEach(function (x) { leadersMap[x.owner + '/' + x.repo] = x; });
+            seedLosers.forEach(function (x) { losersMap[x.owner + '/' + x.repo] = x; });
+
+            cached.forEach(function (x) {
+                var key = x.owner + '/' + x.repo;
+                if (x.score >= 80) {
+                    leadersMap[key] = x;
+                    delete losersMap[key];
+                } else {
+                    losersMap[key] = x;
+                    delete leadersMap[key];
+                }
+            });
+
+            var leaders = Object.keys(leadersMap).map(function (k) { return leadersMap[k]; });
+            var losers = Object.keys(losersMap).map(function (k) { return losersMap[k]; });
+
+            leaders.sort(function (a, b) { return b.score - a.score; });
+            losers.sort(function (a, b) { return a.score - b.score; });
+
+            leaders = leaders.slice(0, 5);
+            losers = losers.slice(0, 5);
+
+            leadersContainer.innerHTML = '';
+            leaders.forEach(function (item) {
+                var scoreClass = 'high';
+                if (item.score < 80 && item.score >= 60) scoreClass = 'med';
+                else if (item.score < 60) scoreClass = 'low';
+
+                var li = el('li', { class: 'panel-item' }, [
+                    el('span', {
+                        class: 'panel-item-name',
+                        'data-fill': 'https://github.com/' + item.owner + '/' + item.repo
+                    }, [item.display || (item.owner + '/' + item.repo)]),
+                    el('span', { class: 'panel-item-score ' + scoreClass }, [String(Math.round(item.score))])
+                ]);
+                leadersContainer.appendChild(li);
+            });
+
+            losersContainer.innerHTML = '';
+            losers.forEach(function (item) {
+                var scoreClass = 'low';
+                if (item.score >= 80) scoreClass = 'high';
+                else if (item.score >= 60) scoreClass = 'med';
+
+                var li = el('li', { class: 'panel-item' }, [
+                    el('span', {
+                        class: 'panel-item-name',
+                        'data-fill': 'https://github.com/' + item.owner + '/' + item.repo
+                    }, [item.display || (item.owner + '/' + item.repo)]),
+                    el('span', { class: 'panel-item-score ' + scoreClass }, [String(Math.round(item.score))])
+                ]);
+                losersContainer.appendChild(li);
+            });
+
+            document.querySelectorAll('.panel-item-name[data-fill]').forEach(function (elNode) {
+                elNode.addEventListener('click', function () {
+                    var val = this.getAttribute('data-fill');
+                    var inputEl = document.getElementById('target-input');
+                    if (inputEl) {
+                        inputEl.value = val;
+                        document.getElementById('target-form').dispatchEvent(new Event('submit'));
+                    }
+                });
             });
         }
 
