@@ -314,12 +314,10 @@
         justify-content: center;
     }
     .splash-side-panel {
-        width: 250px;
+        width: 100%;
         border: 3px solid var(--black);
         box-shadow: 6px 6px 0px var(--black);
         background: var(--white);
-        flex-shrink: 0;
-        margin-top: 5rem;
     }
     .splash-side-panel h3 {
         font-family: var(--font-display);
@@ -385,7 +383,15 @@
     }
     .splash-center {
         flex: 1;
-        max-width: 760px;
+        max-width: 880px;
+    }
+    .splash-right-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+        width: 260px;
+        flex-shrink: 0;
+        margin-top: 5rem;
     }
     @media (max-width: 1100px) {
         .splash-container {
@@ -393,13 +399,25 @@
             align-items: center;
             gap: 2rem;
         }
-        .splash-side-panel {
+        .splash-right-sidebar {
             width: 100%;
             max-width: 680px;
             margin-top: 0;
+            flex-direction: row;
+            gap: 1.5rem;
+        }
+        .splash-side-panel {
+            flex: 1;
         }
         .splash-center {
             width: 100%;
+        }
+    }
+    @media (max-width: 680px) {
+        .splash-right-sidebar {
+            flex-direction: column;
+            width: 100%;
+            gap: 1.5rem;
         }
     }
 
@@ -633,12 +651,6 @@
         <!-- Splash / target entry -->
         <section id="view-splash" hidden>
             <div class="splash-container">
-                <!-- Left: Leaderboard -->
-                <div class="splash-side-panel leader-panel">
-                    <h3>Leaderboard</h3>
-                    <ul class="panel-list" id="leaderboard-list"></ul>
-                </div>
-                
                 <!-- Center: Main Search -->
                 <div class="splash-center">
                     <img src="logo.png" alt="Cerberus Labs Logo" class="hero-logo" id="hero-logo">
@@ -677,10 +689,17 @@
                     </div>
                 </div>
 
-                <!-- Right: Loser Board -->
-                <div class="splash-side-panel loser-panel">
-                    <h3>Loser Board</h3>
-                    <ul class="panel-list" id="loserboard-list"></ul>
+                <!-- Right Sidebar: Leaderboard & Loser Board stacked -->
+                <div class="splash-right-sidebar">
+                    <div class="splash-side-panel leader-panel">
+                        <h3>Leaderboard</h3>
+                        <ul class="panel-list" id="leaderboard-list"></ul>
+                    </div>
+
+                    <div class="splash-side-panel loser-panel">
+                        <h3>Loser Board</h3>
+                        <ul class="panel-list" id="loserboard-list"></ul>
+                    </div>
                 </div>
             </div>
         </section>
