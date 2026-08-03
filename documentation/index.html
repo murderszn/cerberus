@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cerberus Documentation — Agent-Powered Security Examinations</title>
+<meta name="description" content="Learn how Cerberus agents work, what the check catalog covers, and how to read your security report.">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+
+<header class="docs-header">
+  <nav class="left">
+    <a class="brand-mini" href="../cerberus.html">
+      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
+      <span>CERBERUS DOCS</span>
+    </a>
+    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="agents.html">Agents</a>
+    <a class="nav-link" href="checks.html">Checks</a>
+  </nav>
+  <nav class="right">
+    <form class="search-form" onsubmit="return false">
+      <svg class="search-icon"><use href="#i-search"/></svg>
+      <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
+    </form>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <button class="menu-toggle" aria-label="Open menu">☰</button>
+  </nav>
+</header>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar">
+    <div class="sidebar-title">Get Started</div>
+    <a class="sidebar-link active" href="index.html">Overview</a>
+    <a class="sidebar-link" href="quickstart.html">Quickstart</a>
+    <a class="sidebar-link" href="scanner.html">CLI Scanner</a>
+    <a class="sidebar-link" href="reports.html">Reading Reports</a>
+
+    <div class="sidebar-title">Architecture</div>
+    <a class="sidebar-link" href="agents.html">Agent Swarm</a>
+    <a class="sidebar-link" href="checks.html">Check Catalog</a>
+    <a class="sidebar-link" href="scoring.html">Severity & Scoring</a>
+
+    <div class="sidebar-title">Reference</div>
+    <a class="sidebar-link" href="agents.html#sentinel">SENTINEL</a>
+    <a class="sidebar-link" href="agents.html#gatekeeper">GATEKEEPER</a>
+    <a class="sidebar-link" href="agents.html#vault">VAULT</a>
+    <a class="sidebar-link" href="agents.html#conduit">CONDUIT</a>
+    <a class="sidebar-link" href="agents.html#watchtower">WATCHTOWER</a>
+    <a class="sidebar-link" href="agents.html#librarian">LIBRARIAN</a>
+    <a class="sidebar-link" href="agents.html#shield">SHIELD</a>
+    <a class="sidebar-link" href="agents.html#auditor">AUDITOR</a>
+    <a class="sidebar-link" href="agents.html#architect">ARCHITECT</a>
+
+    <div class="sidebar-title">Support</div>
+    <a class="sidebar-link" href="faq.html">FAQ</a>
+    <a class="sidebar-link" href="security.html">Security & Privacy</a>
+  </aside>
+
+  <main class="docs-content">
+    <h1>Cerberus Documentation</h1>
+    <p class="lead">Cerberus is a security examination tool for modern, AI-assisted ("vibe-coded") applications. Nine specialized agents inspect a GitHub repository or local directory against a 58-check catalog (see <code>checks.json</code>) and return a scored, actionable remediation report in seconds.</p>
+
+    <div class="quick-links">
+      <a class="quick-card" href="agents.html">
+        <div class="icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+        <h3>Meet the agents</h3>
+        <p>Learn how SENTINEL, GATEKEEPER, VAULT, and the rest of the swarm divide security work.</p>
+      </a>
+      <a class="quick-card" href="checks.html">
+        <div class="icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+        <h3>What we check</h3>
+        <p>Browse every check in the catalog across all nine security domains.</p>
+      </a>
+      <a class="quick-card" href="scanner.html">
+        <div class="icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 12h8M12 8v8"/></svg></div>
+        <h3>Run a scan</h3>
+        <p>Install the CLI scanner, point it at your project, and interpret the results.</p>
+      </a>
+      <a class="quick-card" href="scoring.html">
+        <div class="icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L17.18 22 12 18.77 6.82 22 8 14.14 3 9.27l6.91-1.01L12 2z"/></svg></div>
+        <h3>Scoring guide</h3>
+        <p>Understand how the 0–100 score, letter grade, and severity deductions work.</p>
+      </a>
+    </div>
+
+    <h2>What Cerberus is</h2>
+    <p>As AI coding assistants let developers ship faster, security reviews often fall behind. Traditional penetration tests take weeks and cost thousands of dollars. Automated static-analysis tools are powerful but noisy, require heavy configuration, and rarely explain <em>why</em> a finding matters to your specific stack.</p>
+    <p>Cerberus treats a security audit as nine domains run over the same fetched files: each agent is a named group of pattern-based checks defined in <code>checks.json</code>, with its own weight toward the final score. You get a single, coherent report that tells you what is wrong, how severe it is, and how to fix it — with a file, a line number, and a permalink for every finding.</p>
+
+    <div class="callout info">
+      <div class="callout-title">Cerberus is built for</div>
+      <p>Solo founders preparing for a Product Hunt launch, seed-stage startups closing their first enterprise deal, agencies delivering client work, and any team that ships AI-assisted code and needs fast, credible security due diligence.</p>
+    </div>
+
+    <h2>How the examination works</h2>
+    <p>Every Cerberus examination follows the same pipeline. You provide a target — a GitHub repository URL or a local directory (via the CLI) — and the system does the rest.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="num">1</div>
+        <h4>Resolve & fetch</h4>
+        <p>The scanner resolves the target, pulls the file tree, and fetches eligible source files (≤400 files, ≤512 KB each).</p>
+      </div>
+      <div class="flow-step">
+        <div class="num">2</div>
+        <h4>Evaluate</h4>
+        <p>All 58 checks in <code>checks.json</code>, grouped into 9 agent domains, run over the fetched files.</p>
+      </div>
+      <div class="flow-step">
+        <div class="num">3</div>
+        <h4>Resolve check states</h4>
+        <p>Each check ends as <code>pass</code>, <code>fail</code>, <code>not_applicable</code>, or <code>skipped</code>, each with findings or a stated reason.</p>
+      </div>
+      <div class="flow-step">
+        <div class="num">4</div>
+        <h4>Score & report</h4>
+        <p>Failed checks deduct from their agent's weight; agent scores sum to the final 0–100 score and letter grade.</p>
+      </div>
+    </div>
+
+    <h2>The nine security domains</h2>
+    <p>Each agent owns a narrow slice of the security surface and a share of the 100-point score. That specialization lets Cerberus mimic the workflow of a real cross-functional red team: one set of checks covers SQL injection, another covers JWT config, another covers Docker hardening, and so on. Counts below are pulled live from <code>checks.json</code> — see the <a href="checks.html">Check Catalog</a> for the full list.</p>
+
+    <div class="agent-grid">
+      <div class="agent-card">
+        <div class="agent-header"><div class="agent-icon">S</div><div><h3>SENTINEL</h3><div class="domain">Code Analysis</div></div></div>
+        <p>Finds hardcoded secrets, raw SQL injection, command injection, path traversal, unsafe deserialization, weak randomness, and SSRF.</p>
+        <div class="checks">10 checks · weight 14 · S-01 → S-10</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-header"><div class="agent-icon">G</div><div><h3>GATEKEEPER</h3><div class="domain">Access Control</div></div></div>
+        <p>Audits JWT/signature verification, password length policy, auth opt-outs, default admin credentials, cookie flags, and client-side authorization.</p>
+        <div class="checks">6 checks · weight 12 · G-01 → G-06</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-header"><div class="agent-icon">V</div><div><h3>VAULT</h3><div class="domain">Data Security</div></div></div>
+        <p>Reviews password hashing, cipher modes, secrets in logs, committed .env/key/database files, .gitignore coverage, and provider token literals.</p>
+        <div class="checks">8 checks · weight 13 · V-01 → V-08</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-header"><div class="agent-icon">C</div><div><h3>CONDUIT</h3><div class="domain">Network & API</div></div></div>
+        <p>Checks wildcard CORS, credentialed CORS, TLS verification, cleartext HTTP, and services bound to all interfaces.</p>
+        <div class="checks">5 checks · weight 11 · C-01 → C-05</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-header"><div class="agent-icon">W</div><div><h3>WATCHTOWER</h3><div class="domain">Application Config</div></div></div>
+        <p>Scans for debug mode, root containers, unpinned base images, privileged containers, CI secrets, missing SECURITY.md/LICENSE, and security headers.</p>
+        <div class="checks">8 checks · weight 11 · W-01 → W-08</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-header"><div class="agent-icon">L</div><div><h3>LIBRARIAN</h3><div class="domain">Dependencies</div></div></div>
+        <p>Identifies missing lockfiles, known-vulnerable dependency versions, git/URL-sourced dependencies, missing Dependabot/Renovate, curl-pipe-to-shell, and unpinned Actions.</p>
+        <div class="checks">6 checks · weight 12 · L-01 → L-06</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-header"><div class="agent-icon">F</div><div><h3>SHIELD</h3><div class="domain">Client Security</div></div></div>
+        <p>Audits tokens in web storage, unsanitised HTML injection sinks, document.write, postMessage origin checks, target=_blank rel, and client-side secrets.</p>
+        <div class="checks">6 checks · weight 11 · F-01 → F-06</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-header"><div class="agent-icon">A</div><div><h3>AUDITOR</h3><div class="domain">Logging & Monitoring</div></div></div>
+        <p>Reviews credentials passed to loggers, stack traces returned to clients, leftover debug output, and missing CI pipelines.</p>
+        <div class="checks">4 checks · weight 8 · A-01 → A-04</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-header"><div class="agent-icon">R</div><div><h3>ARCHITECT</h3><div class="domain">Infrastructure</div></div></div>
+        <p>Checks hardcoded IPs, security groups open to the internet, publicly readable object storage, missing tests, and committed Terraform state.</p>
+        <div class="checks">5 checks · weight 8 · R-01 → R-05</div>
+      </div>
+    </div>
+
+    <h2>What you receive</h2>
+    <p>After a scan completes, Cerberus produces a structured report with four layers of detail:</p>
+    <ul>
+      <li><strong>Executive summary:</strong> a 0–100 score and letter grade (A–F) so non-technical stakeholders can understand posture at a glance.</li>
+      <li><strong>Agent summary:</strong> per-domain scores and counts of critical, high, medium, and low findings.</li>
+      <li><strong>Detailed findings:</strong> each issue includes the file, line number, severity, description, code snippet, and a concrete remediation recommendation.</li>
+      <li><strong>Coverage metadata:</strong> files in the tree, files eligible, files actually scanned, bytes scanned, and anything skipped or truncated, for audit traceability.</li>
+    </ul>
+
+    <div class="callout tip">
+      <div class="callout-title">Try the sample report</div>
+      <p>Open <a href="../cerberus-report.html">cerberus-report.html</a> to see the exact layout, severity badges, and recommendation format your team will receive.</p>
+    </div>
+
+    <h2>Quickstart</h2>
+    <p>The web app needs nothing installed — open <code>cerberus.html</code> and paste a GitHub URL. To run the same 58-check catalog from the command line (a local clone or CI), use the Python CLI, <code>examine.py</code>. It shares <code>checks.json</code> with the web app, so both produce the identical report shape.</p>
+    <pre><code>python3 examine.py &lt;path-or-github-url&gt; --html report.html</code></pre>
+    <p>The scanner honours <code>global_exclude</code> and <code>test_paths</code> from <code>checks.json</code> — dependency folders, build output, lockfiles, and test/fixture/example paths are never scanned.</p>
+    <p>For the full flag reference and a CI example, see the <a href="scanner.html">CLI Scanner</a> page.</p>
+
+    <h2>Cerberus Examination vs. Watchdog</h2>
+    <table>
+      <tr><th>Service</th><th>When to use</th><th>Deliverable</th></tr>
+      <tr><td><strong>Cerberus Examination</strong></td><td>Pre-launch, pre-fundraise, pre-sale, or after a major refactor.</td><td>One-time scored HTML report with remediation guidance.</td></tr>
+      <tr><td><strong>Cerberus Watchdog</strong> <span class="badge low">coming soon</span></td><td>Continuous assurance on production repos and deployed apps.</td><td>Always-on agents that re-scan on every push or deployment.</td></tr>
+    </table>
+
+    <h2>Navigating the documentation</h2>
+    <p>Use the sidebar to jump between sections, or start with the four pages most teams read first:</p>
+    <ol>
+      <li><a href="agents.html">Agent Swarm</a> — the architecture and every agent’s responsibilities.</li>
+      <li><a href="checks.html">Check Catalog</a> — the complete checklist of checks, IDs, and pass criteria.</li>
+      <li><a href="scanner.html">CLI Scanner</a> — how to install and run the local scanner.</li>
+      <li><a href="scoring.html">Severity & Scoring</a> — how the final score is calculated and why.</li>
+    </ol>
+  </main>
+</div>
+
+<footer class="docs-footer">
+  <div class="inner">
+    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
+    <span><a href="../cerberus.html">Back to platform</a> · <a href="security.html">Security</a> · <a href="faq.html">FAQ</a></span>
+  </div>
+</footer>
+
+<script src="assets/docs.js"></script>
+</body>
+</html>

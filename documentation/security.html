@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security & Privacy — Cerberus Documentation</title>
+<meta name="description" content="How Cerberus handles source code: what runs in your browser vs. locally, report storage, and network access.">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+
+<header class="docs-header">
+  <nav class="left">
+    <a class="brand-mini" href="../cerberus.html">
+      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
+      <span>CERBERUS DOCS</span>
+    </a>
+    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="agents.html">Agents</a>
+    <a class="nav-link" href="checks.html">Checks</a>
+  </nav>
+  <nav class="right">
+    <form class="search-form" onsubmit="return false">
+      <svg class="search-icon"><use href="#i-search"/></svg>
+      <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
+    </form>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <button class="menu-toggle" aria-label="Open menu">☰</button>
+  </nav>
+</header>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar">
+    <div class="sidebar-title">Get Started</div>
+    <a class="sidebar-link" href="index.html">Overview</a>
+    <a class="sidebar-link" href="quickstart.html">Quickstart</a>
+    <a class="sidebar-link" href="scanner.html">CLI Scanner</a>
+    <a class="sidebar-link" href="reports.html">Reading Reports</a>
+
+    <div class="sidebar-title">Architecture</div>
+    <a class="sidebar-link" href="agents.html">Agent Swarm</a>
+    <a class="sidebar-link" href="checks.html">Check Catalog</a>
+    <a class="sidebar-link" href="scoring.html">Severity & Scoring</a>
+
+    <div class="sidebar-title">Support</div>
+    <a class="sidebar-link" href="faq.html">FAQ</a>
+    <a class="sidebar-link active" href="security.html">Security & Privacy</a>
+  </aside>
+
+  <main class="docs-content">
+    <h1>Security & Privacy</h1>
+    <p class="lead">Cerberus is a security product, so we treat your code and data with the same care we recommend to our users. This page explains how we handle source code, isolate agents, store reports, and manage customer data.</p>
+
+    <h2>Source code handling</h2>
+    <p><strong>CLI (<code>examine.py</code>):</strong> Runs entirely on your local machine. It does not upload source code anywhere. Output is written only to the local files you specify with <code>--json</code>/<code>--html</code>/<code>--sarif</code>.</p>
+    <p><strong>Web app:</strong> Runs entirely in your browser. It fetches the repository tree and file contents directly from the public GitHub API and the <code>raw.githubusercontent.com</code> CDN, evaluates every check client-side, and never sends your source code to a Cerberus-operated server — because there isn't one. If you supply a personal access token, it is sent only to <code>api.github.com</code>, never to the raw CDN, and never leaves your browser otherwise.</p>
+
+    <h2>What "agents" actually are</h2>
+    <p>There is no sandboxed per-agent runtime, no isolated execution environment, and no WASM enclave. An "agent" is a named group of checks in <code>checks.json</code> that share a domain and a score weight. Every check is a static pattern match — either a regex over fetched file content, or a check for a file's presence/absence — evaluated in the same browser tab or the same CLI process as everything else.</p>
+
+    <h2>Report storage</h2>
+    <p>The web app caches reports in your browser's <code>localStorage</code>, keyed by <code>owner/repo@sha</code>, with a 24-hour TTL — nothing is stored server-side. CLI reports are written wherever you point the output flags; that's the only copy that exists.</p>
+
+    <h2>Network access</h2>
+    <p>The web app makes requests to <code>api.github.com</code> (tree/metadata, subject to GitHub's unauthenticated rate limit unless you supply a PAT) and <code>raw.githubusercontent.com</code> (file contents, not rate-limited the same way). No other network calls are made. Dependency-version checks (LIBRARIAN) are static regex matches against known-bad version ranges recorded in <code>checks.json</code> — they do not query a live CVE database.</p>
+
+    <h2>Compliance posture</h2>
+    <p>A subset of checks touch governance hygiene — a missing <code>SECURITY.md</code>, no CI pipeline, no automated dependency updates — but Cerberus does not evaluate SOC 2, GDPR, or HIPAA controls, and a Cerberus report is not a compliance certification of any kind.</p>
+
+    <h2>Responsible disclosure</h2>
+    <p>If you discover a security issue in Cerberus itself, please open an issue in the repository or contact the team directly. We take all reports seriously and will respond quickly.</p>
+
+    <div class="callout tip">
+      <div class="callout-title">Questions?</div>
+      <p>See the <a href="faq.html">FAQ</a> or contact the team for enterprise security questionnaires and compliance documentation.</p>
+    </div>
+  </main>
+</div>
+
+<footer class="docs-footer">
+  <div class="inner">
+    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
+    <span><a href="index.html">Docs home</a> · <a href="faq.html">FAQ</a> · <a href="security.html">Security</a></span>
+  </div>
+</footer>
+
+<script src="assets/docs.js"></script>
+</body>
+</html>

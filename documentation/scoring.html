@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Severity & Scoring — Cerberus Documentation</title>
+<meta name="description" content="How Cerberus calculates the 0–100 security score: per-agent weights, per-hit deductions, hit caps, and check states.">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+
+<header class="docs-header">
+  <nav class="left">
+    <a class="brand-mini" href="../cerberus.html">
+      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
+      <span>CERBERUS DOCS</span>
+    </a>
+    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="agents.html">Agents</a>
+    <a class="nav-link" href="checks.html">Checks</a>
+  </nav>
+  <nav class="right">
+    <form class="search-form" onsubmit="return false">
+      <svg class="search-icon"><use href="#i-search"/></svg>
+      <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
+    </form>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <button class="menu-toggle" aria-label="Open menu">☰</button>
+  </nav>
+</header>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar">
+    <div class="sidebar-title">Get Started</div>
+    <a class="sidebar-link" href="index.html">Overview</a>
+    <a class="sidebar-link" href="quickstart.html">Quickstart</a>
+    <a class="sidebar-link" href="scanner.html">CLI Scanner</a>
+    <a class="sidebar-link" href="reports.html">Reading Reports</a>
+
+    <div class="sidebar-title">Architecture</div>
+    <a class="sidebar-link" href="agents.html">Agent Swarm</a>
+    <a class="sidebar-link" href="checks.html">Check Catalog</a>
+    <a class="sidebar-link active" href="scoring.html">Severity & Scoring</a>
+
+    <div class="sidebar-title">Scoring Topics</div>
+    <a class="sidebar-link" href="#states">Check States</a>
+    <a class="sidebar-link" href="#deductions">Deductions</a>
+    <a class="sidebar-link" href="#grades">Letter Grades</a>
+    <a class="sidebar-link" href="#agent-scores">Agent Weights</a>
+    <a class="sidebar-link" href="#example">Worked Example</a>
+
+    <div class="sidebar-title">Support</div>
+    <a class="sidebar-link" href="faq.html">FAQ</a>
+    <a class="sidebar-link" href="security.html">Security & Privacy</a>
+  </aside>
+
+  <main class="docs-content">
+    <h1>Severity & Scoring</h1>
+    <p class="lead">Cerberus turns a 58-check catalog into a single understandable number: a 0–100 score with a letter grade. Each of the nine agents owns a weight (its share of the 100 points); each failed check inside that agent deducts from the agent's own score, and the agent floors at 0. The nine agent scores sum to the final total.</p>
+
+    <h2 id="states">Check states</h2>
+    <p>Every check in <code>checks.json</code> resolves to exactly one of four states when a scan runs. Only <code>fail</code> deducts points — the other three are informational.</p>
+    <div class="check-states">
+      <div class="check-state"><strong>pass</strong>Applicable, evaluated, clean. No deduction.</div>
+      <div class="check-state"><strong>fail</strong>Applicable, evaluated, one or more findings. Deducts points.</div>
+      <div class="check-state"><strong>not_applicable</strong>Precondition unmet (e.g. a Docker-only check with no Dockerfile in the repo). No deduction, reason stated.</div>
+      <div class="check-state"><strong>skipped</strong>Could not be evaluated (file budget exhausted, fetch error). No deduction, reason stated.</div>
+    </div>
+    <p>A healthy, well-run repository can still score in the 90s even though most of its checks are <code>not_applicable</code> or <code>pass</code> rather than <code>fail</code> — the score only ever moves for <code>fail</code>.</p>
+
+    <h2 id="deductions">Per-hit deductions</h2>
+    <p>Every finding is assigned one of four severity levels, each with a fixed per-hit deduction:</p>
+
+    <div class="score-breakdown">
+      <div class="score-card">
+        <div class="value">100</div>
+        <div class="label">Base score</div>
+      </div>
+      <div class="score-card">
+        <div class="value">-4.0</div>
+        <div class="label">Critical / hit</div>
+      </div>
+      <div class="score-card">
+        <div class="value">-2.0</div>
+        <div class="label">High / hit</div>
+      </div>
+      <div class="score-card">
+        <div class="value">-1.0</div>
+        <div class="label">Medium / hit</div>
+      </div>
+      <div class="score-card">
+        <div class="value">-0.5</div>
+        <div class="label">Low / hit</div>
+      </div>
+    </div>
+
+    <p>For a failed check, the deduction is <code>per_hit[severity] × min(hits, hit_cap)</code> — hits beyond the cap don't cost extra, since one badly-matched file with 40 instances of the same problem shouldn't sink the score harder than a single instance would. The default cap is 3 hits per check; some checks (like R-01 hardcoded IPs, or C-04 cleartext HTTP) set a lower or higher cap explicitly in <code>checks.json</code> because their detector is inherently noisier or cleaner.</p>
+    <pre><code>agent_score = agent.weight - Σ over failed checks in that agent of (
+    per_hit[check.severity] × min(check.hits, check.hit_cap)
+)
+agent_score = max(agent_score, 0)   // floored at 0, never negative
+
+total_score = Σ agent_score over all 9 agents   // 0–100</code></pre>
+
+    <h3>Why per-agent weight instead of one flat deduction?</h3>
+    <p>Weighting by agent means a single domain going badly wrong (say, every VAULT check failing) can zero out that agent's 13 points without being able to drag checks in other, unrelated domains below their own floor. It also means the same severity finding costs a different amount depending on which agent it's in — a GATEKEEPER critical (weight 12) and an AUDITOR critical (weight 8) both deduct 4.0 points per hit, but AUDITOR has less room to give before it floors at 0.</p>
+
+    <h2 id="grades">Letter grades</h2>
+    <p>The numerical score maps to a familiar letter grade. This makes it easy to communicate posture to stakeholders who are not reading the detailed report.</p>
+    <table>
+      <tr><th>Score</th><th>Grade</th><th>Interpretation</th></tr>
+      <tr><td>90–100</td><td><span class="badge pass">A</span></td><td>Strong security posture. Only minor or low-risk findings remain.</td></tr>
+      <tr><td>80–89</td><td><span class="badge pass">B</span></td><td>Good posture with some high/medium issues to address.</td></tr>
+      <tr><td>70–79</td><td><span class="badge medium">C</span></td><td>Moderate risk. Several notable issues should be fixed before handling sensitive data.</td></tr>
+      <tr><td>60–69</td><td><span class="badge low">D</span></td><td>High risk. Critical or multiple high findings are present.</td></tr>
+      <tr><td>0–59</td><td><span class="badge critical">F</span></td><td>Severe risk. Immediate remediation is required before production use.</td></tr>
+    </table>
+
+    <h2 id="agent-scores">Agent weights</h2>
+    <p>Each agent's weight is its maximum possible contribution to the 100-point score, defined once in <code>checks.json</code> and summing to exactly 100:</p>
+    <table>
+      <tr><th>Agent</th><th>Domain</th><th>Weight</th><th>Checks</th></tr>
+      <tr><td>SENTINEL</td><td>Code Analysis</td><td>14</td><td>10</td></tr>
+      <tr><td>VAULT</td><td>Data Security</td><td>13</td><td>8</td></tr>
+      <tr><td>GATEKEEPER</td><td>Access Control</td><td>12</td><td>6</td></tr>
+      <tr><td>LIBRARIAN</td><td>Dependencies</td><td>12</td><td>6</td></tr>
+      <tr><td>CONDUIT</td><td>Network & API</td><td>11</td><td>5</td></tr>
+      <tr><td>WATCHTOWER</td><td>Application Config</td><td>11</td><td>8</td></tr>
+      <tr><td>SHIELD</td><td>Client Security</td><td>11</td><td>6</td></tr>
+      <tr><td>AUDITOR</td><td>Logging & Monitoring</td><td>8</td><td>4</td></tr>
+      <tr><td>ARCHITECT</td><td>Infrastructure</td><td>8</td><td>5</td></tr>
+      <tr><td><strong>Total</strong></td><td></td><td><strong>100</strong></td><td><strong>58</strong></td></tr>
+    </table>
+    <p>Agent scores help you see which part of the security surface needs the most attention. A low SENTINEL score means the code itself has material issues; a low WATCHTOWER score means container/CI/repo-hygiene configuration needs hardening.</p>
+
+    <h2 id="example">Worked example</h2>
+    <p>Suppose SENTINEL (weight 14) has these failed checks in a scan:</p>
+    <ul>
+      <li>S-01 (Hardcoded credential assignment, critical) — 1 finding</li>
+      <li>S-06 (Dynamic code evaluation, high) — 2 findings</li>
+      <li>S-08 (Non-cryptographic randomness, medium) — 1 finding</li>
+    </ul>
+    <p>Using the default hit cap of 3, SENTINEL's score is:</p>
+    <pre><code>14 - (4.0 × min(1,3)) - (2.0 × min(2,3)) - (1.0 × min(1,3))
+= 14 - 4.0 - 4.0 - 1.0
+= 5.0</code></pre>
+    <p>If every other agent passed clean (contributing its full weight), the total score would be <code>100 - 14 + 5.0 = 91.0</code>, which maps to grade <span class="badge pass">A</span> — SENTINEL's own three failures pull its own domain down hard (5.0 of 14), while the overall score stays high because the other eight domains are clean.</p>
+
+    <div class="callout info">
+      <div class="callout-title">Score is a signal, not a certificate</div>
+      <p>A score of 95 does not mean the application is unhackable. It means Cerberus found no material issues in its 58-check catalog. Always combine automated scoring with manual review, threat modeling, and penetration testing for high-risk applications.</p>
+    </div>
+  </main>
+</div>
+
+<footer class="docs-footer">
+  <div class="inner">
+    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
+    <span><a href="index.html">Docs home</a> · <a href="checks.html">Checks</a> · <a href="reports.html">Reports</a></span>
+  </div>
+</footer>
+
+<script src="assets/docs.js"></script>
+</body>
+</html>

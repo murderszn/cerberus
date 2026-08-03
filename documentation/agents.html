@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Swarm Architecture — Cerberus Documentation</title>
+<meta name="description" content="How the Cerberus check catalog is organized into nine agent domains: SENTINEL, GATEKEEPER, VAULT, CONDUIT, WATCHTOWER, LIBRARIAN, SHIELD, AUDITOR, and ARCHITECT.">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+
+<header class="docs-header">
+  <nav class="left">
+    <a class="brand-mini" href="../cerberus.html">
+      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
+      <span>CERBERUS DOCS</span>
+    </a>
+    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="agents.html">Agents</a>
+    <a class="nav-link" href="checks.html">Checks</a>
+  </nav>
+  <nav class="right">
+    <form class="search-form" onsubmit="return false">
+      <svg class="search-icon"><use href="#i-search"/></svg>
+      <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
+    </form>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <button class="menu-toggle" aria-label="Open menu">☰</button>
+  </nav>
+</header>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar">
+    <div class="sidebar-title">Get Started</div>
+    <a class="sidebar-link" href="index.html">Overview</a>
+    <a class="sidebar-link" href="quickstart.html">Quickstart</a>
+    <a class="sidebar-link" href="scanner.html">CLI Scanner</a>
+    <a class="sidebar-link" href="reports.html">Reading Reports</a>
+
+    <div class="sidebar-title">Architecture</div>
+    <a class="sidebar-link active" href="agents.html">Agent Swarm</a>
+    <a class="sidebar-link" href="checks.html">Check Catalog</a>
+    <a class="sidebar-link" href="scoring.html">Severity & Scoring</a>
+
+    <div class="sidebar-title">Agents</div>
+    <a class="sidebar-link" href="#sentinel">SENTINEL</a>
+    <a class="sidebar-link" href="#gatekeeper">GATEKEEPER</a>
+    <a class="sidebar-link" href="#vault">VAULT</a>
+    <a class="sidebar-link" href="#conduit">CONDUIT</a>
+    <a class="sidebar-link" href="#watchtower">WATCHTOWER</a>
+    <a class="sidebar-link" href="#librarian">LIBRARIAN</a>
+    <a class="sidebar-link" href="#shield">SHIELD</a>
+    <a class="sidebar-link" href="#auditor">AUDITOR</a>
+    <a class="sidebar-link" href="#architect">ARCHITECT</a>
+
+    <div class="sidebar-title">Support</div>
+    <a class="sidebar-link" href="faq.html">FAQ</a>
+    <a class="sidebar-link" href="security.html">Security & Privacy</a>
+  </aside>
+
+  <main class="docs-content">
+    <h1>Agent Swarm Architecture</h1>
+    <p class="lead">Cerberus is not a single monolithic scanner. Its 58-check catalog is organized into nine named agent domains, each responsible for one slice of the security surface and one share of the 100-point score. Dividing the catalog this way mirrors a real human red team: a backend auditor, an auth specialist, an infrastructure engineer, and so on — even though every agent's checks run over the same fetched file set in a single pass.</p>
+
+    <h2>How an examination runs</h2>
+    <p>The web app and the CLI (<code>examine.py</code>) share one pipeline, driven entirely by <code>checks.json</code>:</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="num">1</div>
+        <h4>Resolve</h4>
+        <p>Parse the target (GitHub URL or local path), resolve the default branch/SHA, and fetch the file tree.</p>
+      </div>
+      <div class="flow-step">
+        <div class="num">2</div>
+        <h4>Fetch</h4>
+        <p>Download eligible files (≤400 files, ≤512 KB each) via the GitHub raw CDN, respecting <code>global_exclude</code> and <code>test_paths</code>.</p>
+      </div>
+      <div class="flow-step">
+        <div class="num">3</div>
+        <h4>Evaluate</h4>
+        <p>Every check in every agent runs over the fetched files, resolving to <code>pass</code>, <code>fail</code>, <code>not_applicable</code>, or <code>skipped</code>.</p>
+      </div>
+      <div class="flow-step">
+        <div class="num">4</div>
+        <h4>Score</h4>
+        <p>Each failed check deducts from its agent's weight (floored at 0); agent scores sum to the final 0–100 score.</p>
+      </div>
+    </div>
+
+    <p>Because a single file can trip checks from more than one agent (for example, a route file can trigger both a SENTINEL injection check and a GATEKEEPER auth check), a finding is attributed to whichever specific check matched — there is no cross-agent deduplication step to reason about; each check is independent and always reports its own state.</p>
+
+    <div class="callout warning">
+      <div class="callout-title">What Cerberus does not do</div>
+      <p>There is no sandboxed per-agent runtime, no WASM isolation, and no dynamic/runtime analysis. Every check in <code>checks.json</code> is a static pattern match over file content or a check for a file's presence/absence — see the <a href="checks.html">Check Catalog</a> for the exact detector behind every check.</p>
+    </div>
+
+    <h2 id="sentinel">SENTINEL — Code Analysis</h2>
+    <p><span class="badge agent">Code Analysis</span> <span class="badge">10 checks · weight 14</span></p>
+    <p>SENTINEL is the first line of defense against classic application vulnerabilities. It performs static analysis over source files, looking for unsafe execution paths, weak cryptography, and improper handling of untrusted input.</p>
+    <h3>Checks S-01 → S-10</h3>
+    <ul>
+      <li>Hardcoded credential assignment, AWS access key IDs, and private key material committed to source.</li>
+      <li>SQL built by string concatenation and shell execution with interpolated input.</li>
+      <li>Dynamic code evaluation (<code>eval</code>/<code>exec</code>/<code>new Function</code>) and unsafe deserialization.</li>
+      <li>Non-cryptographic randomness used for security values, path traversal in file access, and SSRF risk.</li>
+    </ul>
+    <p><strong>Example finding:</strong> a hardcoded API key assigned directly in source triggers S-01 with a <span class="badge critical">CRITICAL</span> severity.</p>
+    <p>Full detail — detector patterns, CWE, risk, and remediation — for every SENTINEL check is on the <a href="checks.html#sentinel">Check Catalog</a>.</p>
+
+    <h2 id="gatekeeper">GATEKEEPER — Access Control</h2>
+    <p><span class="badge agent">Access Control</span> <span class="badge">6 checks · weight 12</span></p>
+    <p>GATEKEEPER audits what controls who can access the application and what they can do once inside.</p>
+    <h3>Checks G-01 → G-06</h3>
+    <ul>
+      <li>Signature verification disabled (JWT <code>none</code> algorithm, <code>verify=False</code>).</li>
+      <li>Weak password length policy and endpoints explicitly opted out of authentication.</li>
+      <li>Default or hardcoded admin credentials and session cookies missing security flags.</li>
+      <li>Authorization decisions made on the client (role read from local/session storage).</li>
+    </ul>
+    <p><strong>Example finding:</strong> a JWT decoder configured with <code>verify_signature: False</code> triggers G-01 with a <span class="badge critical">CRITICAL</span> severity.</p>
+    <p>Full detail for every GATEKEEPER check is on the <a href="checks.html#gatekeeper">Check Catalog</a>.</p>
+
+    <h2 id="vault">VAULT — Data Security</h2>
+    <p><span class="badge agent">Data Security</span> <span class="badge">8 checks · weight 13</span></p>
+    <p>VAULT protects data at rest: hashing, cipher choices, and anything sensitive that ends up committed or logged.</p>
+    <h3>Checks V-01 → V-08</h3>
+    <ul>
+      <li>Broken hash (MD5/SHA-1) used for passwords, and weak cipher mode or static IV.</li>
+      <li>Sensitive values written to stdout, and <code>.env</code> files or key/certificate files committed to the repository.</li>
+      <li>Database dumps committed, and a <code>.gitignore</code> that does not cover secret files.</li>
+      <li>Bearer or provider token literals (GitHub, Slack, Stripe, Google, OpenAI, Anthropic prefixes).</li>
+    </ul>
+    <p><strong>Example finding:</strong> <code>hashlib.md5</code> used for a password triggers V-01 with a <span class="badge high">HIGH</span> severity.</p>
+    <p>Full detail for every VAULT check is on the <a href="checks.html#vault">Check Catalog</a>.</p>
+
+    <h2 id="conduit">CONDUIT — Network & API</h2>
+    <p><span class="badge agent">Network & API</span> <span class="badge">5 checks · weight 11</span></p>
+    <p>CONDUIT inspects the network boundary: CORS, TLS verification, and services bound to all interfaces.</p>
+    <h3>Checks C-01 → C-05</h3>
+    <ul>
+      <li>Wildcard CORS origin, and wildcard CORS combined with credentials.</li>
+      <li>TLS certificate validation disabled, and cleartext HTTP endpoints.</li>
+      <li>Services bound to <code>0.0.0.0</code> outside a container entrypoint.</li>
+    </ul>
+    <p><strong>Example finding:</strong> <code>Access-Control-Allow-Origin: *</code> triggers C-01 with a <span class="badge high">HIGH</span> severity.</p>
+    <p>Full detail for every CONDUIT check is on the <a href="checks.html#conduit">Check Catalog</a>.</p>
+
+    <h2 id="watchtower">WATCHTOWER — Application Config</h2>
+    <p><span class="badge agent">Application Config</span> <span class="badge">8 checks · weight 11</span></p>
+    <p>WATCHTOWER scans Dockerfiles, CI workflows, and repository-level configuration for dangerous defaults.</p>
+    <h3>Checks W-01 → W-08</h3>
+    <ul>
+      <li>Debug mode enabled in committed config, and containers that never drop root.</li>
+      <li>Unpinned base image tags, and privileged containers or host namespaces.</li>
+      <li>Plaintext secrets in CI workflow files.</li>
+      <li>Missing <code>SECURITY.md</code>, missing license file, and missing security headers (CSP/HSTS/X-Frame-Options).</li>
+    </ul>
+    <p><strong>Example finding:</strong> a Dockerfile with no non-root <code>USER</code> instruction triggers W-02 with a <span class="badge high">HIGH</span> severity.</p>
+    <p>Full detail for every WATCHTOWER check is on the <a href="checks.html#watchtower">Check Catalog</a>.</p>
+
+    <h2 id="librarian">LIBRARIAN — Dependencies</h2>
+    <p><span class="badge agent">Dependencies</span> <span class="badge">6 checks · weight 12</span></p>
+    <p>LIBRARIAN audits manifests and CI workflows for supply-chain risk. Vulnerable-version matching is a static regex against known bad version ranges committed in <code>checks.json</code> — it is not a live CVE database lookup.</p>
+    <h3>Checks L-01 → L-06</h3>
+    <ul>
+      <li>Missing dependency lockfile, and manifest versions matching known-vulnerable ranges.</li>
+      <li>Dependencies sourced from a git URL/tarball instead of a registry release.</li>
+      <li>No automated dependency updates (Dependabot/Renovate) configured.</li>
+      <li>Remote scripts piped to a shell, and third-party GitHub Actions pinned to a branch instead of a SHA.</li>
+    </ul>
+    <p><strong>Example finding:</strong> a manifest pinning a known-vulnerable <code>lodash</code> version triggers L-02 with a <span class="badge high">HIGH</span> severity.</p>
+    <p>Full detail for every LIBRARIAN check is on the <a href="checks.html#librarian">Check Catalog</a>.</p>
+
+    <h2 id="shield">SHIELD — Client Security</h2>
+    <p><span class="badge agent">Client Security</span> <span class="badge">6 checks · weight 11</span></p>
+    <p>SHIELD audits the client-side attack surface: DOM sinks, token storage, and cross-window messaging.</p>
+    <h3>Checks F-01 → F-06</h3>
+    <ul>
+      <li>Auth tokens stored in <code>localStorage</code>/<code>sessionStorage</code>, and unsanitised HTML injection sinks (<code>dangerouslySetInnerHTML</code>, <code>v-html</code>, <code>innerHTML =</code>).</li>
+      <li><code>document.write</code>, and <code>postMessage</code> without origin validation.</li>
+      <li><code>target="_blank"</code> links missing <code>rel="noopener"</code>.</li>
+      <li>Credential literals embedded in files that ship to the browser.</li>
+    </ul>
+    <p><strong>Example finding:</strong> <code>localStorage.setItem("token", ...)</code> triggers F-01 with a <span class="badge high">HIGH</span> severity.</p>
+    <p>Full detail for every SHIELD check is on the <a href="checks.html#shield">Check Catalog</a>.</p>
+
+    <h2 id="auditor">AUDITOR — Logging & Monitoring</h2>
+    <p><span class="badge agent">Logging & Monitoring</span> <span class="badge">4 checks · weight 8</span></p>
+    <p>AUDITOR checks what ends up in logs and error responses, and whether CI exists at all.</p>
+    <h3>Checks A-01 → A-04</h3>
+    <ul>
+      <li>Credentials passed to the logger, and stack traces returned to the client.</li>
+      <li>Debug output (<code>console.log</code>, <code>debugger</code>) left in non-test source.</li>
+      <li>No continuous integration pipeline found in the repository.</li>
+    </ul>
+    <p><strong>Example finding:</strong> a logger call including a <code>password</code> field triggers A-01 with a <span class="badge high">HIGH</span> severity.</p>
+    <p>Full detail for every AUDITOR check is on the <a href="checks.html#auditor">Check Catalog</a>.</p>
+
+    <h2 id="architect">ARCHITECT — Infrastructure</h2>
+    <p><span class="badge agent">Infrastructure</span> <span class="badge">5 checks · weight 8</span></p>
+    <p>ARCHITECT looks at infrastructure-as-code and repository-level structural hygiene.</p>
+    <h3>Checks R-01 → R-05</h3>
+    <ul>
+      <li>Hardcoded IP addresses, and security groups open to <code>0.0.0.0/0</code>.</li>
+      <li>Publicly readable object storage (public-read ACLs).</li>
+      <li>No automated tests found, and committed Terraform state files.</li>
+    </ul>
+    <p><strong>Example finding:</strong> a hardcoded IPv4 address in source triggers R-01 with a <span class="badge medium">MEDIUM</span> severity.</p>
+    <p>Full detail for every ARCHITECT check is on the <a href="checks.html#architect">Check Catalog</a>.</p>
+
+    <h2>Why organize checks into agents instead of one flat list?</h2>
+    <p>A single static-analysis tool is optimized for one thing: pattern matching. Grouping checks by domain gives Cerberus <em>structure</em>. Doing this lets us:</p>
+    <ul>
+      <li><strong>Apply domain-specific weight.</strong> GATEKEEPER and VAULT carry more of the score than AUDITOR, reflecting how much damage an auth or secrets failure does versus a missing CI pipeline.</li>
+      <li><strong>Reduce noise per domain.</strong> Placeholder filtering, test-path exclusion, and hit caps are tuned in <code>checks.json</code> per check, not globally.</li>
+      <li><strong>Provide clear ownership.</strong> When a finding appears, you know exactly which domain failed and which team should fix it.</li>
+      <li><strong>Scale continuously.</strong> New checks are added to the relevant agent without rewriting a monolithic engine.</li>
+    </ul>
+
+    <div class="callout tip">
+      <div class="callout-title">Next step</div>
+      <p>See the exact checks each agent runs in the <a href="checks.html">Check Catalog</a> reference.</p>
+    </div>
+  </main>
+</div>
+
+<footer class="docs-footer">
+  <div class="inner">
+    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
+    <span><a href="index.html">Docs home</a> · <a href="checks.html">Checks</a> · <a href="scoring.html">Scoring</a></span>
+  </div>
+</footer>
+
+<script src="assets/docs.js"></script>
+</body>
+</html>

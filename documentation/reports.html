@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reading Reports — Cerberus Documentation</title>
+<meta name="description" content="How to read a Cerberus report: check states, the executive score, per-agent breakdown, findings, and coverage metadata.">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+
+<header class="docs-header">
+  <nav class="left">
+    <a class="brand-mini" href="../cerberus.html">
+      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
+      <span>CERBERUS DOCS</span>
+    </a>
+    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="agents.html">Agents</a>
+    <a class="nav-link" href="checks.html">Checks</a>
+  </nav>
+  <nav class="right">
+    <form class="search-form" onsubmit="return false">
+      <svg class="search-icon"><use href="#i-search"/></svg>
+      <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
+    </form>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <button class="menu-toggle" aria-label="Open menu">☰</button>
+  </nav>
+</header>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar">
+    <div class="sidebar-title">Get Started</div>
+    <a class="sidebar-link" href="index.html">Overview</a>
+    <a class="sidebar-link" href="quickstart.html">Quickstart</a>
+    <a class="sidebar-link" href="scanner.html">CLI Scanner</a>
+    <a class="sidebar-link active" href="reports.html">Reading Reports</a>
+
+    <div class="sidebar-title">Architecture</div>
+    <a class="sidebar-link" href="agents.html">Agent Swarm</a>
+    <a class="sidebar-link" href="checks.html">Check Catalog</a>
+    <a class="sidebar-link" href="scoring.html">Severity & Scoring</a>
+
+    <div class="sidebar-title">Report Topics</div>
+    <a class="sidebar-link" href="#summary">Executive Summary</a>
+    <a class="sidebar-link" href="#states">Check States</a>
+    <a class="sidebar-link" href="#agent-summary">Agent Summary</a>
+    <a class="sidebar-link" href="#findings">Findings</a>
+    <a class="sidebar-link" href="#remediation">Remediation</a>
+    <a class="sidebar-link" href="#metadata">Coverage Metadata</a>
+
+    <div class="sidebar-title">Support</div>
+    <a class="sidebar-link" href="faq.html">FAQ</a>
+    <a class="sidebar-link" href="security.html">Security & Privacy</a>
+  </aside>
+
+  <main class="docs-content">
+    <h1>Reading Reports</h1>
+    <p class="lead">A Cerberus report is designed to be useful to three audiences at once: executives who need a score, engineers who need line numbers, and security leads who need remediation guidance. This page explains each section and how to turn it into action.</p>
+
+    <h2 id="summary">Executive summary</h2>
+    <p>The top of the report shows the target, the scan timestamp, the overall score, and the letter grade. This is the slide you show to founders, investors, or customers who ask, "How secure is your app?"</p>
+    <div class="callout info">
+      <div class="callout-title">What the score means</div>
+      <p>The score sums nine per-agent weights (out of 100) based on the 58-check catalog in <code>checks.json</code>. A higher score means fewer and less severe failed checks. See the <a href="scoring.html">Severity & Scoring</a> page for the exact math.</p>
+    </div>
+
+    <h2 id="states">Check states</h2>
+    <p>Every one of the 58 checks in a report is in exactly one of four states — a report is not credible unless all four are visible, not just failures:</p>
+    <ul>
+      <li><strong>pass</strong> — applicable, evaluated, no findings.</li>
+      <li><strong>fail</strong> — applicable, evaluated, one or more findings (or a stated repository-level reason, e.g. "No SECURITY.md found").</li>
+      <li><strong>not_applicable</strong> — the check's precondition wasn't met (for example, a Docker-specific check when the repo has no Dockerfile), with the reason shown.</li>
+      <li><strong>skipped</strong> — the check couldn't be evaluated (file budget exhausted, a fetch error), with the reason shown.</li>
+    </ul>
+    <p>The four counts always sum to 58. If they don't, something in the scan is broken — trust the report only when the arithmetic checks out.</p>
+
+    <h2 id="agent-summary">Agent summary</h2>
+    <p>The next section breaks the score down by agent. Each row shows:</p>
+    <ul>
+      <li>The agent name and domain (for example, SENTINEL · Code Analysis).</li>
+      <li>The agent's score out of its weight (its share of the 100-point total).</li>
+      <li>Severity badges showing how many critical, high, medium, and low findings that agent produced.</li>
+    </ul>
+    <p>Use this table to assign work. If SHIELD has two high findings, assign the frontend team to it. If WATCHTOWER is clean, your infrastructure/CI configuration is in good shape.</p>
+
+    <h2 id="findings">Detailed findings</h2>
+    <p>Each failed check expands into one or more findings. A finding contains:</p>
+    <ul>
+      <li><strong>Severity badge</strong> — color-coded CRITICAL, HIGH, MEDIUM, or LOW.</li>
+      <li><strong>Check name and CWE</strong> — for example, "Hardcoded credential assignment" / CWE-798.</li>
+      <li><strong>File and line</strong> — the exact location of the flagged code, including the file path and line number.</li>
+      <li><strong>Snippet</strong> — the actual matched line from the source file, and a permalink pinned to the scanned commit SHA (<code>.../blob/{sha}/{path}#L{n}</code>) so the link never rots.</li>
+      <li><strong>Risk and remediation</strong> — why it matters and a concrete fix; many checks also include a copyable suggested-fix code block.</li>
+    </ul>
+
+    <h3>How to prioritize</h3>
+    <p>Work in severity order:</p>
+    <ol>
+      <li><span class="badge critical">CRITICAL</span> — fix today. These are usually exploitable and high-impact.</li>
+      <li><span class="badge high">HIGH</span> — fix this week. They are serious but may require chaining with other issues.</li>
+      <li><span class="badge medium">MEDIUM</span> — schedule in the next sprint. These reduce resilience or leak information.</li>
+      <li><span class="badge low">LOW</span> — add to the backlog. These are hygiene and best-practice improvements.</li>
+    </ol>
+
+    <h2 id="remediation">Remediation workflow</h2>
+    <p>We recommend the following workflow for every report:</p>
+    <ol>
+      <li><strong>Confirm the finding.</strong> Open the file and line number and verify the snippet is real. Static analysis can occasionally flag test fixtures or intentionally unsafe demo code.</li>
+      <li><strong>Apply the recommendation.</strong> Each card includes a specific fix, such as switching to parameterized queries or replacing a Dockerfile <code>USER</code> directive.</li>
+      <li><strong>Write a regression test.</strong> Where possible, add a test that prevents the issue from returning. For example, a test that asserts no secrets are present in source.</li>
+      <li><strong>Re-run Cerberus.</strong> Verify the score improved and the finding disappeared from the report.</li>
+      <li><strong>Document exceptions.</strong> If a finding is a false positive or an accepted risk, document the rationale for auditors and future reviewers.</li>
+    </ol>
+
+    <h2 id="metadata">Coverage metadata</h2>
+    <p>Every report includes a <code>coverage</code> block so you can judge how complete the scan actually was:</p>
+    <ul>
+      <li><strong>filesInTree</strong> — total files in the repository's tree.</li>
+      <li><strong>filesEligible</strong> — files that matched a source glob and weren't excluded.</li>
+      <li><strong>filesScanned</strong> — files actually fetched and evaluated (bounded by the ≤400 files / ≤512 KB per file budget).</li>
+      <li><strong>filesSkipped</strong> and <strong>skipReasons</strong> — anything left out, and why. Cerberus never silently truncates without saying so.</li>
+      <li><strong>bytesScanned</strong> and <strong>truncated</strong> — total volume scanned, and whether the file budget was hit.</li>
+    </ul>
+    <p>The report also carries <code>repo</code> metadata (description, stars, license, archived status, last-pushed date) and the exact commit <code>sha</code> that was scanned, so findings are reproducible and their permalinks stay valid.</p>
+
+    <div class="callout tip">
+      <div class="callout-title">Sample report</div>
+      <p>Open the generated <a href="../cerberus-report.html">cerberus-report.html</a> in this repository to see a real report layout with sample findings and recommendations.</p>
+    </div>
+
+    <h2>Sharing and archiving</h2>
+    <p>A report can be exported as JSON (<code>--json</code> from the CLI, or the "Download JSON" action in the web app), as a standalone HTML file (<code>--html</code>, or "Download HTML report"), or as a copyable Markdown summary from the web app. All three are self-contained — you can:</p>
+    <ul>
+      <li>Email it to stakeholders.</li>
+      <li>Attach it to a fundraising data room or security questionnaire.</li>
+      <li>Upload it to a compliance folder for audit evidence.</li>
+      <li>Feed the JSON into other tooling, or the SARIF output into GitHub code scanning.</li>
+    </ul>
+    <p>Web-app scans are cached in the browser's <code>localStorage</code> keyed by <code>owner/repo@sha</code> for 24 hours, so a report URL is shareable and reloads instantly until the cache expires. CLI reports are written wherever you point <code>--json</code>/<code>--html</code>/<code>--sarif</code>.</p>
+  </main>
+</div>
+
+<footer class="docs-footer">
+  <div class="inner">
+    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
+    <span><a href="index.html">Docs home</a> · <a href="scanner.html">Scanner</a> · <a href="scoring.html">Scoring</a></span>
+  </div>
+</footer>
+
+<script src="assets/docs.js"></script>
+</body>
+</html>

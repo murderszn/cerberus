@@ -1,0 +1,19 @@
+# Cerberus suppression list — glob per line, # for comments.
+#
+# These files ARE the detection catalog. They contain every vulnerability pattern
+# Cerberus looks for, written out as string literals, so scanning them makes the
+# tool detect its own signatures and report itself as critically vulnerable.
+# They are data, not executable code paths.
+checks.json
+assets/checks.js
+
+# Generated documentation embeds the same patterns for reference.
+documentation/checks.html
+docs/scanner-checks.md
+docs/examination-spec.md
+
+# Superseded prototype kept for reference, not served as the app.
+ceberus-classic.html
+
+# Prose documentation that quotes the checks (describing "verify=False" is not doing it).
+documentation/agents.html

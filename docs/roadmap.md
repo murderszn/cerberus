@@ -1,61 +1,41 @@
-# Roadmap
+# Cerberus Labs Roadmap
 
-## Phase 0 — Foundation
-- [ ] Finalize incorporation state and registered agent
-- [ ] File Articles of Incorporation
-- [ ] Obtain EIN from IRS
-- [ ] Open business bank account
-- [ ] Set cap table and founder equity grants
-- [ ] Sign founder IP assignment agreements
-- [ ] Adopt initial bylaws
-- [ ] Appoint initial directors and officers
+## Phase 0 — Foundation & Concept (Completed)
+- [x] Define Cerberus core thesis (vibe-coding needs automated security)
+- [x] Design the 9-Agent Swarm architecture
+- [x] Map out the comprehensive 151-point inspection
+- [x] Draft initial business plan and monetization strategy
+- [x] Formalize founder roles (Joshua, Caleb, Elijah)
 
-## Phase 1 — Product-market fit
-- [ ] Identify one concrete customer use case
-- [ ] Write 10 customer problem statements
-- [ ] Interview 10 potential users
-- [ ] Define MVP feature set around one use case
-- [ ] Confirm willingness to pay: 3 conversations with budget holders
+## Phase 1 — MVP Development (Current)
+- [ ] Build the Cerberus Orchestrator core logic
+- [ ] Implement the first 3 agents (SENTINEL, GATEKEEPER, LIBRARIAN)
+- [ ] Define the JSON output schema for agent findings
+- [ ] Build the PDF/Web report generator
+- [ ] Test the pipeline against 3 intentionally vulnerable open-source repos
 
-## Phase 2 — MVP development
-- [ ] Choose one platform/stack for the first build
-- [ ] Build end-to-end prototype for the chosen use case
-- [ ] Write internal ops runbook for the MVP
-- [ ] Setup hosting and domain
-- [ ] Implement basic auth and data privacy controls
-- [ ] Add basic logging and error monitoring
+## Phase 2 — Beta & Validation
+- [ ] Onboard 10 indie developers for free "Cerberus Examination" scans
+- [ ] Refine the severity scoring algorithm based on real-world noise/false positives
+- [ ] Develop the remaining 6 agents (VAULT, CONDUIT, WATCHTOWER, SHIELD, AUDITOR, ARCHITECT)
+- [ ] Build the "Watchdog" continuous monitoring prototype (GitHub App integration)
+- [ ] Collect 3 case studies/testimonials from beta users
 
-## Phase 3 — Legal and compliance
-- [ ] Draft privacy policy for customer data
-- [ ] Draft terms of service
-- [ ] Create mutual NDA template for advisors and testers
-- [ ] Create customer contract template
-- [ ] Review with lawyer or legal service before launch
+## Phase 3 — Launch & GTM
+- [ ] Finalize pricing tiers in Stripe (Pro Scan, Watchdog Subscriptions)
+- [ ] Launch marketing site with the "151-Point AI Security Checklist" lead magnet
+- [ ] Launch on Product Hunt emphasizing the "Security for AI code" angle
+- [ ] Reach out to YC/Techstars founders offering discounted initial audits
+- [ ] Publish redacted "Security Horror Stories" on Twitter/LinkedIn
 
-## Phase 4 — GTM and brand
-- [ ] Write one-sentence product description
-- [ ] Write plain-English feature list
-- [ ] Update website to match real offering
-- [ ] Create sales one-pager
-- [ ] Setup company email addresses
-- [ ] Prepare onboarding materials for first customers
+## Phase 4 — Scale & Partnerships
+- [ ] Build direct integrations with Vercel and Supabase
+- [ ] Partner with AI coding assistants (Cursor, Copilot) as a recommended post-deploy check
+- [ ] Introduce Enterprise tier with custom SOC 2/HIPAA compliance mapping
+- [ ] Expand the agent swarm capabilities to include smart remediation (auto-generating PRs for fixes)
+- [ ] Achieve $10k MRR through Watchdog subscriptions and one-off scans
 
-## Phase 5 — Beta and validation
-- [ ] Recruit 5–10 beta users
-- [ ] Run structured feedback loop for 4–6 weeks
-- [ ] Fix top 3 blockers from beta
-- [ ] Collect 2–3 testimonials or case studies
-- [ ] Decide on launch readiness
-
-## Phase 6 — Public launch
-- [ ] Finalize pricing
-- [ ] Setup payment processing
-- [ ] Open signups or sales calls
-- [ ] Announce publicly
-- [ ] Track first 10 paid customers
-- [ ] Document first rejection and learn from it
-
-## Ongoing
-- [ ] Weekly founder sync
-- [ ] Monthly review of metrics and cash
-- [ ] Quarterly review of roadmap priority
+## Ongoing Operations
+- [ ] Weekly swarm updates (tuning agent prompts and adding new CVE checks)
+- [ ] Monthly review of financial runway and customer acquisition cost
+- [ ] Quarterly security audits of our own Cerberus infrastructure

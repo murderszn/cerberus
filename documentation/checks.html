@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check Catalog — Cerberus Documentation</title>
+<meta name="description" content="The complete Cerberus check catalog: 59 checks across nine agent domains, generated directly from checks.json.">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+
+<header class="docs-header">
+  <nav class="left">
+    <a class="brand-mini" href="../cerberus.html">
+      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
+      <span>CERBERUS DOCS</span>
+    </a>
+    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="agents.html">Agents</a>
+    <a class="nav-link" href="checks.html">Checks</a>
+  </nav>
+  <nav class="right">
+    <form class="search-form" onsubmit="return false">
+      <svg class="search-icon"><use href="#i-search"/></svg>
+      <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
+    </form>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <button class="menu-toggle" aria-label="Open menu">☰</button>
+  </nav>
+</header>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar">
+    <div class="sidebar-title">Get Started</div>
+    <a class="sidebar-link" href="index.html">Overview</a>
+    <a class="sidebar-link" href="quickstart.html">Quickstart</a>
+    <a class="sidebar-link" href="scanner.html">CLI Scanner</a>
+    <a class="sidebar-link" href="reports.html">Reading Reports</a>
+
+    <div class="sidebar-title">Architecture</div>
+    <a class="sidebar-link" href="agents.html">Agent Swarm</a>
+    <a class="sidebar-link active" href="checks.html">Check Catalog</a>
+    <a class="sidebar-link" href="scoring.html">Severity & Scoring</a>
+
+    <div class="sidebar-title">Check Categories</div>
+    <a class="sidebar-link" href="#sentinel">SENTINEL</a>
+    <a class="sidebar-link" href="#gatekeeper">GATEKEEPER</a>
+    <a class="sidebar-link" href="#vault">VAULT</a>
+    <a class="sidebar-link" href="#conduit">CONDUIT</a>
+    <a class="sidebar-link" href="#watchtower">WATCHTOWER</a>
+    <a class="sidebar-link" href="#librarian">LIBRARIAN</a>
+    <a class="sidebar-link" href="#shield">SHIELD</a>
+    <a class="sidebar-link" href="#auditor">AUDITOR</a>
+    <a class="sidebar-link" href="#architect">ARCHITECT</a>
+
+    <div class="sidebar-title">Support</div>
+    <a class="sidebar-link" href="faq.html">FAQ</a>
+    <a class="sidebar-link" href="security.html">Security & Privacy</a>
+  </aside>
+
+  <main class="docs-content">
+    <h1>Check Catalog</h1>
+    <p class="lead">The complete set of checks Cerberus agents evaluate during every examination, generated directly from <code>checks.json</code> — the single source of truth shared by the web app, the CLI (<code>examine.py</code>), and this page. The catalog currently holds <strong>59 checks</strong> across nine agent domains, weighted to 100 points.</p>
+
+    <div class="callout info">
+      <div class="callout-title">How this catalog is built</div>
+      <p>Every check below is read straight from <code>checks.json</code> by <code>scripts/generate-checks-docs.py</code>. Nothing here is hand-written or aspirational — if a check is not in <code>checks.json</code>, it does not run, and it is not listed here. For planned checks that are not yet implemented, see the roadmap section of <a href="../docs/examination-spec.md">the examination spec</a>.</p>
+    </div>
+
+    <h2>Check states</h2>
+    <p>Every check resolves to exactly one of four states when a scan runs:</p>
+    <div class="check-states">
+      <div class="check-state"><strong>pass</strong>Applicable, evaluated, clean.</div>
+      <div class="check-state"><strong>fail</strong>Applicable, evaluated, one or more findings.</div>
+      <div class="check-state"><strong>not_applicable</strong>Precondition unmet (e.g. no Dockerfile), with the reason stated.</div>
+      <div class="check-state"><strong>skipped</strong>Could not be evaluated (file budget exhausted, fetch error), with the reason stated.</div>
+    </div>
+
+    <h2>Agent index</h2>
+    <table class="agent-index">
+      <thead><tr><th>Agent</th><th>Domain</th><th>Weight</th><th>Checks</th></tr></thead>
+      <tbody>
+      <tr><td><a href="#sentinel">SENTINEL</a></td><td>Code Analysis</td><td>14</td><td>11</td></tr>
+<tr><td><a href="#gatekeeper">GATEKEEPER</a></td><td>Access Control</td><td>12</td><td>6</td></tr>
+<tr><td><a href="#vault">VAULT</a></td><td>Data Security</td><td>13</td><td>8</td></tr>
+<tr><td><a href="#conduit">CONDUIT</a></td><td>Network &amp; API</td><td>11</td><td>5</td></tr>
+<tr><td><a href="#watchtower">WATCHTOWER</a></td><td>Application Config</td><td>11</td><td>8</td></tr>
+<tr><td><a href="#librarian">LIBRARIAN</a></td><td>Dependencies</td><td>12</td><td>6</td></tr>
+<tr><td><a href="#shield">SHIELD</a></td><td>Client Security</td><td>11</td><td>6</td></tr>
+<tr><td><a href="#auditor">AUDITOR</a></td><td>Logging &amp; Monitoring</td><td>8</td><td>4</td></tr>
+<tr><td><a href="#architect">ARCHITECT</a></td><td>Infrastructure</td><td>8</td><td>5</td></tr>
+      <tr><td colspan="2"><strong>Total</strong></td><td><strong>100</strong></td><td><strong>59</strong></td></tr>
+      </tbody>
+    </table>
+
+<section class="checklist-section" id="sentinel"><h3><span>SENTINEL</span><span class="count">11 checks</span></h3><div class="check-card" id="S-01">
+<div class="check-card-head">
+<span class="check-id">S-01</span>
+<h4>Hardcoded credential assignment</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-798</span>
+</div>
+<p>A secret-looking variable is assigned a long literal string directly in source.</p>
+<div class="field-label">Risk</div>
+<p>Anyone who can read the repository — including every fork, every CI log, and every future clone — holds a working credential. Git history keeps it even after the line is deleted.</p>
+<div class="field-label">Remediation</div>
+<p>Move the value into an environment variable or a secrets manager, rotate the exposed credential immediately, and purge it from git history with `git filter-repo`.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- API_KEY = &quot;sk_live_9f2b1c8e4a7d0553&quot;
++ import os
++ API_KEY = os.environ[&quot;API_KEY&quot;]   # set in your secrets manager / .env (gitignored)</code></pre>
+</div>
+<div class="check-card" id="S-02">
+<div class="check-card-head">
+<span class="check-id">S-02</span>
+<h4>AWS access key ID in source</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-798</span>
+</div>
+<p>A literal matching the AWS access key ID format (AKIA/ASIA + 16 chars) appears in the repository.</p>
+<div class="field-label">Risk</div>
+<p>AWS key IDs are harvested from public GitHub within minutes by automated scrapers. Paired with a secret key this grants direct access to your cloud account.</p>
+<div class="field-label">Remediation</div>
+<p>Deactivate the key in IAM right now, then re-issue via IAM roles or AWS SSO instead of long-lived keys.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-bash">aws iam update-access-key --access-key-id AKIA... --status Inactive
+aws iam delete-access-key --access-key-id AKIA...</code></pre>
+</div>
+<div class="check-card" id="S-03">
+<div class="check-card-head">
+<span class="check-id">S-03</span>
+<h4>Private key material committed</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-321</span>
+</div>
+<p>A PEM private key block is embedded in a tracked file.</p>
+<div class="field-label">Risk</div>
+<p>A leaked private key lets an attacker impersonate your service, decrypt intercepted traffic, or sign artifacts as you.</p>
+<div class="field-label">Remediation</div>
+<p>Revoke and reissue the key pair, then load keys at runtime from a mounted secret or KMS — never from the repo.</p>
+</div>
+<div class="check-card" id="S-04">
+<div class="check-card-head">
+<span class="check-id">S-04</span>
+<h4>SQL built by string concatenation</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-89</span>
+</div>
+<p>A SQL statement is assembled with f-strings, `+`, `%`, or `.format()` rather than bound parameters.</p>
+<div class="field-label">Risk</div>
+<p>Any user-controlled value reaching this query can rewrite it — reading other tenants&#x27; rows, dumping the user table, or dropping it.</p>
+<div class="field-label">Remediation</div>
+<p>Use parameter binding for every dynamic value. Only table/column names may be interpolated, and only from a fixed allow-list.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- cursor.execute(f&quot;SELECT * FROM users WHERE email = &#x27;{email}&#x27;&quot;)
++ cursor.execute(&quot;SELECT * FROM users WHERE email = %s&quot;, (email,))</code></pre>
+</div>
+<div class="check-card" id="S-05">
+<div class="check-card-head">
+<span class="check-id">S-05</span>
+<h4>Shell execution with interpolated input</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-78</span>
+</div>
+<p>An OS command is run through a shell with a dynamically built string, or with `shell=True`.</p>
+<div class="field-label">Risk</div>
+<p>A `;`, backtick, or `$()` in any interpolated value becomes arbitrary code execution on the host running the process.</p>
+<div class="field-label">Remediation</div>
+<p>Pass arguments as a list with `shell=False` (the default) and validate any value that reaches the argv.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- subprocess.run(f&quot;git clone {repo_url}&quot;, shell=True)
++ subprocess.run([&quot;git&quot;, &quot;clone&quot;, repo_url], shell=False, check=True)</code></pre>
+</div>
+<div class="check-card" id="S-06">
+<div class="check-card-head">
+<span class="check-id">S-06</span>
+<h4>Dynamic code evaluation</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-95</span>
+</div>
+<p>`eval`, `exec`, `new Function`, or `setTimeout(string)` is called on a non-literal value.</p>
+<div class="field-label">Risk</div>
+<p>If the evaluated string is influenced by input, request data, or config fetched at runtime, it is remote code execution.</p>
+<div class="field-label">Remediation</div>
+<p>Replace with an explicit parser (`JSON.parse`, `ast.literal_eval`) or a dispatch table keyed by known-safe names.</p>
+</div>
+<div class="check-card" id="S-06P">
+<div class="check-card-head">
+<span class="check-id">S-06P</span>
+<h4>Python exec() on a dynamic value</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-95</span>
+</div>
+<p>Python&#x27;s builtin `exec()` is called on a non-literal value.</p>
+<div class="field-label">Risk</div>
+<p>`exec` compiles and runs whatever string it is handed. If that string is influenced by input or remote config, it is remote code execution.</p>
+<div class="field-label">Remediation</div>
+<p>Use `ast.literal_eval` for data, or a dispatch dict keyed by known-safe names for behaviour.</p>
+</div>
+<div class="check-card" id="S-07">
+<div class="check-card-head">
+<span class="check-id">S-07</span>
+<h4>Unsafe deserialization</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-502</span>
+</div>
+<p>Untrusted bytes are loaded through pickle, `yaml.load` without a safe loader, or Java/PHP native deserialization.</p>
+<div class="field-label">Risk</div>
+<p>These formats can instantiate arbitrary classes on load — a crafted payload runs code before your first line of validation.</p>
+<div class="field-label">Remediation</div>
+<p>Use `yaml.safe_load`, JSON, or a schema-validated format. Never unpickle data that crossed a trust boundary.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- config = yaml.load(untrusted_bytes)
++ config = yaml.safe_load(untrusted_bytes)</code></pre>
+</div>
+<div class="check-card" id="S-08">
+<div class="check-card-head">
+<span class="check-id">S-08</span>
+<h4>Non-cryptographic randomness for security values</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-338</span>
+</div>
+<p>`Math.random()` or `random.random()` is used near a token, password, nonce, or ID.</p>
+<div class="field-label">Risk</div>
+<p>These generators are predictable from a handful of outputs, so an attacker can forecast reset tokens or session identifiers.</p>
+<div class="field-label">Remediation</div>
+<p>Use `crypto.randomUUID()` / `crypto.randomBytes()` in Node, `secrets.token_urlsafe()` in Python.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- const token = Math.random().toString(36).slice(2);
++ const token = crypto.randomUUID();</code></pre>
+</div>
+<div class="check-card" id="S-09">
+<div class="check-card-head">
+<span class="check-id">S-09</span>
+<h4>Path traversal in file access</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-22</span>
+</div>
+<p>A filesystem path is built from request/user input without normalisation.</p>
+<div class="field-label">Risk</div>
+<p>`../../etc/passwd` style input reads or overwrites files outside the intended directory.</p>
+<div class="field-label">Remediation</div>
+<p>Resolve the path and assert it stays within a base directory before opening it.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-python">base = Path(&quot;/srv/uploads&quot;).resolve()
+target = (base / user_path).resolve()
+if not target.is_relative_to(base):
+    raise PermissionError(&quot;path escapes upload root&quot;)</code></pre>
+</div>
+<div class="check-card" id="S-10">
+<div class="check-card-head">
+<span class="check-id">S-10</span>
+<h4>Server-side request forgery risk</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-918</span>
+</div>
+<p>An outbound HTTP request targets a URL taken from request input.</p>
+<div class="field-label">Risk</div>
+<p>An attacker can point the request at internal services or the cloud metadata endpoint (169.254.169.254) and read credentials.</p>
+<div class="field-label">Remediation</div>
+<p>Validate the destination against an allow-list of hosts and block link-local, loopback, and private ranges.</p>
+</div></section>
+<section class="checklist-section" id="gatekeeper"><h3><span>GATEKEEPER</span><span class="count">6 checks</span></h3><div class="check-card" id="G-01">
+<div class="check-card-head">
+<span class="check-id">G-01</span>
+<h4>Signature verification disabled</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-347</span>
+</div>
+<p>JWT or token verification is switched off, or the `none` algorithm is accepted.</p>
+<div class="field-label">Risk</div>
+<p>Anyone can mint a token claiming to be any user, including an administrator. Authentication is effectively absent.</p>
+<div class="field-label">Remediation</div>
+<p>Always verify with an explicit algorithm allow-list (`algorithms=[&quot;RS256&quot;]`) and never accept `none`.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- jwt.decode(token, options={&quot;verify_signature&quot;: False})
++ jwt.decode(token, PUBLIC_KEY, algorithms=[&quot;RS256&quot;], audience=API_AUDIENCE)</code></pre>
+</div>
+<div class="check-card" id="G-02">
+<div class="check-card-head">
+<span class="check-id">G-02</span>
+<h4>Weak password length policy</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-521</span>
+</div>
+<p>Password validation accepts fewer than 8 characters.</p>
+<div class="field-label">Risk</div>
+<p>Short passwords fall to offline cracking in seconds regardless of how well you hash them.</p>
+<div class="field-label">Remediation</div>
+<p>Require at least 12 characters and screen against a breached-password list (e.g. Have I Been Pwned range API).</p>
+</div>
+<div class="check-card" id="G-03">
+<div class="check-card-head">
+<span class="check-id">G-03</span>
+<h4>Endpoint opted out of authentication</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-306</span>
+</div>
+<p>A route is explicitly marked as public via `AllowAny`, `@csrf_exempt`, `authenticate: false`, or similar.</p>
+<div class="field-label">Risk</div>
+<p>Each opt-out is an unauthenticated entry point. They accumulate silently and are rarely re-reviewed.</p>
+<div class="field-label">Remediation</div>
+<p>Default to deny. Keep an audited list of intentionally public routes and assert it in a test.</p>
+</div>
+<div class="check-card" id="G-04">
+<div class="check-card-head">
+<span class="check-id">G-04</span>
+<h4>Default or hardcoded admin credentials</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-1392</span>
+</div>
+<p>An admin/root username is paired with a literal password in source or config.</p>
+<div class="field-label">Risk</div>
+<p>Default credentials are the single most reliable way into a self-hosted deployment; scanners try them first.</p>
+<div class="field-label">Remediation</div>
+<p>Generate the initial admin password at install time, force rotation on first login, and never ship a fallback.</p>
+</div>
+<div class="check-card" id="G-05">
+<div class="check-card-head">
+<span class="check-id">G-05</span>
+<h4>Session cookie missing security flags</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-1004</span>
+</div>
+<p>A cookie is set with `httpOnly` or `secure` explicitly false, or a session cookie config omits both.</p>
+<div class="field-label">Risk</div>
+<p>Without `httpOnly` any XSS reads the session; without `secure` it leaks over plain HTTP on a hostile network.</p>
+<div class="field-label">Remediation</div>
+<p>Set `httpOnly: true`, `secure: true`, and `sameSite: &#x27;lax&#x27;` (or `&#x27;strict&#x27;`) on every session cookie.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-javascript">res.cookie(&#x27;sid&#x27;, token, {
+  httpOnly: true,
+  secure: true,
+  sameSite: &#x27;lax&#x27;,
+  maxAge: 1000 * 60 * 60 * 8
+});</code></pre>
+</div>
+<div class="check-card" id="G-06">
+<div class="check-card-head">
+<span class="check-id">G-06</span>
+<h4>Authorization decided on the client</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-602</span>
+</div>
+<p>A role or admin flag is read from local/session storage or a decoded token without server verification.</p>
+<div class="field-label">Risk</div>
+<p>Anything the browser stores, the user edits. Client-side role checks are UI hints, not access control.</p>
+<div class="field-label">Remediation</div>
+<p>Re-check the caller&#x27;s role server-side on every privileged request; treat client state as untrusted display data.</p>
+</div></section>
+<section class="checklist-section" id="vault"><h3><span>VAULT</span><span class="count">8 checks</span></h3><div class="check-card" id="V-01">
+<div class="check-card-head">
+<span class="check-id">V-01</span>
+<h4>Broken hash used for passwords</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-916</span>
+</div>
+<p>MD5 or SHA-1 is applied to a password or credential value.</p>
+<div class="field-label">Risk</div>
+<p>Commodity GPUs test billions of MD5/SHA-1 candidates per second; a stolen table is cracked, not merely exposed.</p>
+<div class="field-label">Remediation</div>
+<p>Use Argon2id (preferred), bcrypt, or scrypt with tuned work factors, and re-hash on next successful login.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- digest = hashlib.md5(password.encode()).hexdigest()
++ from argon2 import PasswordHasher
++ digest = PasswordHasher().hash(password)</code></pre>
+</div>
+<div class="check-card" id="V-02">
+<div class="check-card-head">
+<span class="check-id">V-02</span>
+<h4>Weak cipher mode or static IV</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-327</span>
+</div>
+<p>ECB mode, DES/RC4, or a hardcoded initialisation vector is used for encryption.</p>
+<div class="field-label">Risk</div>
+<p>ECB leaks structure in ciphertext and a reused IV in CBC/CTR lets an attacker recover plaintext across messages.</p>
+<div class="field-label">Remediation</div>
+<p>Use AES-GCM or ChaCha20-Poly1305 with a fresh random nonce per message.</p>
+</div>
+<div class="check-card" id="V-03">
+<div class="check-card-head">
+<span class="check-id">V-03</span>
+<h4>Sensitive value written to stdout</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-532</span>
+</div>
+<p>A print/console statement includes a password, token, SSN, or card field.</p>
+<div class="field-label">Risk</div>
+<p>Container stdout is shipped to log aggregators, retained for months, and readable by anyone with dashboard access.</p>
+<div class="field-label">Remediation</div>
+<p>Remove the statement or mask the value; add a redaction filter in the logging pipeline as a backstop.</p>
+</div>
+<div class="check-card" id="V-04">
+<div class="check-card-head">
+<span class="check-id">V-04</span>
+<h4>Environment file committed to the repository</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-538</span>
+</div>
+<p>A real `.env` file (not `.env.example`) is tracked in git.</p>
+<div class="field-label">Risk</div>
+<p>Env files are where production credentials live. Committed once, they stay in history and in every clone forever.</p>
+<div class="field-label">Remediation</div>
+<p>`git rm --cached .env`, add it to `.gitignore`, rotate every value it contained, then scrub history.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-bash">git rm --cached .env
+echo &#x27;.env&#x27; &gt;&gt; .gitignore
+git commit -m &#x27;chore: stop tracking .env&#x27;
+# then rotate every credential it held</code></pre>
+</div>
+<div class="check-card" id="V-05">
+<div class="check-card-head">
+<span class="check-id">V-05</span>
+<h4>Key or certificate file committed</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-312</span>
+</div>
+<p>A `.pem`, `.key`, `.p12`, `.pfx`, `.keystore`, or SSH private key file is tracked.</p>
+<div class="field-label">Risk</div>
+<p>Committed key material must be treated as compromised the moment it is pushed.</p>
+<div class="field-label">Remediation</div>
+<p>Revoke and reissue, then deliver keys through a secret mount or KMS at deploy time.</p>
+</div>
+<div class="check-card" id="V-06">
+<div class="check-card-head">
+<span class="check-id">V-06</span>
+<h4>Database dump or datastore committed</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-538</span>
+</div>
+<p>A `.sqlite`, `.db`, or `.sql` dump file is tracked in the repository.</p>
+<div class="field-label">Risk</div>
+<p>Development databases routinely contain copies of real user records, and often password hashes.</p>
+<div class="field-label">Remediation</div>
+<p>Remove the file, gitignore the pattern, and seed local databases from a fixtures script instead.</p>
+</div>
+<div class="check-card" id="V-07">
+<div class="check-card-head">
+<span class="check-id">V-07</span>
+<h4>.gitignore does not cover secret files</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-1230</span>
+</div>
+<p>The repository has a `.gitignore` but it does not exclude `.env` or key material.</p>
+<div class="field-label">Risk</div>
+<p>Without the ignore rule, the next `git add .` commits whatever credentials happen to be on disk.</p>
+<div class="field-label">Remediation</div>
+<p>Add the standard secret patterns to `.gitignore` before they get committed.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-text"># secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials.json</code></pre>
+</div>
+<div class="check-card" id="V-08">
+<div class="check-card-head">
+<span class="check-id">V-08</span>
+<h4>Bearer or provider token literal</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-798</span>
+</div>
+<p>A recognisable provider token prefix (GitHub, Slack, Stripe, Google, OpenAI, Anthropic) appears as a literal.</p>
+<div class="field-label">Risk</div>
+<p>These are directly usable credentials with a known issuer, so exploitation needs no guesswork at all.</p>
+<div class="field-label">Remediation</div>
+<p>Revoke at the provider immediately, then load from the environment at runtime.</p>
+</div></section>
+<section class="checklist-section" id="conduit"><h3><span>CONDUIT</span><span class="count">5 checks</span></h3><div class="check-card" id="C-01">
+<div class="check-card-head">
+<span class="check-id">C-01</span>
+<h4>Wildcard CORS origin</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-942</span>
+</div>
+<p>`Access-Control-Allow-Origin` is set to `*`, or the CORS middleware allows all origins.</p>
+<div class="field-label">Risk</div>
+<p>Any website can call your API from a visitor&#x27;s browser. On a cookie-authenticated API this is cross-origin data theft.</p>
+<div class="field-label">Remediation</div>
+<p>Enumerate trusted origins explicitly and reject everything else.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- app.use(cors({ origin: &#x27;*&#x27; }))
++ app.use(cors({ origin: [&#x27;https://app.example.com&#x27;], credentials: true }))</code></pre>
+</div>
+<div class="check-card" id="C-02">
+<div class="check-card-head">
+<span class="check-id">C-02</span>
+<h4>Wildcard CORS combined with credentials</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-942</span>
+</div>
+<p>Credentialed CORS is enabled alongside a permissive origin policy.</p>
+<div class="field-label">Risk</div>
+<p>Attacker-controlled pages can issue authenticated requests as the logged-in victim and read the responses.</p>
+<div class="field-label">Remediation</div>
+<p>Never combine `credentials: true` with a reflected or wildcard origin — pin to an explicit host list.</p>
+</div>
+<div class="check-card" id="C-03">
+<div class="check-card-head">
+<span class="check-id">C-03</span>
+<h4>TLS certificate validation disabled</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-295</span>
+</div>
+<p>An HTTP client is configured with `verify=False`, `rejectUnauthorized: false`, or `InsecureSkipVerify`.</p>
+<div class="field-label">Risk</div>
+<p>TLS without certificate validation stops any active attacker on the path from being detected — HTTPS becomes decoration.</p>
+<div class="field-label">Remediation</div>
+<p>Keep validation on. For internal CAs, install the CA bundle rather than disabling the check.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- requests.get(url, verify=False)
++ requests.get(url, verify=&quot;/etc/ssl/certs/internal-ca.pem&quot;)</code></pre>
+</div>
+<div class="check-card" id="C-04">
+<div class="check-card-head">
+<span class="check-id">C-04</span>
+<h4>Cleartext HTTP endpoint</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-319</span>
+</div>
+<p>A non-local `http://` URL is used for an API or asset.</p>
+<div class="field-label">Risk</div>
+<p>Requests and any tokens they carry are readable and modifiable by anyone on the network path.</p>
+<div class="field-label">Remediation</div>
+<p>Switch to `https://` and add HSTS so downgrades are refused.</p>
+</div>
+<div class="check-card" id="C-05">
+<div class="check-card-head">
+<span class="check-id">C-05</span>
+<h4>Service bound to all interfaces</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-1327</span>
+</div>
+<p>A server listens on `0.0.0.0` outside of a container entrypoint.</p>
+<div class="field-label">Risk</div>
+<p>Services intended for localhost become reachable from the network, and from the internet on a misconfigured host.</p>
+<div class="field-label">Remediation</div>
+<p>Bind to `127.0.0.1` and place a reverse proxy in front of anything that must be public.</p>
+</div></section>
+<section class="checklist-section" id="watchtower"><h3><span>WATCHTOWER</span><span class="count">8 checks</span></h3><div class="check-card" id="W-01">
+<div class="check-card-head">
+<span class="check-id">W-01</span>
+<h4>Debug mode enabled</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-489</span>
+</div>
+<p>`DEBUG = True`, `app.run(debug=True)`, or an equivalent development flag is set in committed config.</p>
+<div class="field-label">Risk</div>
+<p>Debug handlers expose stack traces, settings, and — in Flask/Django — an interactive console that executes code.</p>
+<div class="field-label">Remediation</div>
+<p>Drive the flag from the environment and default it to off.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- DEBUG = True
++ DEBUG = os.environ.get(&quot;DEBUG&quot;, &quot;&quot;).lower() == &quot;true&quot;   # off unless explicitly enabled</code></pre>
+</div>
+<div class="check-card" id="W-02">
+<div class="check-card-head">
+<span class="check-id">W-02</span>
+<h4>Container runs as root</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-250</span>
+</div>
+<p>A Dockerfile never drops privileges — no `USER` instruction, or it explicitly sets `USER root`.</p>
+<div class="field-label">Risk</div>
+<p>A process escape or a mounted host path gives the attacker root on the node instead of an unprivileged account.</p>
+<div class="field-label">Remediation</div>
+<p>Create a non-root user and switch to it before the entrypoint.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-dockerfile">RUN adduser --system --uid 10001 appuser
+USER appuser
+CMD [&quot;node&quot;, &quot;server.js&quot;]</code></pre>
+</div>
+<div class="check-card" id="W-03">
+<div class="check-card-head">
+<span class="check-id">W-03</span>
+<h4>Unpinned base image tag</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-1104</span>
+</div>
+<p>A Dockerfile uses `:latest` or omits the tag entirely.</p>
+<div class="field-label">Risk</div>
+<p>Builds are not reproducible and a compromised or breaking upstream image ships straight to production.</p>
+<div class="field-label">Remediation</div>
+<p>Pin to a digest: `FROM node:20.11-alpine@sha256:...`.</p>
+</div>
+<div class="check-card" id="W-04">
+<div class="check-card-head">
+<span class="check-id">W-04</span>
+<h4>Privileged container or host namespace</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-250</span>
+</div>
+<p>A compose or Kubernetes manifest requests `privileged: true`, `hostNetwork`, `hostPID`, or docker socket access.</p>
+<div class="field-label">Risk</div>
+<p>A privileged container is functionally root on the host; the docker socket is a full container escape.</p>
+<div class="field-label">Remediation</div>
+<p>Drop the privilege, add only the specific capabilities needed, and never mount `/var/run/docker.sock`.</p>
+</div>
+<div class="check-card" id="W-05">
+<div class="check-card-head">
+<span class="check-id">W-05</span>
+<h4>Plaintext secret in CI workflow</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-798</span>
+</div>
+<p>A CI workflow sets a token or password to a literal value instead of referencing the secrets store.</p>
+<div class="field-label">Risk</div>
+<p>Workflow files are public on public repos, and the value is echoed into build logs on failure.</p>
+<div class="field-label">Remediation</div>
+<p>Reference `${{ secrets.NAME }}` (GitHub) or the equivalent masked variable in your CI provider.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- env:
+-   NPM_TOKEN: npm_9f2b1c8e4a7d0553aa11
++ env:
++   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}</code></pre>
+</div>
+<div class="check-card" id="W-06">
+<div class="check-card-head">
+<span class="check-id">W-06</span>
+<h4>No security disclosure policy</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-1059</span>
+</div>
+<p>The repository has no `SECURITY.md`.</p>
+<div class="field-label">Risk</div>
+<p>Researchers who find a flaw have no private channel, so issues get filed publicly — or sold.</p>
+<div class="field-label">Remediation</div>
+<p>Add `SECURITY.md` with a contact address, supported versions, and expected response time.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-markdown"># Security Policy
+
+## Reporting a Vulnerability
+Email security@example.com. We acknowledge within 2 business days
+and aim to ship a fix within 30 days.
+
+## Supported Versions
+| Version | Supported |
+|---------|-----------|
+| 2.x     | yes       |
+| &lt; 2.0   | no        |</code></pre>
+</div>
+<div class="check-card" id="W-07">
+<div class="check-card-head">
+<span class="check-id">W-07</span>
+<h4>No license file</h4>
+<span class="sev low">low</span>
+</div>
+<p>The repository does not declare a license.</p>
+<div class="field-label">Risk</div>
+<p>Without a license the code is all-rights-reserved by default, which blocks legitimate reuse and complicates audits.</p>
+<div class="field-label">Remediation</div>
+<p>Add a `LICENSE` file, or state the proprietary terms explicitly if the code is closed.</p>
+</div>
+<div class="check-card" id="W-08">
+<div class="check-card-head">
+<span class="check-id">W-08</span>
+<h4>Security headers not configured</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-693</span>
+</div>
+<p>No Content-Security-Policy, HSTS, or X-Frame-Options configuration found anywhere in the repository.</p>
+<div class="field-label">Risk</div>
+<p>Missing CSP removes the main mitigation for XSS; missing frame protection allows clickjacking of authenticated views.</p>
+<div class="field-label">Remediation</div>
+<p>Add a security-headers middleware (helmet, django-csp, secure.py) or set them at the edge/CDN.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-javascript">import helmet from &#x27;helmet&#x27;;
+app.use(helmet({
+  contentSecurityPolicy: { directives: { defaultSrc: [&quot;&#x27;self&#x27;&quot;] } },
+  hsts: { maxAge: 31536000, includeSubDomains: true }
+}));</code></pre>
+</div></section>
+<section class="checklist-section" id="librarian"><h3><span>LIBRARIAN</span><span class="count">6 checks</span></h3><div class="check-card" id="L-01">
+<div class="check-card-head">
+<span class="check-id">L-01</span>
+<h4>Dependency lockfile missing</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-1104</span>
+</div>
+<p>A manifest declares dependencies but no lockfile pins the resolved versions.</p>
+<div class="field-label">Risk</div>
+<p>Every install can pull different transitive code. A hijacked patch release lands in production without a diff.</p>
+<div class="field-label">Remediation</div>
+<p>Commit the lockfile your package manager produces and install with `npm ci` / `pip install -r requirements.txt --require-hashes`.</p>
+</div>
+<div class="check-card" id="L-02">
+<div class="check-card-head">
+<span class="check-id">L-02</span>
+<h4>Known-vulnerable dependency version</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-1395</span>
+</div>
+<p>A manifest pins a package version with a published CVE.</p>
+<div class="field-label">Risk</div>
+<p>Public advisories come with public exploits; these are the first things scanned for on an exposed service.</p>
+<div class="field-label">Remediation</div>
+<p>Upgrade to the patched release and enable automated dependency updates so this does not recur.</p>
+</div>
+<div class="check-card" id="L-03">
+<div class="check-card-head">
+<span class="check-id">L-03</span>
+<h4>Dependency sourced from a URL or git ref</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-829</span>
+</div>
+<p>A dependency is installed from a git URL or tarball rather than a registry release.</p>
+<div class="field-label">Risk</div>
+<p>A moving branch reference means the code can change under you with no version bump and no audit trail.</p>
+<div class="field-label">Remediation</div>
+<p>Publish an internal registry package, or at minimum pin to an immutable commit SHA.</p>
+</div>
+<div class="check-card" id="L-04">
+<div class="check-card-head">
+<span class="check-id">L-04</span>
+<h4>No automated dependency updates</h4>
+<span class="sev low">low</span>
+<span class="cwe-tag">CWE-1104</span>
+</div>
+<p>No Dependabot or Renovate configuration is present.</p>
+<div class="field-label">Risk</div>
+<p>Patch lag is the dominant cause of exploited dependency CVEs; manual upgrades slip.</p>
+<div class="field-label">Remediation</div>
+<p>Add `.github/dependabot.yml` or a Renovate config so upgrade PRs open automatically.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-yaml">version: 2
+updates:
+  - package-ecosystem: npm
+    directory: &quot;/&quot;
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 10</code></pre>
+</div>
+<div class="check-card" id="L-05">
+<div class="check-card-head">
+<span class="check-id">L-05</span>
+<h4>Remote script piped to a shell</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-494</span>
+</div>
+<p>A build or CI step pipes `curl`/`wget` output directly into `bash` or `sh`.</p>
+<div class="field-label">Risk</div>
+<p>The remote server decides what code runs on your builder, and can serve different content to you than to reviewers.</p>
+<div class="field-label">Remediation</div>
+<p>Download to a file, verify a pinned checksum or signature, then execute.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-bash">curl -fsSL -o install.sh https://example.com/install.sh
+echo &quot;&lt;known-sha256&gt;  install.sh&quot; | sha256sum -c -
+sh install.sh</code></pre>
+</div>
+<div class="check-card" id="L-06">
+<div class="check-card-head">
+<span class="check-id">L-06</span>
+<h4>Unpinned third-party GitHub Action</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-829</span>
+</div>
+<p>A workflow references a third-party action by branch or floating tag instead of a commit SHA.</p>
+<div class="field-label">Risk</div>
+<p>The action author — or anyone who compromises their account — can retroactively change what runs with your repo token.</p>
+<div class="field-label">Remediation</div>
+<p>Pin third-party actions to a full commit SHA and let Dependabot bump them.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- uses: some-org/deploy-action@main
++ uses: some-org/deploy-action@a1b2c3d4e5f60718293a4b5c6d7e8f9012345678  # v3.1.0</code></pre>
+</div></section>
+<section class="checklist-section" id="shield"><h3><span>SHIELD</span><span class="count">6 checks</span></h3><div class="check-card" id="F-01">
+<div class="check-card-head">
+<span class="check-id">F-01</span>
+<h4>Auth token stored in web storage</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-922</span>
+</div>
+<p>A JWT, session, or auth token is written to `localStorage` or `sessionStorage`.</p>
+<div class="field-label">Risk</div>
+<p>Web storage is readable by any script on the page, so a single XSS or a compromised npm package exfiltrates every session.</p>
+<div class="field-label">Remediation</div>
+<p>Keep the session in an `HttpOnly; Secure; SameSite` cookie so script cannot read it.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- localStorage.setItem(&#x27;token&#x27;, res.data.token);
++ // server sets: Set-Cookie: sid=...; HttpOnly; Secure; SameSite=Lax
++ // client sends credentials automatically:
++ fetch(&#x27;/api/me&#x27;, { credentials: &#x27;include&#x27; });</code></pre>
+</div>
+<div class="check-card" id="F-02">
+<div class="check-card-head">
+<span class="check-id">F-02</span>
+<h4>Unsanitised HTML injection sink</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-79</span>
+</div>
+<p>`dangerouslySetInnerHTML`, `v-html`, `[innerHTML]`, or a direct `innerHTML =` assignment is used.</p>
+<div class="field-label">Risk</div>
+<p>If any part of that string is user-controlled it becomes stored XSS — session theft, keylogging, or account takeover.</p>
+<div class="field-label">Remediation</div>
+<p>Render as text, or sanitise with DOMPurify immediately before insertion.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- &lt;div dangerouslySetInnerHTML={{ __html: comment.body }} /&gt;
++ import DOMPurify from &#x27;dompurify&#x27;;
++ &lt;div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.body) }} /&gt;</code></pre>
+</div>
+<div class="check-card" id="F-03">
+<div class="check-card-head">
+<span class="check-id">F-03</span>
+<h4>document.write or legacy DOM sink</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-79</span>
+</div>
+<p>`document.write` is used, which parses its argument as HTML.</p>
+<div class="field-label">Risk</div>
+<p>It is an XSS sink, blocks the parser, and is ignored entirely in async script contexts.</p>
+<div class="field-label">Remediation</div>
+<p>Build nodes with `createElement`/`textContent` and append them.</p>
+</div>
+<div class="check-card" id="F-04">
+<div class="check-card-head">
+<span class="check-id">F-04</span>
+<h4>postMessage without origin validation</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-346</span>
+</div>
+<p>A `message` listener does not check `event.origin`, or `postMessage` targets `*`.</p>
+<div class="field-label">Risk</div>
+<p>Any framing or opened window can send messages your handler trusts, or read messages you broadcast.</p>
+<div class="field-label">Remediation</div>
+<p>Compare `event.origin` against an exact expected origin and pass a specific target origin when sending.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-javascript">window.addEventListener(&#x27;message&#x27;, (e) =&gt; {
+  if (e.origin !== &#x27;https://trusted.example.com&#x27;) return;
+  handle(e.data);
+});</code></pre>
+</div>
+<div class="check-card" id="F-05">
+<div class="check-card-head">
+<span class="check-id">F-05</span>
+<h4>target=&quot;_blank&quot; without rel protection</h4>
+<span class="sev low">low</span>
+<span class="cwe-tag">CWE-1022</span>
+</div>
+<p>An anchor opens a new tab without `rel=&quot;noopener&quot;`.</p>
+<div class="field-label">Risk</div>
+<p>In older browsers the opened page can redirect the original tab via `window.opener` — a credible phishing pivot.</p>
+<div class="field-label">Remediation</div>
+<p>Add `rel=&quot;noopener noreferrer&quot;` to every `target=&quot;_blank&quot;` link.</p>
+</div>
+<div class="check-card" id="F-06">
+<div class="check-card-head">
+<span class="check-id">F-06</span>
+<h4>Secret embedded in client-side code</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-798</span>
+</div>
+<p>A credential literal appears in a file that ships to the browser.</p>
+<div class="field-label">Risk</div>
+<p>Anything in the bundle is public — view-source is all the attacker needs, regardless of build-time obfuscation.</p>
+<div class="field-label">Remediation</div>
+<p>Proxy the call through your backend and keep the credential server-side.</p>
+</div></section>
+<section class="checklist-section" id="auditor"><h3><span>AUDITOR</span><span class="count">4 checks</span></h3><div class="check-card" id="A-01">
+<div class="check-card-head">
+<span class="check-id">A-01</span>
+<h4>Credentials passed to the logger</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-532</span>
+</div>
+<p>A structured log call includes a password, key, or secret field.</p>
+<div class="field-label">Risk</div>
+<p>Log aggregators have far broader access than production databases, and retain data long after rotation.</p>
+<div class="field-label">Remediation</div>
+<p>Redact sensitive keys in a log processor and pass identifiers, not credentials.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- logger.info(&quot;login attempt&quot;, { email, password });
++ logger.info(&quot;login attempt&quot;, { email, hasPassword: Boolean(password) });</code></pre>
+</div>
+<div class="check-card" id="A-02">
+<div class="check-card-head">
+<span class="check-id">A-02</span>
+<h4>Stack trace returned to the client</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-209</span>
+</div>
+<p>An error handler sends `err.stack`, `traceback`, or the raw exception in the HTTP response.</p>
+<div class="field-label">Risk</div>
+<p>Traces reveal file paths, framework versions, and query structure — the reconnaissance step of a real attack.</p>
+<div class="field-label">Remediation</div>
+<p>Return a generic message plus a correlation ID, and log the detail server-side.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">- res.status(500).json({ error: err.stack });
++ const ref = crypto.randomUUID();
++ logger.error({ ref, err });
++ res.status(500).json({ error: &#x27;Internal error&#x27;, ref });</code></pre>
+</div>
+<div class="check-card" id="A-03">
+<div class="check-card-head">
+<span class="check-id">A-03</span>
+<h4>Debug output left in source</h4>
+<span class="sev low">low</span>
+<span class="cwe-tag">CWE-489</span>
+</div>
+<p>`console.log`, bare `print`, or `debugger` statements remain in non-test source.</p>
+<div class="field-label">Risk</div>
+<p>Noisy logs bury real signals, and `debugger` halts execution in any browser with devtools open.</p>
+<div class="field-label">Remediation</div>
+<p>Route through a level-aware logger and enforce `no-console` / `no-debugger` in lint.</p>
+</div>
+<div class="check-card" id="A-04">
+<div class="check-card-head">
+<span class="check-id">A-04</span>
+<h4>No continuous integration pipeline</h4>
+<span class="sev medium">medium</span>
+</div>
+<p>No CI configuration was found in the repository.</p>
+<div class="field-label">Risk</div>
+<p>Without automated checks, security linting and dependency audits depend on whoever remembers to run them.</p>
+<div class="field-label">Remediation</div>
+<p>Add a CI workflow that runs tests, a linter, and a dependency audit on every pull request.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-yaml">name: ci
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm test
+      - run: npm audit --audit-level=high</code></pre>
+</div></section>
+<section class="checklist-section" id="architect"><h3><span>ARCHITECT</span><span class="count">5 checks</span></h3><div class="check-card" id="R-01">
+<div class="check-card-head">
+<span class="check-id">R-01</span>
+<h4>Hardcoded IP address</h4>
+<span class="sev medium">medium</span>
+<span class="cwe-tag">CWE-1327</span>
+</div>
+<p>A routable IPv4 literal is embedded in source or configuration.</p>
+<div class="field-label">Risk</div>
+<p>Infrastructure changes silently break the deployment, and the address discloses internal topology.</p>
+<div class="field-label">Remediation</div>
+<p>Resolve endpoints through DNS or service discovery and supply them as configuration.</p>
+</div>
+<div class="check-card" id="R-02">
+<div class="check-card-head">
+<span class="check-id">R-02</span>
+<h4>Security group open to the internet</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-284</span>
+</div>
+<p>An infrastructure definition allows ingress from `0.0.0.0/0`.</p>
+<div class="field-label">Risk</div>
+<p>Databases and admin ports exposed this way are found by internet-wide scanners within hours of going live.</p>
+<div class="field-label">Remediation</div>
+<p>Restrict ingress to known CIDRs or a bastion/VPN security group; expose only 443 publicly.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-diff">  ingress {
+    from_port   = 5432
+    to_port     = 5432
+-   cidr_blocks = [&quot;0.0.0.0/0&quot;]
++   security_groups = [aws_security_group.app.id]
+  }</code></pre>
+</div>
+<div class="check-card" id="R-03">
+<div class="check-card-head">
+<span class="check-id">R-03</span>
+<h4>Publicly readable object storage</h4>
+<span class="sev high">high</span>
+<span class="cwe-tag">CWE-732</span>
+</div>
+<p>A bucket or blob container is configured with a public-read ACL.</p>
+<div class="field-label">Risk</div>
+<p>Public buckets are the most common source of large-scale data exposure; they are indexed and enumerated continuously.</p>
+<div class="field-label">Remediation</div>
+<p>Block public access at the account level and serve objects through signed URLs or a CDN origin identity.</p>
+</div>
+<div class="check-card" id="R-04">
+<div class="check-card-head">
+<span class="check-id">R-04</span>
+<h4>No automated tests</h4>
+<span class="sev medium">medium</span>
+</div>
+<p>No test directory or test files were found in the repository.</p>
+<div class="field-label">Risk</div>
+<p>Security fixes regress silently when nothing verifies the behaviour they depend on.</p>
+<div class="field-label">Remediation</div>
+<p>Add a test suite and wire it into CI, starting with the authentication and authorization paths.</p>
+</div>
+<div class="check-card" id="R-05">
+<div class="check-card-head">
+<span class="check-id">R-05</span>
+<h4>Terraform state committed</h4>
+<span class="sev critical">critical</span>
+<span class="cwe-tag">CWE-538</span>
+</div>
+<p>A `.tfstate` file is tracked in the repository.</p>
+<div class="field-label">Risk</div>
+<p>Terraform state stores resource attributes in plaintext, routinely including database passwords and generated keys.</p>
+<div class="field-label">Remediation</div>
+<p>Move state to an encrypted remote backend (S3 + DynamoDB lock, Terraform Cloud) and gitignore `*.tfstate*`.</p>
+<div class="field-label">Suggested fix</div>
+<pre><code class="lang-hcl">terraform {
+  backend &quot;s3&quot; {
+    bucket         = &quot;tf-state-prod&quot;
+    key            = &quot;app/terraform.tfstate&quot;
+    encrypt        = true
+    dynamodb_table = &quot;tf-locks&quot;
+  }
+}</code></pre>
+</div></section>
+
+    <div class="callout tip">
+      <div class="callout-title">Want the scoring math?</div>
+      <p>See <a href="scoring.html">Severity & Scoring</a> for how per-check deductions, hit caps, and agent weights combine into the final 0–100 score.</p>
+    </div>
+</main>
+</div>
+
+<footer class="docs-footer">
+  <div class="inner">
+    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
+    <span><a href="index.html">Docs home</a> · <a href="agents.html">Agents</a> · <a href="scoring.html">Scoring</a></span>
+  </div>
+</footer>
+
+<script src="assets/docs.js"></script>
+</body>
+</html>

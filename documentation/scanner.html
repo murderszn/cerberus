@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLI Scanner Reference — Cerberus Documentation</title>
+<meta name="description" content="Complete reference for the Cerberus CLI scanner, examine.py: flags, CI/GitHub Actions gating, exclusions, and the report output schema.">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+
+<header class="docs-header">
+  <nav class="left">
+    <a class="brand-mini" href="../cerberus.html">
+      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
+      <span>CERBERUS DOCS</span>
+    </a>
+    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="agents.html">Agents</a>
+    <a class="nav-link" href="checks.html">Checks</a>
+  </nav>
+  <nav class="right">
+    <form class="search-form" onsubmit="return false">
+      <svg class="search-icon"><use href="#i-search"/></svg>
+      <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
+    </form>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <button class="menu-toggle" aria-label="Open menu">☰</button>
+  </nav>
+</header>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar">
+    <div class="sidebar-title">Get Started</div>
+    <a class="sidebar-link" href="index.html">Overview</a>
+    <a class="sidebar-link" href="quickstart.html">Quickstart</a>
+    <a class="sidebar-link active" href="scanner.html">CLI Scanner</a>
+    <a class="sidebar-link" href="reports.html">Reading Reports</a>
+
+    <div class="sidebar-title">Architecture</div>
+    <a class="sidebar-link" href="agents.html">Agent Swarm</a>
+    <a class="sidebar-link" href="checks.html">Check Catalog</a>
+    <a class="sidebar-link" href="scoring.html">Severity & Scoring</a>
+
+    <div class="sidebar-title">Scanner Topics</div>
+    <a class="sidebar-link" href="#usage">Usage</a>
+    <a class="sidebar-link" href="#flags">Flags</a>
+    <a class="sidebar-link" href="#ci">CI / GitHub Actions</a>
+    <a class="sidebar-link" href="#exclusions">Exclusions</a>
+    <a class="sidebar-link" href="#output">Output Schema</a>
+    <a class="sidebar-link" href="#limitations">Limitations</a>
+
+    <div class="sidebar-title">Support</div>
+    <a class="sidebar-link" href="faq.html">FAQ</a>
+    <a class="sidebar-link" href="security.html">Security & Privacy</a>
+  </aside>
+
+  <main class="docs-content">
+    <h1>CLI Scanner Reference</h1>
+    <p class="lead"><code>examine.py</code> is a single Python file that runs the full 58-check catalog in <code>checks.json</code> — the same catalog the web app uses. It is useful for local runs, private repositories, non-GitHub targets, and CI gating.</p>
+
+    <h2 id="usage">Usage</h2>
+    <pre><code>python3 examine.py &lt;path-or-github-url&gt; [options]</code></pre>
+    <p>The target can be a local directory or a GitHub repository URL (with or without <code>.git</code>, <code>/tree/{ref}</code>, or a trailing slash). For a GitHub URL, <code>examine.py</code> resolves the default branch, fetches the file tree, and pulls file contents from the <code>raw.githubusercontent.com</code> CDN. For a local path, it walks the directory directly.</p>
+
+    <h3>Examples</h3>
+    <pre><code># Local clone
+python3 examine.py ./my-saas-app
+
+# GitHub URL
+python3 examine.py https://github.com/owner/repo</code></pre>
+
+    <h2 id="flags">Flags</h2>
+    <table>
+      <tr><th>Flag</th><th>Purpose</th></tr>
+      <tr><td><code>--json &lt;file&gt;</code></td><td>Write the full report object (schema <code>cerberus.report/2</code>) as JSON.</td></tr>
+      <tr><td><code>--html &lt;file&gt;</code></td><td>Write a standalone HTML report.</td></tr>
+      <tr><td><code>--sarif &lt;file&gt;</code></td><td>Write a SARIF file for GitHub code scanning upload.</td></tr>
+      <tr><td><code>--fail-under &lt;score&gt;</code></td><td>Exit non-zero if the final score is below this threshold. Use this to gate a CI pipeline.</td></tr>
+      <tr><td><code>--only &lt;agent,agent,...&gt;</code></td><td>Restrict the run to specific agent IDs (e.g. <code>sentinel,vault</code>).</td></tr>
+      <tr><td><code>--severity &lt;level&gt;</code></td><td>Only report findings at or above the given severity (<code>critical</code>, <code>high</code>, <code>medium</code>, <code>low</code>).</td></tr>
+    </table>
+
+    <h2 id="ci">CI / GitHub Actions</h2>
+    <p>Because <code>examine.py</code> has no external dependencies, it drops into any CI runner with Python installed. <code>--fail-under</code> makes the step fail the build; <code>--sarif</code> lets GitHub's code scanning UI show findings inline on the PR.</p>
+    <pre><code># .github/workflows/cerberus.yml
+name: cerberus
+on: [pull_request]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Run Cerberus
+        run: python3 examine.py . --sarif cerberus.sarif --json cerberus.json --fail-under 80
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: cerberus.sarif</code></pre>
+    <p>The job fails at the <code>--fail-under 80</code> step whenever the score drops below 80, independent of whether the SARIF upload succeeds — the <code>if: always()</code> on the upload step just ensures findings still show up on a failing run.</p>
+
+    <h2 id="exclusions">Exclusions</h2>
+    <p><code>examine.py</code> honours the same <code>global_exclude</code> and <code>test_paths</code> globs defined in <code>checks.json</code>, so the CLI and the web app never scan the same noise:</p>
+    <pre><code>node_modules/, vendor/, .git/, dist/, build/, out/, target/, coverage/,
+.next/, .nuxt/, *.min.js, *.min.css, *.bundle.js, *.map,
+package-lock.json, yarn.lock, pnpm-lock.yaml, poetry.lock, Cargo.lock,
+composer.lock, Gemfile.lock, go.sum, *.snap, __snapshots__/, migrations/</code></pre>
+    <p>Paths under <code>test/</code>, <code>tests/</code>, <code>spec/</code>, <code>__tests__/</code>, <code>fixtures/</code>, <code>examples/</code>, <code>docs/</code>, and similar are excluded from content-matching checks by default (per-check, via <code>exclude_tests</code>) so fixtures and sample code don't inflate your score.</p>
+
+    <h2 id="output">Output schema</h2>
+    <p><code>examine.py</code> emits the same <code>Report</code> shape as the web app — see <code>docs/IMPROVEMENTS.md</code> §3.3 for the authoritative schema. In short:</p>
+    <pre><code>{
+  "schema": "cerberus.report/2",
+  "target": { "kind": "github", "display": "owner/repo", "sha": "…" },
+  "score": 87.5,
+  "grade": "B",
+  "counts": { "critical": 0, "high": 2, "medium": 5, "low": 3,
+              "pass": 46, "fail": 9, "not_applicable": 2, "skipped": 1, "total": 58 },
+  "coverage": { "filesInTree": 842, "filesEligible": 310, "filesScanned": 310,
+                "filesSkipped": 0, "bytesScanned": 4210233, "truncated": false },
+  "agents": [
+    { "id": "sentinel", "name": "SENTINEL", "domain": "Code Analysis", "weight": 14, "score": 12.0,
+      "checks": [ { "id": "S-01", "status": "fail", "findings": [ { "path": "...", "line": 42, "snippet": "...", "url": "https://github.com/o/r/blob/sha/path#L42" } ] } ] }
+  ]
+}</code></pre>
+    <p>Every check in every agent is always present in the output, including passes — the score is not credible without them. See <a href="reports.html">Reading Reports</a> for how to interpret each field.</p>
+
+    <h2 id="limitations">Limitations</h2>
+    <div class="callout warning">
+      <div class="callout-title">What the scanner does not do</div>
+      <p><code>examine.py</code> is a static pattern-matching engine over file content and file presence/absence. It does not execute code, does not perform live CVE database lookups, does not inspect cloud IAM policies or running infrastructure, and does not do dynamic/runtime analysis. Every check's exact detector is documented on the <a href="checks.html">Check Catalog</a> page.</p>
+    </div>
+  </main>
+</div>
+
+<footer class="docs-footer">
+  <div class="inner">
+    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
+    <span><a href="index.html">Docs home</a> · <a href="quickstart.html">Quickstart</a> · <a href="checks.html">Checks</a></span>
+  </div>
+</footer>
+
+<script src="assets/docs.js"></script>
+</body>
+</html>

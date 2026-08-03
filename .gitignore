@@ -1,0 +1,15 @@
+
+# scan + test artifacts
+.playwright-mcp/
+__pycache__/
+.DS_Store
+*.png
+cerberus-report.html
+
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12

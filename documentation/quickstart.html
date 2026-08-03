@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quickstart — Cerberus Documentation</title>
+<meta name="description" content="Run your first Cerberus scan with the static web app or the examine.py CLI, including flags and a CI example.">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+
+<header class="docs-header">
+  <nav class="left">
+    <a class="brand-mini" href="../cerberus.html">
+      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
+      <span>CERBERUS DOCS</span>
+    </a>
+    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="agents.html">Agents</a>
+    <a class="nav-link" href="checks.html">Checks</a>
+  </nav>
+  <nav class="right">
+    <form class="search-form" onsubmit="return false">
+      <svg class="search-icon"><use href="#i-search"/></svg>
+      <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
+    </form>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <button class="menu-toggle" aria-label="Open menu">☰</button>
+  </nav>
+</header>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar">
+    <div class="sidebar-title">Get Started</div>
+    <a class="sidebar-link" href="index.html">Overview</a>
+    <a class="sidebar-link active" href="quickstart.html">Quickstart</a>
+    <a class="sidebar-link" href="scanner.html">CLI Scanner</a>
+    <a class="sidebar-link" href="reports.html">Reading Reports</a>
+
+    <div class="sidebar-title">Architecture</div>
+    <a class="sidebar-link" href="agents.html">Agent Swarm</a>
+    <a class="sidebar-link" href="checks.html">Check Catalog</a>
+    <a class="sidebar-link" href="scoring.html">Severity & Scoring</a>
+
+    <div class="sidebar-title">Reference</div>
+    <a class="sidebar-link" href="agents.html#sentinel">SENTINEL</a>
+    <a class="sidebar-link" href="agents.html#gatekeeper">GATEKEEPER</a>
+    <a class="sidebar-link" href="agents.html#vault">VAULT</a>
+    <a class="sidebar-link" href="agents.html#conduit">CONDUIT</a>
+    <a class="sidebar-link" href="agents.html#watchtower">WATCHTOWER</a>
+    <a class="sidebar-link" href="agents.html#librarian">LIBRARIAN</a>
+    <a class="sidebar-link" href="agents.html#shield">SHIELD</a>
+    <a class="sidebar-link" href="agents.html#auditor">AUDITOR</a>
+    <a class="sidebar-link" href="agents.html#architect">ARCHITECT</a>
+
+    <div class="sidebar-title">Support</div>
+    <a class="sidebar-link" href="faq.html">FAQ</a>
+    <a class="sidebar-link" href="security.html">Security & Privacy</a>
+  </aside>
+
+  <main class="docs-content">
+    <h1>Quickstart</h1>
+    <p class="lead">There are two ways to run Cerberus: the web app (no install, GitHub targets only) and the CLI (any local directory or GitHub URL, scriptable for CI). Both share the same 58-check catalog in <code>checks.json</code>.</p>
+
+    <h2>Option A: Web app</h2>
+    <p>The web app is a static site — no build step, no server required. Open <code>cerberus.html</code> in a browser and paste a GitHub repository URL.</p>
+    <div class="callout warning">
+      <div class="callout-title">GitHub only in the browser</div>
+      <p>Browsers cannot fetch arbitrary origins due to CORS, so the web app can only scan public GitHub repositories. To scan a local directory, a private repo, or a non-GitHub target, use the CLI below.</p>
+    </div>
+
+    <h2>Option B: CLI (<code>examine.py</code>)</h2>
+    <h3>1. Prerequisites</h3>
+    <ul>
+      <li><strong>Python 3.7 or later</strong>, no third-party packages required.</li>
+      <li>A local clone of the project you want to scan, or a public GitHub URL.</li>
+    </ul>
+
+    <h3>2. Run a scan</h3>
+    <pre><code>python3 examine.py &lt;path-or-github-url&gt;</code></pre>
+    <p>Examples:</p>
+    <pre><code>python3 examine.py ./my-project
+python3 examine.py https://github.com/owner/repo</code></pre>
+
+    <h3>3. Useful flags</h3>
+    <table>
+      <tr><th>Flag</th><th>Purpose</th></tr>
+      <tr><td><code>--json out.json</code></td><td>Write the full report object (schema <code>cerberus.report/2</code>) to a file.</td></tr>
+      <tr><td><code>--html out.html</code></td><td>Write a standalone HTML report.</td></tr>
+      <tr><td><code>--sarif out.sarif</code></td><td>Write SARIF for GitHub code scanning upload.</td></tr>
+      <tr><td><code>--fail-under 80</code></td><td>Exit non-zero if the score is below the threshold — use this to gate CI.</td></tr>
+      <tr><td><code>--only sentinel,vault</code></td><td>Restrict the run to specific agents.</td></tr>
+      <tr><td><code>--severity high</code></td><td>Only report findings at or above a severity level.</td></tr>
+    </table>
+    <p>See the full <a href="scanner.html">CLI Scanner reference</a> for every flag and the exact output schema.</p>
+
+    <h2>What happens next</h2>
+    <p>Work through findings in severity order:</p>
+    <ol>
+      <li>Patch all <span class="badge critical">CRITICAL</span> issues first — they deduct the most per hit and usually represent immediate exploit risk.</li>
+      <li>Address <span class="badge high">HIGH</span> findings next.</li>
+      <li>Triage <span class="badge medium">MEDIUM</span> and <span class="badge low">LOW</span> findings into your backlog.</li>
+      <li>Re-run the scan to verify fixes and improve your score.</li>
+    </ol>
+
+    <h2>CI example</h2>
+    <p>Gate a pull request on a minimum score with <code>--fail-under</code>:</p>
+    <pre><code># .github/workflows/cerberus.yml
+name: cerberus
+on: [pull_request]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: python3 examine.py . --sarif cerberus.sarif --fail-under 80
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: cerberus.sarif</code></pre>
+
+    <h2>Next steps</h2>
+    <ul>
+      <li>Read the full <a href="scanner.html">CLI Scanner reference</a> for every flag and the report schema.</li>
+      <li>Browse the <a href="checks.html">Check Catalog</a> to understand every check.</li>
+      <li>Learn how <a href="scoring.html">Severity & Scoring</a> computes your final grade.</li>
+    </ul>
+  </main>
+</div>
+
+<footer class="docs-footer">
+  <div class="inner">
+    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
+    <span><a href="index.html">Docs home</a> · <a href="scanner.html">Scanner</a> · <a href="reports.html">Reports</a></span>
+  </div>
+</footer>
+
+<script src="assets/docs.js"></script>
+</body>
+</html>

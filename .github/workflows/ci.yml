@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Validates the catalog (unique IDs, weights sum to 100, regexes compile in
+      # both Python and ES2018) and regenerates assets/checks.js.
+      - name: Validate and build check catalog
+        run: python3 scripts/build-checks.py
+
+      # assets/checks.js is generated. If it drifts from checks.json the web app and
+      # the CLI silently disagree, so a stale artifact fails the build.
+      - name: Fail if generated catalog is stale
+        run: git diff --exit-code assets/checks.js
+
+      - name: Self-scan
+        run: python3 examine.py . --fail-under 80

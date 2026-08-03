@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — Cerberus Documentation</title>
+<meta name="description" content="Frequently asked questions about Cerberus scans, the agent domains, the check catalog, and data handling.">
+<link rel="stylesheet" href="assets/docs.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+
+<header class="docs-header">
+  <nav class="left">
+    <a class="brand-mini" href="../cerberus.html">
+      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
+      <span>CERBERUS DOCS</span>
+    </a>
+    <a class="nav-link" href="../cerberus.html">Platform</a>
+    <a class="nav-link" href="agents.html">Agents</a>
+    <a class="nav-link" href="checks.html">Checks</a>
+  </nav>
+  <nav class="right">
+    <form class="search-form" onsubmit="return false">
+      <svg class="search-icon"><use href="#i-search"/></svg>
+      <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
+    </form>
+    <a class="nav-link" href="../cerberus-report.html" target="_blank">Sample Report</a>
+    <button class="menu-toggle" aria-label="Open menu">☰</button>
+  </nav>
+</header>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar">
+    <div class="sidebar-title">Get Started</div>
+    <a class="sidebar-link" href="index.html">Overview</a>
+    <a class="sidebar-link" href="quickstart.html">Quickstart</a>
+    <a class="sidebar-link" href="scanner.html">CLI Scanner</a>
+    <a class="sidebar-link" href="reports.html">Reading Reports</a>
+
+    <div class="sidebar-title">Architecture</div>
+    <a class="sidebar-link" href="agents.html">Agent Swarm</a>
+    <a class="sidebar-link" href="checks.html">Check Catalog</a>
+    <a class="sidebar-link" href="scoring.html">Severity & Scoring</a>
+
+    <div class="sidebar-title">Support</div>
+    <a class="sidebar-link active" href="faq.html">FAQ</a>
+    <a class="sidebar-link" href="security.html">Security & Privacy</a>
+  </aside>
+
+  <main class="docs-content">
+    <h1>Frequently Asked Questions</h1>
+
+    <h2>General</h2>
+
+    <h3>What is Cerberus?</h3>
+    <p>Cerberus is a security scanner for GitHub repositories (and local directories via the CLI). It evaluates a 58-check catalog, organized into nine named agent domains, and returns a scored, actionable report with file-and-line findings.</p>
+
+    <h3>Who is Cerberus for?</h3>
+    <p>Solo founders, indie hackers, seed-stage startups, development agencies, and any team that ships AI-assisted code and wants a fast first pass before a real security review.</p>
+
+    <h3>Is Cerberus a replacement for a penetration test?</h3>
+    <p>No. Cerberus is a static pattern-matching scanner. It catches common, well-known mistakes in seconds; it does not replace a human-driven review of business logic, authorization edge cases, or anything requiring runtime analysis.</p>
+
+    <h3>How long does a scan take?</h3>
+    <p>Typically seconds to a couple of minutes, bounded by the scan budget (≤400 files fetched, ≤512 KB per file, 90-second wall clock for the web app).</p>
+
+    <h2>Agents & Checks</h2>
+
+    <h3>What are the nine agents?</h3>
+    <p>SENTINEL (code analysis), GATEKEEPER (access control), VAULT (data security), CONDUIT (network & API), WATCHTOWER (application config), LIBRARIAN (dependencies), SHIELD (client security), AUDITOR (logging & monitoring), and ARCHITECT (infrastructure).</p>
+
+    <h3>How many checks does Cerberus run?</h3>
+    <p>58, defined in <code>checks.json</code> — the single source of truth for the web app, the CLI, and this documentation. Each check has a unique ID, severity, CWE, summary, risk, and remediation. Browse the full list on the <a href="checks.html">Check Catalog</a> page.</p>
+
+    <h3>How do you avoid false positives?</h3>
+    <p>Each check honors placeholder filtering (so <code>your_api_key_here</code> or <code>process.env.X</code> don't trigger a secrets check), test-path exclusion, and a hit cap per check so one noisy file doesn't dominate the score. The ship gate for the catalog is a ≤10% false-positive rate on manual review; noisy checks get tightened, not shipped.</p>
+
+    <h3>Do checks fix issues automatically?</h3>
+    <p>No. Findings include a concrete remediation, and many include a copyable suggested-fix code block, but nothing is applied automatically.</p>
+
+    <h2>Scanner & Reports</h2>
+
+    <h3>Can the web app scan any website?</h3>
+    <p>No. Browsers cannot fetch arbitrary origins due to CORS, so the web app only scans public GitHub repositories. To scan a local directory, a private repo, or anything else, use the CLI (<code>examine.py</code>).</p>
+
+    <h3>What files does a scan read?</h3>
+    <p>Source, config, and infra files matching <code>checks.json</code>'s <code>source_globs</code> (most common backend/frontend languages, JSON/YAML/TOML/env config, Dockerfiles, Terraform). It never scans <code>node_modules</code>, <code>vendor</code>, build output, lockfiles, or minified bundles — see <code>global_exclude</code> in <code>checks.json</code>.</p>
+
+    <h3>Where is the report saved?</h3>
+    <p>The CLI writes wherever you point <code>--json</code>, <code>--html</code>, or <code>--sarif</code>. The web app caches reports in the browser's <code>localStorage</code> and lets you download JSON/HTML or copy a Markdown summary.</p>
+
+    <h3>Can I run Cerberus in CI/CD?</h3>
+    <p>Yes. <code>examine.py</code> has no external dependencies and supports <code>--fail-under &lt;score&gt;</code> to fail a build below a threshold, plus <code>--sarif</code> for GitHub code scanning. See the <a href="scanner.html">CLI Scanner</a> page for a ready-to-use GitHub Actions example.</p>
+
+    <h3>What is a good score?</h3>
+    <p>90–100 is an A. 80–89 is a B. A clean, well-run repository should be able to score in the 90s — if a healthy reference repo can't break 80, that's a signal the catalog needs tightening, not that the repo is unusually risky.</p>
+
+    <h2>Security & Privacy</h2>
+
+    <h3>Do you store my source code?</h3>
+    <p>CLI scans run entirely on your machine and never upload code anywhere. The web app fetches file contents directly from GitHub into your browser and evaluates them client-side — source is not sent to any Cerberus-operated server.</p>
+
+    <h3>Does Cerberus have internet access to my code?</h3>
+    <p>The web app calls the public GitHub API and the <code>raw.githubusercontent.com</code> CDN directly from your browser. There is no intermediary server, no sandboxed execution environment, and no CVE-database network lookups — dependency checks are static regex matches against version ranges recorded in <code>checks.json</code>.</p>
+
+    <h3>Is a report private?</h3>
+    <p>Web-app reports are cached only in your own browser's <code>localStorage</code>. CLI reports are written to whatever local path you specify.</p>
+
+    <h2>Support</h2>
+
+    <h3>Where can I get help?</h3>
+    <p>Open an issue in the repository or reach out to the team.</p>
+
+    <h3>Can I request a new check?</h3>
+    <p>Yes. Checks live in <code>checks.json</code>; if you encounter a vulnerability class Cerberus misses, let us know and we'll add a check to the appropriate agent — see the <a href="../README.md">README</a> for how the catalog is structured.</p>
+  </main>
+</div>
+
+<footer class="docs-footer">
+  <div class="inner">
+    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
+    <span><a href="index.html">Docs home</a> · <a href="security.html">Security</a> · <a href="agents.html">Agents</a></span>
+  </div>
+</footer>
+
+<script src="assets/docs.js"></script>
+</body>
+</html>
