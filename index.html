@@ -112,7 +112,7 @@
     main {
         flex: 1;
         padding: 3rem 1.5rem;
-        max-width: 1500px;
+        max-width: 1200px;
         margin: 0 auto;
         width: 100%;
     }
@@ -139,7 +139,7 @@
     /* Splash Screen */
     #view-splash {
         text-align: center;
-        max-width: 1400px;
+        max-width: 720px;
         margin: 0 auto;
         padding-top: 5rem;
         padding-bottom: 5rem;
@@ -154,10 +154,10 @@
         max-width: 60vw;
         height: auto;
         display: block;
-        margin-bottom: 0.5rem;
+        margin: 0 auto 0.5rem auto;
     }
     #target-form {
-        max-width: 680px;
+        max-width: 100%;
         width: 100%;
         border: 3px solid var(--black);
         box-shadow: 6px 6px 0px var(--black);
@@ -257,10 +257,11 @@
     .recent-empty { color: var(--gray-300); font-family: var(--font-mono); font-size: 0.78rem; padding: 1rem 0; }
 
     /* PAT field */
-    .pat-field { width: 100%; text-align: left; max-width: 680px; margin: 0 auto; }
+    .pat-field { width: 100%; text-align: left; margin: 0 auto; }
     .pat-field summary { cursor: pointer; font-family: var(--font-mono); font-size: 0.72rem; color: var(--gray-400); text-transform: uppercase; margin-bottom: 0.5rem; }
     .pat-row {
         width: 100%;
+        max-width: 100%;
         border: 3px solid var(--black);
         box-shadow: 6px 6px 0px var(--black);
         display: flex;
@@ -304,123 +305,6 @@
         background: var(--gray-100);
     }
     /* Leaderboard & Loser Board */
-    .splash-container {
-        display: flex;
-        width: 100%;
-        max-width: 1400px;
-        margin: 0 auto;
-        gap: 3rem;
-        align-items: flex-start;
-        justify-content: center;
-    }
-    .splash-side-panel {
-        width: 100%;
-        border: 3px solid var(--black);
-        box-shadow: 6px 6px 0px var(--black);
-        background: var(--white);
-    }
-    .splash-side-panel h3 {
-        font-family: var(--font-display);
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        padding: 0.75rem 1rem;
-        border-bottom: 3px solid var(--black);
-        margin: 0;
-        letter-spacing: 1px;
-    }
-    .splash-side-panel.leader-panel h3 {
-        background: var(--accent-green);
-        color: var(--black);
-    }
-    .splash-side-panel.loser-panel h3 {
-        background: var(--black);
-        color: var(--white);
-    }
-    .panel-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    .panel-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--gray-200);
-        font-family: var(--font-mono);
-        font-size: 0.72rem;
-    }
-    .panel-item:last-child {
-        border-bottom: none;
-    }
-    .panel-item-name {
-        font-weight: 600;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: 140px;
-        cursor: pointer;
-    }
-    .panel-item-name:hover {
-        text-decoration: underline;
-    }
-    .panel-item-score {
-        font-weight: 700;
-        padding: 0.15rem 0.4rem;
-        border: 2px solid var(--black);
-    }
-    .panel-item-score.high {
-        background: var(--accent-green);
-        color: var(--black);
-    }
-    .panel-item-score.low {
-        background: var(--black);
-        color: var(--white);
-    }
-    .panel-item-score.med {
-        background: var(--accent-yellow);
-        color: var(--black);
-    }
-    .splash-center {
-        flex: 1;
-        max-width: 880px;
-    }
-    .splash-right-sidebar {
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-        width: 260px;
-        flex-shrink: 0;
-        margin-top: 5rem;
-    }
-    @media (max-width: 1100px) {
-        .splash-container {
-            flex-direction: column;
-            align-items: center;
-            gap: 2rem;
-        }
-        .splash-right-sidebar {
-            width: 100%;
-            max-width: 680px;
-            margin-top: 0;
-            flex-direction: row;
-            gap: 1.5rem;
-        }
-        .splash-side-panel {
-            flex: 1;
-        }
-        .splash-center {
-            width: 100%;
-        }
-    }
-    @media (max-width: 680px) {
-        .splash-right-sidebar {
-            flex-direction: column;
-            width: 100%;
-            gap: 1.5rem;
-        }
-    }
-
     .pat-note { font-size: 0.7rem; color: var(--gray-300); margin-top: 0.75rem; font-family: var(--font-mono); text-align: left; }
 
     /* Scan / Progress view */
@@ -650,13 +534,10 @@
     <main id="main-content">
         <!-- Splash / target entry -->
         <section id="view-splash" hidden>
-            <div class="splash-container">
-                <!-- Center: Main Search -->
-                <div class="splash-center">
-                    <img src="logo.png" alt="Cerberus Labs Logo" class="hero-logo" id="hero-logo">
-                    <div class="tagline">HIGH-RIGOR REPO EXAMINATIONS | ZERO TRUST | AGENT ORCHESTRATED</div>
+            <img src="logo.png" alt="Cerberus Labs Logo" class="hero-logo" id="hero-logo">
+            <div class="tagline">HIGH-RIGOR REPO EXAMINATIONS | ZERO TRUST | AGENT ORCHESTRATED</div>
 
-                    <form id="target-form" class="input-group" novalidate>
+            <form id="target-form" class="input-group" novalidate>
                         <label for="target-input" class="visually-hidden">GitHub repository URL</label>
                         <input type="text" id="target-input" name="target" placeholder="Paste a GitHub repo URL to examine…" autocomplete="off">
                         <button type="submit" id="run-btn">Run Examination</button>
@@ -687,21 +568,6 @@
                         </div>
                         <div class="recent-list" id="recent-list"></div>
                     </div>
-                </div>
-
-                <!-- Right Sidebar: Leaderboard & Loser Board stacked -->
-                <div class="splash-right-sidebar">
-                    <div class="splash-side-panel leader-panel">
-                        <h3>Leaderboard</h3>
-                        <ul class="panel-list" id="leaderboard-list"></ul>
-                    </div>
-
-                    <div class="splash-side-panel loser-panel">
-                        <h3>Loser Board</h3>
-                        <ul class="panel-list" id="loserboard-list"></ul>
-                    </div>
-                </div>
-            </div>
         </section>
 
         <!-- Scan / progress view -->
@@ -1251,92 +1117,6 @@
                 container.appendChild(btn);
             });
             renderLeaderboards();
-        }
-
-        function renderLeaderboards() {
-            var leadersContainer = document.getElementById('leaderboard-list');
-            var losersContainer = document.getElementById('loserboard-list');
-            if (!leadersContainer || !losersContainer) return;
-
-            var cached = CacheStore.listRecent();
-
-            var seedLeaders = [
-                { owner: 'oso95', repo: 'scroll-world', display: 'oso95/scroll-world', score: 100.0, grade: 'A' },
-                { owner: 'pallets', repo: 'flask', display: 'pallets/flask', score: 86.5, grade: 'B' }
-            ];
-            var seedLosers = [
-                { owner: 'sst', repo: 'opencode', display: 'sst/opencode', score: 44.0, grade: 'F' },
-                { owner: 'vulnerable-corp', repo: 'core-api', display: 'vulnerable-corp/core-api', score: 15.0, grade: 'F' }
-            ];
-
-            var leadersMap = {};
-            var losersMap = {};
-
-            seedLeaders.forEach(function (x) { leadersMap[x.owner + '/' + x.repo] = x; });
-            seedLosers.forEach(function (x) { losersMap[x.owner + '/' + x.repo] = x; });
-
-            cached.forEach(function (x) {
-                var key = x.owner + '/' + x.repo;
-                if (x.score >= 80) {
-                    leadersMap[key] = x;
-                    delete losersMap[key];
-                } else {
-                    losersMap[key] = x;
-                    delete leadersMap[key];
-                }
-            });
-
-            var leaders = Object.keys(leadersMap).map(function (k) { return leadersMap[k]; });
-            var losers = Object.keys(losersMap).map(function (k) { return losersMap[k]; });
-
-            leaders.sort(function (a, b) { return b.score - a.score; });
-            losers.sort(function (a, b) { return a.score - b.score; });
-
-            leaders = leaders.slice(0, 5);
-            losers = losers.slice(0, 5);
-
-            leadersContainer.innerHTML = '';
-            leaders.forEach(function (item) {
-                var scoreClass = 'high';
-                if (item.score < 80 && item.score >= 60) scoreClass = 'med';
-                else if (item.score < 60) scoreClass = 'low';
-
-                var li = el('li', { class: 'panel-item' }, [
-                    el('span', {
-                        class: 'panel-item-name',
-                        'data-fill': 'https://github.com/' + item.owner + '/' + item.repo
-                    }, [item.display || (item.owner + '/' + item.repo)]),
-                    el('span', { class: 'panel-item-score ' + scoreClass }, [String(Math.round(item.score))])
-                ]);
-                leadersContainer.appendChild(li);
-            });
-
-            losersContainer.innerHTML = '';
-            losers.forEach(function (item) {
-                var scoreClass = 'low';
-                if (item.score >= 80) scoreClass = 'high';
-                else if (item.score >= 60) scoreClass = 'med';
-
-                var li = el('li', { class: 'panel-item' }, [
-                    el('span', {
-                        class: 'panel-item-name',
-                        'data-fill': 'https://github.com/' + item.owner + '/' + item.repo
-                    }, [item.display || (item.owner + '/' + item.repo)]),
-                    el('span', { class: 'panel-item-score ' + scoreClass }, [String(Math.round(item.score))])
-                ]);
-                losersContainer.appendChild(li);
-            });
-
-            document.querySelectorAll('.panel-item-name[data-fill]').forEach(function (elNode) {
-                elNode.addEventListener('click', function () {
-                    var val = this.getAttribute('data-fill');
-                    var inputEl = document.getElementById('target-input');
-                    if (inputEl) {
-                        inputEl.value = val;
-                        document.getElementById('target-form').dispatchEvent(new Event('submit'));
-                    }
-                });
-            });
         }
 
         function severityForGrade(grade) {
