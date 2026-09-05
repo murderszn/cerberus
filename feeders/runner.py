@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import json
+import fnmatch
 import shutil
 import subprocess
 import tempfile
@@ -15,6 +16,62 @@ from .registry import resolve_feeders
 
 
 DEFAULT_CAPTURE_LIMIT = 4 * 1024 * 1024
+
+
+def _ignore_patterns(root):
+    path = os.path.join(root, ".cerberusignore")
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            lines = handle.read(256 * 1024).splitlines()
+    except OSError:
+        return []
+    patterns = []
+    for raw in lines:
+        pattern = raw.strip()
+        if not pattern or pattern.startswith("#"):
+            continue
+        # Negation is intentionally unsupported, matching examine.py's current
+        # suppression parser. Normalize separators before matching.
+        patterns.append(pattern.replace("\\", "/").lstrip("/"))
+    return patterns
+
+
+def _is_ignored(path, patterns):
+    path = path.replace("\\", "/")
+    while path.startswith("./"):
+        path = path[2:]
+    basename = path.rsplit("/", 1)[-1]
+    for original in patterns:
+        pattern = original
+        directory = pattern.endswith("/")
+        pattern = pattern.rstrip("/")
+        if not pattern:
+            continue
+        if "/" not in pattern:
+            parts = path.split("/")
+            if any(fnmatch.fnmatchcase(part, pattern) for part in parts):
+                return True
+            if not directory and fnmatch.fnmatchcase(basename, pattern):
+                return True
+        if path == pattern or path.startswith(pattern + "/"):
+            return True
+        if fnmatch.fnmatchcase(path, pattern) or fnmatch.fnmatchcase(path, pattern + "/**"):
+            return True
+    return False
+
+
+def _make_filtered_tree(root, destination, adapter, files):
+    """Copy only eligible, non-symlink files into a tool-specific scan tree."""
+    for relative in adapter.staged_files(files):
+        source = os.path.join(root, relative)
+        if os.path.islink(source) or not os.path.isfile(source):
+            continue
+        target = os.path.join(destination, relative)
+        target_real = os.path.realpath(target)
+        if os.path.commonpath((os.path.realpath(destination), target_real)) != os.path.realpath(destination):
+            continue
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        shutil.copyfile(source, target)
 
 
 def _bounded_read(handle, limit):
@@ -97,7 +154,12 @@ class FeederRunner:
         base["toolVersion"] = self._version(adapter, executable, root)
         try:
             with tempfile.TemporaryDirectory(prefix="cerberus-feeder-") as work_dir:
-                argv = adapter.build_argv(executable, root, files, work_dir, target)
+                scan_root = root
+                if adapter.use_filtered_tree:
+                    scan_root = os.path.join(work_dir, "scan-root")
+                    os.makedirs(scan_root, exist_ok=True)
+                    _make_filtered_tree(root, scan_root, adapter, files)
+                argv = adapter.build_argv(executable, scan_root, files, work_dir, target)
                 if os.path.realpath(argv[0]) != os.path.realpath(executable):
                     raise ValueError("adapter attempted to invoke a non-allowlisted executable")
                 result = self._execute(argv, root, self.timeout)
@@ -126,7 +188,10 @@ class FeederRunner:
                     return base
                 if result["stdout_truncated"] or result["stderr_truncated"]:
                     raise ValueError("captured feeder output exceeded the size limit")
-                findings, raw = adapter.parse(result["stdout"], result["stderr"], output, root)
+                findings, raw = adapter.parse(
+                    result["stdout"], result["stderr"], output,
+                    scan_root if adapter.use_filtered_tree else root,
+                )
                 base["findings"] = deduplicate(findings)
                 base["raw"] = raw
                 base["status"] = "completed"
@@ -139,12 +204,22 @@ class FeederRunner:
 
 def _repository_files(root):
     files = []
+    patterns = _ignore_patterns(root)
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [name for name in dirnames if name != ".git"]
+        kept_dirs = []
+        for name in dirnames:
+            full = os.path.join(dirpath, name)
+            relative = os.path.relpath(full, root).replace(os.sep, "/")
+            if name == ".git" or os.path.islink(full) or _is_ignored(relative + "/", patterns):
+                continue
+            kept_dirs.append(name)
+        dirnames[:] = kept_dirs
         for filename in filenames:
-            files.append(os.path.relpath(
-                os.path.join(dirpath, filename), root
-            ).replace(os.sep, "/"))
+            full = os.path.join(dirpath, filename)
+            relative = os.path.relpath(full, root).replace(os.sep, "/")
+            if os.path.islink(full) or _is_ignored(relative, patterns):
+                continue
+            files.append(relative)
     return sorted(files)
 
 

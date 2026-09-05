@@ -13,6 +13,9 @@ class GitleaksAdapter(FeederAdapter):
     aliases = ("git-leaks",)
     output_filename = "gitleaks.json"
     accepted_exit_codes = frozenset({0, 1})
+    # Gitleaks has no general path-exclusion CLI flag. Scan a filtered copy so
+    # .cerberusignore and the scanner checkout exclusion are authoritative.
+    use_filtered_tree = True
 
     def build_argv(self, executable, root, files, work_dir, target=None):
         return [executable, "detect", "--source", root, "--no-git", "--no-banner", "--no-color",

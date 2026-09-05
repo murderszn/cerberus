@@ -21,14 +21,20 @@ class OsvScannerAdapter(FeederAdapter):
     aliases = ("osv", "osv_scanner")
     # OSV-Scanner documents 1 as "vulnerabilities or findings were found".
     accepted_exit_codes = frozenset({0, 1})
+    use_filtered_tree = True
+
+    @staticmethod
+    def _is_manifest(path):
+        lowered = path.lower()
+        return (lowered.rsplit("/", 1)[-1] in MANIFEST_NAMES
+                or lowered.endswith((".spdx.json", ".cdx.json", ".spdx", ".cdx.xml")))
 
     def applicable(self, root, files, target=None):
-        applicable = any(
-            path.lower().rsplit("/", 1)[-1] in MANIFEST_NAMES
-            or path.lower().endswith((".spdx.json", ".cdx.json", ".spdx", ".cdx.xml"))
-            for path in files
-        )
+        applicable = any(self._is_manifest(path) for path in files)
         return applicable, "No supported dependency manifest, lockfile, or SBOM was found."
+
+    def staged_files(self, files):
+        return [path for path in files if self._is_manifest(path)]
 
     def build_argv(self, executable, root, files, work_dir, target=None):
         return [executable, "scan", "source", "--format=json", "--recursive", root]

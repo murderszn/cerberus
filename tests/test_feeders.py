@@ -15,7 +15,7 @@ from feeders.osv_scanner import OsvScannerAdapter
 from feeders.zizmor import ZizmorAdapter
 from feeders.normalize import deduplicate, normalize_finding, normalize_severity, redact
 from feeders.registry import available_feeders, available_names, parse_selection, resolve_feeders
-from feeders.runner import FeederRunner, summarize_results
+from feeders.runner import FeederRunner, _make_filtered_tree, _repository_files, summarize_results
 
 
 class _FakeAdapter(FeederAdapter):
@@ -182,6 +182,31 @@ class RunnerTest(unittest.TestCase):
         ])
         self.assertEqual(summary, {"completed": 1, "not_applicable": 1,
                                    "unavailable": 1, "failed": 1})
+
+    def test_cerberusignore_excludes_nested_scanner_checkout(self):
+        os.makedirs(os.path.join(self.tmp.name, ".cerberus"))
+        with open(os.path.join(self.tmp.name, ".cerberusignore"), "w") as handle:
+            handle.write(".cerberus/\n")
+        with open(os.path.join(self.tmp.name, "app.py"), "w") as handle:
+            handle.write("print('ok')\n")
+        with open(os.path.join(self.tmp.name, ".cerberus", "package-lock.json"), "w") as handle:
+            handle.write("{}\n")
+        files = _repository_files(self.tmp.name)
+        self.assertIn("app.py", files)
+        self.assertFalse(any(path.startswith(".cerberus/") for path in files))
+
+    def test_filtered_tree_contains_only_selected_safe_files(self):
+        with open(os.path.join(self.tmp.name, "package-lock.json"), "w") as handle:
+            handle.write("{}\n")
+        with open(os.path.join(self.tmp.name, "README.md"), "w") as handle:
+            handle.write("docs\n")
+        destination = os.path.join(self.tmp.name, "stage")
+        os.makedirs(destination)
+        adapter = OsvScannerAdapter()
+        _make_filtered_tree(
+            self.tmp.name, destination, adapter, ["package-lock.json", "README.md"])
+        self.assertTrue(os.path.isfile(os.path.join(destination, "package-lock.json")))
+        self.assertFalse(os.path.exists(os.path.join(destination, "README.md")))
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ class FeederAdapter(abc.ABC):
     aliases: Sequence[str] = ()
     output_filename: Optional[str] = None
     accepted_exit_codes = frozenset({0})
+    use_filtered_tree = False
 
     def applicable(
         self, root: str, files: Sequence[str], target: Optional[Dict[str, Any]] = None
@@ -47,6 +48,10 @@ class FeederAdapter(abc.ABC):
 
     def version_argv(self, executable: str) -> List[str]:
         return [executable, "--version"]
+
+    def staged_files(self, files: Sequence[str]) -> Sequence[str]:
+        """Select files copied into an isolated scan tree, when requested."""
+        return files
 
     @staticmethod
     def workflow_files(files: Iterable[str]) -> List[str]:
