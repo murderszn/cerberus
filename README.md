@@ -55,6 +55,7 @@ Cerberus is built to serve three core workflows:
 - **Deterministic Verification**: Every vulnerability is mapped to a concrete, verifiable failure condition. This drastically reduces the noise and false positives common in legacy static analysis.
 - **Unified Engine**: Both the web dashboard and CLI execute the same rules from [`checks.json`](checks.json), emitting matching `cerberus.report/2` reports.
 - **Frictionless Integration**: Drop a repository URL in the browser, run it locally via a terminal, or gate pull requests in CI/CD using `--fail-under`.
+- **GitHub Actions Template**: Copy [`.github/workflow-templates/cerberus-security-review.yml`](.github/workflow-templates/cerberus-security-review.yml) into another repository to run JSON, HTML, and SARIF reviews on pull requests and main-branch pushes. See the [deployment guide](docs/cerberus-github-action-template.md).
 
 ---
 

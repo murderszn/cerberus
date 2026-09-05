@@ -1,0 +1,82 @@
+name: Cerberus Security Review
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Read source and publish SARIF findings without granting write access to the repo.
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  cerberus:
+    name: Cerberus review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out application
+        uses: actions/checkout@v6
+
+      # For production use, replace `main` with a reviewed Cerberus commit SHA.
+      # Example: ref: 0123456789abcdef0123456789abcdef01234567
+      - name: Check out Cerberus scanner
+        uses: actions/checkout@v6
+        with:
+          repository: murderszn/cerberus
+          ref: main
+          path: .cerberus
+
+      - name: Exclude scanner checkout
+        run: echo '.cerberus/' > .cerberusignore
+
+      - name: Run Cerberus review
+        id: scan
+        continue-on-error: true
+        run: |
+          python3 .cerberus/examine.py . \
+            --json cerberus-report.json \
+            --html cerberus-report.html \
+            --sarif cerberus.sarif \
+            --fail-under 80 \
+            --no-color
+
+      - name: Publish Cerberus findings to Code Security
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: cerberus.sarif
+
+      - name: Upload Cerberus reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cerberus-security-review
+          path: |
+            cerberus-report.json
+            cerberus-report.html
+            cerberus.sarif
+          if-no-files-found: warn
+
+      - name: Add Cerberus summary
+        if: always()
+        env:
+          SCAN_OUTCOME: ${{ steps.scan.outcome }}
+          REPORT_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo '# CERBERUS LABS — Security Review'
+            echo
+            echo "Cerberus review result: **${SCAN_OUTCOME}**"
+            echo
+            echo "[Open workflow run](${REPORT_URL}) · Download the full report from the artifacts below."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce Cerberus threshold
+        if: steps.scan.outcome == 'failure'
+        run: |
+          echo 'Cerberus found issues or the repository scored below the configured threshold.'
+          exit 1
