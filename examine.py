@@ -593,6 +593,86 @@ def grade_for(score):
     return "F"
 
 
+def _native_findings(report):
+    """Flatten native failures without changing the legacy agent/check model."""
+    findings = []
+    for agent in report.get("agents", []):
+        for check in agent.get("checks", []):
+            if check.get("status") != "fail":
+                continue
+            occurrences = check.get("findings") or [{}]
+            for occurrence in occurrences:
+                findings.append({
+                    "ruleId": check.get("id"),
+                    "severity": check.get("severity", "info"),
+                    "path": occurrence.get("path", "."),
+                    "line": occurrence.get("line", 1),
+                    "message": check.get("reason") or check.get("summary") or check.get("name"),
+                    "remediation": check.get("remediation", ""),
+                    "agent": agent.get("id"),
+                    "source": {"tool": "cerberus", "rawRuleId": check.get("id")},
+                })
+    return findings
+
+
+def enrich_report(report, alignment_result=None, feeder_results=None,
+                  strict_feeders=False, native_threshold=None):
+    """Add orchestration sections while retaining every report/2 legacy field."""
+    feeder_results = feeder_results or []
+    alignment_result = alignment_result or {
+        "schema": "cerberus.alignment/1", "agent": "alignment",
+        "status": "not_run", "score": 100.0, "grade": "A", "findings": [],
+    }
+    summary = {"completed": 0, "not_applicable": 0, "unavailable": 0, "failed": 0}
+    feeder_findings = []
+    for result in feeder_results:
+        status = result.get("status", "failed")
+        if status in summary:
+            summary[status] += 1
+        else:
+            summary["failed"] += 1
+        feeder_findings.extend(result.get("findings", []))
+
+    report["native"] = {
+        "score": report["score"], "grade": report["grade"],
+        "counts": report["counts"], "findings": _native_findings(report),
+    }
+    report["alignment"] = alignment_result
+    report["feeders"] = {
+        "schema": "cerberus.feeders/1", "summary": summary,
+        "tools": feeder_results, "findings": feeder_findings,
+    }
+
+    assessed = list(alignment_result.get("findings", [])) + feeder_findings
+    critical = [f for f in assessed if f.get("severity") == "critical"]
+    high = [f for f in assessed if f.get("severity") == "high"]
+    blockers = []
+    warnings = []
+    if critical:
+        blockers.append(f"{len(critical)} critical feeder/alignment finding(s).")
+    if len(high) >= 2:
+        blockers.append(f"{len(high)} high feeder/alignment finding(s).")
+    for result in feeder_results:
+        tool = result.get("tool", "unknown")
+        if result.get("status") == "unavailable":
+            message = f"Requested feeder '{tool}' is unavailable."
+            (blockers if strict_feeders else warnings).append(message)
+        elif result.get("status") == "failed":
+            message = f"Feeder '{tool}' failed to complete."
+            (blockers if strict_feeders else warnings).append(message)
+    native_passed = native_threshold is None or report["score"] >= native_threshold
+    if not native_passed:
+        blockers.append(
+            f"Native score {report['score']} is below required threshold {native_threshold}."
+        )
+    report["policy"] = {
+        "passed": not blockers, "blockers": blockers, "warnings": warnings,
+        "nativeThreshold": native_threshold, "nativePassed": native_passed,
+        "strictFeeders": bool(strict_feeders),
+    }
+    return report
+
+
 DISPLAY_FINDINGS_CAP = 25
 
 
@@ -801,6 +881,55 @@ def render_sarif(report):
             "results": results,
         }],
     }
+    external_groups = []
+    alignment = report.get("alignment") or {}
+    if alignment.get("status") not in (None, "not_run"):
+        external_groups.append(("Cerberus ALIGNMENT", alignment.get("version", "1"),
+                                alignment.get("findings", [])))
+    for feeder in (report.get("feeders") or {}).get("tools", []):
+        external_groups.append((feeder.get("tool", "unknown"),
+                                feeder.get("toolVersion") or "unknown",
+                                feeder.get("findings", [])))
+    for tool_name, tool_version, external_findings in external_groups:
+        ext_rules = {}
+        ext_results = []
+        for finding in external_findings:
+            rule_id = str(finding.get("ruleId") or "unknown")
+            ext_rules.setdefault(rule_id, {
+                "id": rule_id,
+                "name": rule_id,
+                "shortDescription": {"text": finding.get("message", rule_id)},
+                "help": {"text": finding.get("remediation", "")},
+                "properties": {
+                    "severity": finding.get("severity", "info"),
+                    "source": tool_name,
+                },
+            })
+            result = {
+                "ruleId": rule_id,
+                "level": level_for.get(finding.get("severity"), "note"),
+                "message": {"text": finding.get("message", rule_id)},
+                "locations": [{"physicalLocation": {
+                    "artifactLocation": {"uri": finding.get("path", ".")},
+                    "region": {
+                        "startLine": max(1, int(finding.get("line") or 1)),
+                        "startColumn": max(1, int(finding.get("column") or 1)),
+                    },
+                }}],
+                "properties": {"sourceTool": tool_name},
+            }
+            if finding.get("fingerprint"):
+                result["partialFingerprints"] = {
+                    "cerberus/v1": str(finding["fingerprint"])
+                }
+            ext_results.append(result)
+        sarif["runs"].append({
+            "tool": {"driver": {
+                "name": tool_name, "version": str(tool_version),
+                "rules": list(ext_rules.values()),
+            }},
+            "results": ext_results,
+        })
     return sarif
 
 
@@ -891,6 +1020,63 @@ def render_html(report):
         )
 
     grade_class = f"grade-{str(report['grade']).lower()}"
+
+    orchestration_html = ""
+    if report.get("alignment") or report.get("feeders") or report.get("policy"):
+        policy = report.get("policy", {})
+        policy_state = "PASS" if policy.get("passed", True) else "FAIL"
+        policy_items = "".join(
+            f"<li>{html_escape(item)}</li>"
+            for item in policy.get("blockers", []) + policy.get("warnings", [])
+        ) or "<li>No policy blockers or warnings.</li>"
+        alignment = report.get("alignment", {})
+        alignment_items = "".join(
+            "<div class='check status-fail'><div class='check-head'>"
+            f"<span class='badge sev-{html_escape(f.get('severity', 'info'))}'>"
+            f"{html_escape(f.get('severity', 'info'))}</span>"
+            f"<span class='check-name'>{html_escape(f.get('message', ''))}</span>"
+            f"<span class='check-id'>{html_escape(f.get('ruleId', ''))}</span></div>"
+            f"<div class='summary'>{html_escape(f.get('path', '.'))}:{f.get('line', 1)}"
+            f" &mdash; {html_escape(f.get('remediation', ''))}</div></div>"
+            for f in alignment.get("findings", [])
+        ) or "<p>No alignment findings.</p>"
+        feeder_rows = []
+        feeder_details = []
+        for tool in (report.get("feeders") or {}).get("tools", []):
+            feeder_rows.append(
+                f"<tr><td>{html_escape(tool.get('tool', 'unknown'))}</td>"
+                f"<td>{html_escape(tool.get('status', 'unknown'))}</td>"
+                f"<td>{len(tool.get('findings', []))}</td></tr>"
+            )
+            items = "".join(
+                "<div class='check status-fail'><div class='check-head'>"
+                f"<span class='badge sev-{html_escape(f.get('severity', 'info'))}'>"
+                f"{html_escape(f.get('severity', 'info'))}</span>"
+                f"<span class='check-name'>{html_escape(f.get('message', ''))}</span>"
+                f"<span class='check-id'>{html_escape(f.get('ruleId', ''))}</span></div>"
+                f"<div class='summary'>{html_escape(f.get('path', '.'))}:{f.get('line', 1)}</div></div>"
+                for f in tool.get("findings", [])
+            )
+            if items:
+                feeder_details.append(
+                    f"<section class='agent-section'><h2>{html_escape(tool.get('tool'))} "
+                    f"<small>external feeder</small></h2>{items}</section>"
+                )
+        feeder_table = (
+            "<table><thead><tr><th>Tool</th><th>Status</th><th>Findings</th></tr></thead>"
+            f"<tbody>{''.join(feeder_rows)}</tbody></table>"
+            if feeder_rows else "<p>No feeder tools were selected.</p>"
+        )
+        orchestration_html = (
+            "<section class='agent-section'><h2>Combined Policy "
+            f"<small>{policy_state}</small></h2><ul>{policy_items}</ul></section>"
+            "<section class='agent-section'><h2>ALIGNMENT "
+            f"<small>{alignment.get('score', 100)}/100 · {html_escape(alignment.get('grade', 'A'))}</small>"
+            f"</h2>{alignment_items}</section>"
+            "<section class='agent-section'><h2>Feeder Summary "
+            "<small>external evidence; excluded from native score</small></h2>"
+            f"{feeder_table}</section>{''.join(feeder_details)}"
+        )
 
     doc = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -1195,7 +1381,7 @@ th {{
 </header>
 <div class="score-banner">
     <div class="score-left">
-        <div class="score-label">Examination Score</div>
+        <div class="score-label">Native Cerberus Score</div>
         <div class="score-num">{report['score']}/100</div>
     </div>
     <div class="grade-box {grade_class}">{report['grade']}</div>
@@ -1206,6 +1392,7 @@ th {{
 <table><thead><tr><th>Agent</th><th>Score</th><th>Checks</th></tr></thead>
 <tbody>{''.join(agents_rows)}</tbody></table>
 {''.join(details)}
+{orchestration_html}
 </body></html>
 """
     return doc
@@ -1281,6 +1468,28 @@ def print_terminal(report, quiet, use_color, severity_min, only_agents):
         print(c("Notes:", "1"))
         for n in report["notes"]:
             print(f"  - {n}")
+    alignment = report.get("alignment")
+    feeders = report.get("feeders")
+    policy = report.get("policy")
+    if alignment or feeders or policy:
+        print()
+        print(c("Orchestration:", "1"))
+        if alignment:
+            print(
+                f"  ALIGNMENT: {alignment.get('status', 'unknown')} · "
+                f"{alignment.get('score', 100)}/100 ({alignment.get('grade', 'A')}) · "
+                f"{len(alignment.get('findings', []))} finding(s)"
+            )
+        if feeders:
+            summary = feeders.get("summary", {})
+            print(
+                "  Feeders: " + ", ".join(
+                    f"{key}={summary.get(key, 0)}"
+                    for key in ("completed", "not_applicable", "unavailable", "failed")
+                )
+            )
+        if policy:
+            print(f"  Policy: {'PASS' if policy.get('passed') else 'FAIL'}")
 
 
 # --------------------------------------------------------------------------
@@ -1322,6 +1531,16 @@ def main():
     parser.add_argument("--json", help="Write the full Report JSON to this path")
     parser.add_argument("--html", help="Write a standalone HTML report to this path")
     parser.add_argument("--sarif", help="Write a SARIF 2.1.0 file to this path")
+    parser.add_argument("--feeders", default="none",
+                         help="External feeders: none, auto, or a comma-separated allowlist")
+    parser.add_argument("--native-only", action="store_true",
+                         help="Run only checks.json checks (no feeders or ALIGNMENT)")
+    parser.add_argument("--feeder-timeout", type=float, default=60.0,
+                         help="Per-feeder timeout in seconds (default: 60)")
+    parser.add_argument("--feeder-json",
+                         help="Write the normalized cerberus.feeders/1 bundle to this path")
+    parser.add_argument("--strict-feeders", action="store_true",
+                         help="Exit non-zero when a requested feeder fails to execute")
     parser.add_argument("--fail-under", type=float, default=None,
                          help="Exit non-zero if the score is below N (for CI)")
     parser.add_argument("--only", help="Comma-separated list of agent ids to include")
@@ -1334,6 +1553,16 @@ def main():
                          help="Start a dev-only static file server on 127.0.0.1 (drops scanning)")
     parser.add_argument("--port", type=int, default=8080, help="Port for --serve")
     args = parser.parse_args()
+
+    if args.feeder_timeout <= 0:
+        parser.error("--feeder-timeout must be greater than zero")
+    if args.native_only and str(args.feeders).lower() not in ("none", "off", ""):
+        parser.error("--native-only cannot be combined with enabled --feeders")
+    try:
+        from feeders import parse_selection
+        feeder_selection = [] if args.native_only else parse_selection(args.feeders)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     catalog = load_catalog()
 
@@ -1401,6 +1630,31 @@ def main():
             }
 
         report = build_report(catalog, target_info, root_dir, repo_meta, only_agents, notes)
+        if args.native_only:
+            alignment_result = {
+                "schema": "cerberus.alignment/1",
+                "agent": {"id": "alignment", "name": "ALIGNMENT",
+                          "domain": "Repository & Agent Alignment"},
+                "status": "not_run", "score": 100.0, "grade": "A",
+                "counts": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0},
+                "findings": [],
+            }
+            feeder_results = []
+        else:
+            from alignment import analyze_alignment
+            alignment_result = analyze_alignment(root_dir)
+            if feeder_selection:
+                from feeders import run_feeders
+                feeder_results = run_feeders(
+                    root_dir, feeder_selection, args.feeder_timeout, target_info
+                )
+            else:
+                feeder_results = []
+        enrich_report(
+            report, alignment_result, feeder_results,
+            strict_feeders=args.strict_feeders,
+            native_threshold=args.fail_under,
+        )
     except TargetError as e:
         print(f"error: {e}", file=sys.stderr)
         sys.exit(1)
@@ -1430,7 +1684,23 @@ def main():
         if not args.quiet:
             print(f"SARIF report written to {args.sarif}")
 
+    if args.feeder_json:
+        feeder_bundle = report.get("feeders", {
+            "schema": "cerberus.feeders/1",
+            "summary": {"completed": 0, "not_applicable": 0, "unavailable": 0, "failed": 0},
+            "tools": [], "findings": [],
+        })
+        with open(args.feeder_json, "w", encoding="utf-8") as f:
+            json.dump(feeder_bundle, f, indent=2)
+        if not args.quiet:
+            print(f"Feeder report written to {args.feeder_json}")
+
     if args.fail_under is not None and report["score"] < args.fail_under:
+        sys.exit(1)
+    if args.strict_feeders and any(
+        tool.get("status") in ("failed", "unavailable")
+        for tool in report.get("feeders", {}).get("tools", [])
+    ):
         sys.exit(1)
     sys.exit(0)
 
