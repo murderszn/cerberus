@@ -14,6 +14,43 @@
 > reconciled to it. Treat everything below as directional scope for future work, not an
 > implementation reference. For the real, currently-running checks, see
 > `docs/scanner-checks.md` or `documentation/checks.html`.
+
+## Shipped orchestration layer
+
+The roadmap catalog below is separate from the CLI orchestration layer. Native
+checks and their 100-point score still come exclusively from `checks.json` and
+remain available in the top-level `cerberus.report/2` fields. New additive
+sections distinguish:
+
+- `native`: the unchanged score, grade, counts, and native findings;
+- `alignment`: a separately scored native analysis of coding-agent instructions
+  and operational surfaces;
+- `feeders`: normalized results, status, provenance, and findings from optional
+  external tools; and
+- `policy`: combined blockers and warnings without rewriting the native score.
+
+The feeder envelope is versioned as `cerberus.feeder/1`. Findings use normalized
+`critical`, `high`, `medium`, `low`, or `info` severity and retain the source
+tool, raw rule ID, location, remediation, confidence when available, and a
+stable fingerprint. Potential secret values are redacted. Raw output is kept
+only when practical, is size-limited, and must be treated as sensitive.
+
+The default combined policy fails when an ALIGNMENT or feeder finding is
+critical, or when at least two are high. An unavailable optional tool is a
+warning. A requested tool's timeout, malformed output, or execution failure is
+a blocker only with `--strict-feeders`. The policy result is reported but does
+not silently replace historical CLI exit behavior: `--fail-under` independently
+gates the native score.
+
+ALIGNMENT inspects agent-policy files, README and contribution guidance,
+package/task scripts, Makefiles, shell/setup scripts, and GitHub Actions. It
+looks for conflicts, destructive or security-bypassing directions, credential
+exposure, unsafe remote execution, prompt-injection-like instructions, missing
+validation/secret guidance, documentation-to-project mismatches, and risky
+workflow permissions or interpolation. Findings are contextual heuristics, not
+proof of exploitability. Documentation examples, fixtures, generated files, and
+quoted malicious text can create false positives; suppress or review them only
+after confirming the surrounding context.
 >
 > Shipped counts today, per agent (see `checks.json` for authoritative detail):
 >

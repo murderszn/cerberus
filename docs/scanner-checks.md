@@ -1,6 +1,8 @@
 # Cerberus Check Catalog
 
-This document is generated directly from `checks.json` by `scripts/generate-checks-docs.py` — do not hand-edit it. `checks.json` is the single source of truth consumed by the web app, `examine.py`, and this page (see `docs/IMPROVEMENTS.md` §2.2/§6).
+This document is generated directly from `checks.json` by `scripts/generate-checks-docs.py`. `checks.json` remains the source of truth for the native checks and native 100-point score consumed by the web app and `examine.py` (see `docs/IMPROVEMENTS.md` §2.2/§6).
+
+The CLI can additionally run the ALIGNMENT analyzer and optional Gitleaks, OSV-Scanner, Zizmor, OpenSSF Scorecard, and actionlint feeders. Those additive findings are versioned and reported separately; they are not entries in this native catalog and never change its scoring semantics. See [README.md](../README.md#external-feeders) for installation, attribution, status, and policy behavior.
 
 **Total: 59 checks across 9 agents, weighted to 100 points.**
 

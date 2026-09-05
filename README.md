@@ -51,7 +51,7 @@ Cerberus is built to serve three core workflows:
 
 ## Key Features
 
-- **Swarm Orchestration**: Nine specialized, non-overlapping agents audit separate layers of your system, from Code Analysis to Network Config.
+- **Security Orchestration**: Nine catalog-driven native agents remain the scoring engine, while the CLI can add a native ALIGNMENT review and normalized findings from specialized open-source scanners.
 - **Deterministic Verification**: Every vulnerability is mapped to a concrete, verifiable failure condition. This drastically reduces the noise and false positives common in legacy static analysis.
 - **Unified Engine**: Both the web dashboard and CLI execute the same rules from [`checks.json`](checks.json), emitting matching `cerberus.report/2` reports.
 - **Frictionless Integration**: Drop a repository URL in the browser, run it locally via a terminal, or gate pull requests in CI/CD using `--fail-under`.
@@ -96,6 +96,28 @@ python3 examine.py <path-to-local-directory-or-github-url>
 | `--severity` | `level` | Filter terminal output to show only findings at or above `critical`, `high`, `medium`, or `low`. |
 | `--quiet` | *None* | Suppress file listings and print only the final score and grade. |
 | `--no-color` | *None* | Disable ANSI color output in the terminal. |
+| `--feeders` | `auto` or tool list | Run detected feeders, or a comma-separated selection of `gitleaks`, `osv-scanner`, `zizmor`, `scorecard`, and `actionlint`. The default is `none`. |
+| `--native-only` | *None* | Disable feeders and ALIGNMENT for an offline, legacy-compatible native scan. |
+| `--feeder-timeout` | `seconds` | Set the timeout applied separately to each external scanner. |
+| `--feeder-json` | `path` | Preserve feeder results, including bounded raw output where it is safe to retain it. |
+| `--strict-feeders` | *None* | Treat unavailable, failed, timed-out, or malformed explicitly requested feeders as policy blockers. |
+
+`--fail-under` continues to evaluate only the native Cerberus score. Feeder and ALIGNMENT findings never change that score. When orchestration is enabled, the report also includes a combined policy result: any critical finding or at least two high findings fails policy; missing optional tools are warnings; and tool failures become blockers only with `--strict-feeders`. In this release the policy result is report data, not a new implicit CLI exit condition, preserving existing automation behavior.
+
+Examples:
+
+```bash
+# Exact legacy/offline behavior
+python3 examine.py . --native-only
+
+# Run every installed, applicable feeder; unavailable tools are warnings
+python3 examine.py . --feeders auto --json report.json --feeder-json feeders.json
+
+# Require selected tools to execute successfully
+python3 examine.py . --feeders gitleaks,osv-scanner,zizmor --strict-feeders
+```
+
+Cerberus never downloads scanners during a scan. Install and version-pin them separately in your workstation or CI image. See the [GitHub Actions deployment guide](docs/cerberus-github-action-template.md) for the security and licensing notes.
 
 #### Example: GitHub Actions CI/CD Integration
 
@@ -147,6 +169,20 @@ The scan logic is divided among **9 specialized security agents**. Each agent ow
 | 🏗️ **ARCHITECT** | Infrastructure | Dockerfile practices, IaC misconfigurations, root privileges | **8** | 5 checks |
 | **Total** | | | **100** | **59 checks** |
 
+The table above is the native score model and is unchanged. The CLI's additional **ALIGNMENT** agent examines repository instructions and operational surfaces used by coding agents—for example conflicting policy, destructive commands, secret-exposure directions, prompt-injection-like instructions, and risky workflow permissions. ALIGNMENT has its own score and grade and is not added to the 100 native points.
+
+### External feeders
+
+| Feeder | Specialized evidence | Upstream license |
+| :--- | :--- | :--- |
+| [Gitleaks](https://github.com/gitleaks/gitleaks) | Secrets in files and, when configured, Git history | MIT |
+| [OSV-Scanner](https://github.com/google/osv-scanner) | Known vulnerabilities in manifests, lockfiles, and SBOMs | Apache-2.0 |
+| [Zizmor](https://github.com/woodruffw/zizmor) | GitHub Actions security weaknesses | MIT |
+| [OpenSSF Scorecard](https://github.com/ossf/scorecard) | Repository supply-chain posture | Apache-2.0 |
+| [actionlint](https://github.com/rhysd/actionlint) | GitHub Actions syntax and semantic errors | MIT |
+
+Each adapter records tool provenance, normalizes severity, redacts possible secret values, and creates stable fingerprints for deduplication. `not_applicable` means the repository had no suitable input; `unavailable` means the executable was not installed; and `failed` covers timeout, invalid output, or another execution failure. Review upstream licenses yourself before redistributing scanner binaries.
+
 ### Grading Rubric
 - **A**: $\ge$ 90
 - **B**: $\ge$ 80
@@ -159,7 +195,7 @@ The scan logic is divided among **9 specialized security agents**. Each agent ow
 ## Architecture
 
 ```
-                 [ checks.json ] (Single Source of Truth)
+                 [ checks.json ] (Native Source of Truth)
                         │
          ┌──────────────┼──────────────┐
          ▼              ▼              ▼
@@ -170,7 +206,7 @@ The scan logic is divided among **9 specialized security agents**. Each agent ow
     HTML Report    JSON/SARIF/HTML   documentation/checks.html
 ```
 
-- **[`checks.json`](checks.json)** is the single source of truth. It defines the ID, agent, severity, CWE mapping, and regular expression detectors for every check. No agent or UI contains hardcoded security rules.
+- **[`checks.json`](checks.json)** remains the single source of truth for native checks and scoring. Feeder adapters and ALIGNMENT are additive CLI orchestration layers; they do not change the browser scanner or silently affect the native score.
 - **[`assets/scanner.js`](assets/scanner.js)** reads the rules and evaluates them concurrently (up to 8 files at a time) against downloaded repository files.
 - **[`examine.py`](examine.py)** parses the same rules and evaluates them locally.
 - **[`scripts/generate-checks-docs.py`](scripts/generate-checks-docs.py)** compiles the JSON catalog into customer-facing markdown files (`docs/scanner-checks.md`) and HTML sites (`documentation/checks.html`).
@@ -200,6 +236,33 @@ If you add, remove, or modify checks in [`checks.json`](checks.json):
    ```bash
    python3 examine.py .
    ```
+
+### Adding a feeder
+
+Feeder integrations live under `feeders/`. Implement the shared adapter contract,
+declare a fixed executable name and argv builder, add applicability detection,
+normalize the tool's output without retaining credential values, and register the
+adapter in `feeders/registry.py`. Adapters must never invoke a shell, download a
+binary, or execute repository-provided commands. Add fixtures for applicable and
+non-applicable repositories plus tests for unavailable tools, timeouts, non-zero
+exits, malformed output, severity mapping, fingerprint stability, redaction, and
+deduplication.
+
+External results are best-effort translations of upstream formats. Tool versions
+can add or rename rules, Scorecard checks may need GitHub/network context, history
+scanning depends on available Git metadata, and heuristic ALIGNMENT findings need
+human review. Use stable fingerprints and documented suppressions to manage false
+positives; do not weaken native checks to hide feeder noise.
+
+### Report compatibility
+
+The top-level `schema`, `score`, `grade`, `counts`, and `agents` fields retain the
+`cerberus.report/2` contract used by the web UI and existing automation. CLI
+orchestration adds `native`, `alignment`, `feeders`, and `policy` sections. Each
+tool result uses `cerberus.feeder/1`; the feeder collection uses
+`cerberus.feeders/1`; and ALIGNMENT uses `cerberus.alignment/1`. SARIF keeps the
+native Cerberus run first and adds separate runs for ALIGNMENT and each feeder so
+source provenance is not lost.
 
 ---
 

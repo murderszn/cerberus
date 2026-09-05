@@ -5,6 +5,20 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      feeder_mode:
+        description: Run the reviewed native scanner only, or detect optional preinstalled feeders
+        required: true
+        default: native-only
+        type: choice
+        options:
+          - native-only
+          - auto
+      strict_feeders:
+        description: Fail when a requested feeder is unavailable, times out, or returns malformed output
+        required: true
+        default: false
+        type: boolean
 
 # Read source and publish SARIF findings without granting write access to the repo.
 permissions:
@@ -18,48 +32,72 @@ jobs:
 
     steps:
       - name: Check out application
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      # For production use, replace `main` with a reviewed Cerberus commit SHA.
-      # Example: ref: 0123456789abcdef0123456789abcdef01234567
+      # Production example: this is a reviewed Cerberus commit SHA. Update it
+      # deliberately after reviewing a newer release. `ref: main` is for
+      # experimentation only and is not a safe production pin.
       - name: Check out Cerberus scanner
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           repository: murderszn/cerberus
-          ref: main
+          ref: eb78139399c022e2cea68dd3fdeb201f3847da48
           path: .cerberus
 
       - name: Exclude scanner checkout
-        run: echo '.cerberus/' > .cerberusignore
+        run: echo '.cerberus/' >> .cerberusignore
 
       - name: Run Cerberus review
         id: scan
         continue-on-error: true
+        env:
+          FEEDER_MODE: ${{ inputs.feeder_mode || 'native-only' }}
+          STRICT_FEEDERS: ${{ inputs.strict_feeders || 'false' }}
         run: |
-          python3 .cerberus/examine.py . \
-            --json cerberus-report.json \
-            --html cerberus-report.html \
-            --sarif cerberus.sarif \
-            --fail-under 80 \
+          scan_args=(
+            .
+            --json cerberus-report.json
+            --html cerberus-report.html
+            --sarif cerberus.sarif
+            --fail-under 80
             --no-color
+          )
+
+          if python3 .cerberus/examine.py --help | grep -q -- '--native-only'; then
+            if [[ "$FEEDER_MODE" == 'auto' ]]; then
+              scan_args+=(--feeders auto --feeder-json cerberus-feeders.json)
+              if [[ "$STRICT_FEEDERS" == 'true' ]]; then
+                scan_args+=(--strict-feeders)
+              fi
+            else
+              scan_args+=(--native-only)
+            fi
+          elif [[ "$FEEDER_MODE" == 'auto' ]]; then
+            echo 'Pinned Cerberus revision predates feeder support; using native-only fallback.'
+          fi
+
+          python3 .cerberus/examine.py "${scan_args[@]}"
 
       - name: Publish Cerberus findings to Code Security
         if: always()
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: cerberus.sarif
 
       - name: Upload Cerberus reports
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: cerberus-security-review
           path: |
             cerberus-report.json
             cerberus-report.html
             cerberus.sarif
+            cerberus-feeders.json
+            cerberus-feeders/
           if-no-files-found: warn
+          retention-days: 14
 
       - name: Add Cerberus summary
         if: always()
