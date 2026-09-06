@@ -32,7 +32,7 @@
 **Cerberus** is an automated, zero-configuration security scanner designed for modern, rapid-deployment engineering teams. As developers leverage AI assistants to ship features in minutes, security reviews are frequently compromised. Cerberus replaces slow, costly human auditing with a high-rigor, collaborative **AI agent swarm** that validates code, infrastructure, and configuration against a comprehensive checks catalog.
 
 Its native scanner operates locally with **no server, no build step, and no signup**:
-- **The Web App ([index.html](index.html))** runs completely in your browser, analyzing public GitHub repositories using the GitHub API. It features real-time progress indicators, interactive check filters, history persistence, and shareable deep links.
+- **The Web App ([agent.html](agent.html))** runs completely in your browser, analyzing public GitHub repositories using the GitHub API. It features real-time progress indicators, interactive check filters, history persistence, and shareable deep links.
 - **The CLI ([examine.py](examine.py))** uses Python 3 and the standard library for native checks, ALIGNMENT, orchestration, normalization, and reporting. Optional feeder executables are installed separately only when their specialized analysis is wanted.
 
 Both interfaces consume the same native [`checks.json`](checks.json) catalog and preserve the same native scoring semantics. ALIGNMENT and external feeders are additive CLI capabilities and do not alter web scanner behavior.
@@ -72,13 +72,13 @@ Cerberus is built to serve three core workflows:
 
 ### 🌐 Web App (GitHub repositories only)
 
-Simply open [index.html](index.html) in any modern browser, or serve the repository root using any static file server:
+Open the [research homepage](index.html), then choose [Cerberus Agent](agent.html) in any modern browser, or serve the repository root using any static file server:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Then visit `http://localhost:8000` and paste any public GitHub repository URL.
+Then visit `http://localhost:8000/agent.html` and paste any public GitHub repository URL. The research homepage lives at `/`; existing `index.html#/scan/...` and `index.html#/report/...` links forward to the Agent page, preserving their targets.
 
 > [!NOTE]
 > Due to browser CORS policies, the web app can only fetch public repositories. To scan private repositories, input a GitHub **Personal Access Token (PAT)** in the provided web UI field, or use the CLI.
@@ -324,14 +324,15 @@ The test suite covers registry behavior, applicability, unavailable tools, timeo
 
 ## Repository Structure
 
-* [index.html](index.html) — The web dashboard scanner.
+* [index.html](index.html) — The research homepage with three framed, full-bleed details from the Cerberus engraving and titles overlaid on the images.
+* [agent.html](agent.html) — The browser scanner, progress view, and interactive report.
 * [ceberus-classic.html](ceberus-classic.html) — The legacy static HTML scanner page.
 * [examine.py](examine.py) — The Python CLI, native report builder, orchestration entry point, and JSON/HTML/SARIF renderer.
 * [alignment.py](alignment.py) — Native repository and coding-agent alignment analyzer.
 * [feeders/](feeders/) — Phase 1 external-tool adapters, registry, runner, and normalization contract.
 * [checks.json](checks.json) — Native check catalog and scoring source of truth.
 * [logo.png](logo.png) — The official Cerberus Labs logo.
-* [assets/](assets/) — Core JS assets including [`scanner.js`](assets/scanner.js) and [`checks.js`](assets/checks.js).
+* [assets/](assets/) — Scanner scripts, the original engraving, social preview, shared `site.css`, Agent styling in `agent-polish.css`, and legacy-route forwarding in `home.js`.
 * [documentation/](documentation/) — Static documentation site.
 * [docs/](docs/) — Scanner catalog, examination specification, GitHub Actions guide, product documentation, and compliance material.
 * [scripts/](scripts/) — Check asset builders, documentation generation, and the browser scanner integration harness.

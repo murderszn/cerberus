@@ -16,14 +16,14 @@
       <img src="../logo.png" alt="Cerberus Labs" class="brand-logo">
       <span>Cerberus Labs</span>
     </a>
-    <a class="nav-link" href="../index.html">Platform</a>
+    <a class="nav-link" href="../agent.html">Cerberus Agent</a>
   </nav>
   <nav class="right">
     <form class="search-form" onsubmit="return false">
       <svg class="search-icon"><use href="#i-search"/></svg>
       <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
     </form>
-    <a class="nav-link" href="../cerberus-report.html" target="_blank" rel="noopener noreferrer">Sample Report</a>
+    <a class="nav-link" href="../agent.html#/report/oso95/scroll-world">Sample Report</a>
     <button class="menu-toggle" aria-label="Open menu">☰</button>
   </nav>
 </header>
@@ -99,8 +99,8 @@
     <h3>Where is the report saved?</h3>
     <p>The CLI writes wherever you point <code>--json</code>, <code>--html</code>, or <code>--sarif</code>. The web app caches reports in the browser's <code>localStorage</code> and lets you download JSON/HTML or copy a Markdown summary.</p>
 
-    <h3>Can I run Cerberus in CI/CD?</h3>
-    <p>Yes. Native operation needs only Python and supports <code>--fail-under &lt;score&gt;</code> for the native score plus <code>--sarif</code> for GitHub code scanning. The pinned workflow template defaults to native-only and can optionally use preinstalled feeders.</p>
+    <h3>Can I run Cerberus in CI/CD or GitHub Actions?</h3>
+    <p>Yes. You can add Cerberus to any GitHub repository in minutes by adding <code>.github/workflows/cerberus.yml</code>. It runs standard Python 3.9+ without external dependencies, gates PRs via <code>--fail-under &lt;score&gt;</code>, publishes SARIF alerts directly to GitHub Code Scanning, and uploads standalone HTML and JSON report artifacts. See the <a href="quickstart.html#setting-up-cerberus-as-a-github-action">Quickstart GitHub Action guide</a> or the <a href="scanner.html#ci">CLI Scanner reference</a> for complete workflow examples.</p>
 
     <h3>What happens when a feeder is not installed?</h3>
     <p>The result is <code>unavailable</code>, not a crash. It is a warning by default and becomes a blocker/non-zero exit only when <code>--strict-feeders</code> is requested. Repositories without applicable input receive <code>not_applicable</code>.</p>

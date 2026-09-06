@@ -5,6 +5,7 @@ __pycache__/
 .DS_Store
 *.png
 !logo.png
+!assets/cerberus-social.png
 cerberus-report.html
 
 # secrets

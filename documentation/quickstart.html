@@ -16,14 +16,14 @@
       <img src="../logo.png" alt="Cerberus Labs" class="brand-logo">
       <span>Cerberus Labs</span>
     </a>
-    <a class="nav-link" href="../index.html">Platform</a>
+    <a class="nav-link" href="../agent.html">Cerberus Agent</a>
   </nav>
   <nav class="right">
     <form class="search-form" onsubmit="return false">
       <svg class="search-icon"><use href="#i-search"/></svg>
       <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
     </form>
-    <a class="nav-link" href="../cerberus-report.html" target="_blank" rel="noopener noreferrer">Sample Report</a>
+    <a class="nav-link" href="../agent.html#/report/oso95/scroll-world">Sample Report</a>
     <button class="menu-toggle" aria-label="Open menu">☰</button>
   </nav>
 </header>
@@ -62,7 +62,7 @@
     <p class="lead">There are two ways to run Cerberus: the web app for native GitHub scans and the CLI for local or GitHub targets, ALIGNMENT analysis, optional security feeders, and CI. Both share the same 59-check native catalog in <code>checks.json</code>.</p>
 
     <h2>Option A: Web app</h2>
-    <p>The web app is a static site — no build step, no server required. Open <code>index.html</code> in a browser and paste a GitHub repository URL.</p>
+    <p>The web app is a static site — no build step, no server required. Open <a href="../agent.html">Cerberus Agent</a> in a browser and paste a GitHub repository URL.</p>
     <div class="callout warning">
       <div class="callout-title">GitHub only in the browser</div>
       <p>Browsers cannot fetch arbitrary origins due to CORS, so the web app can only scan public GitHub repositories. To scan a local directory, a private repo, or a non-GitHub target, use the CLI below.</p>
@@ -111,12 +111,144 @@ python3 examine.py . --feeders auto --json report.json --html report.html --sari
       <li>Re-run the scan to verify fixes and improve your score.</li>
     </ol>
 
-    <h2>CI example</h2>
-    <p>Copy the pinned <code>.github/workflow-templates/cerberus-security-review.yml</code> template into the target repository. It defaults to native-only, preserves the native <code>--fail-under</code> gate, offers optional auto/strict feeder inputs, excludes the nested scanner checkout, and uploads all report formats. Do not replace reviewed SHAs with floating tags in production.</p>
+    <h2>Setting up Cerberus as a GitHub Action</h2>
+    <p>Automate Cerberus security reviews on every Pull Request and branch push using GitHub Actions. Cerberus will scan your codebase, post SARIF findings directly to the repository's <strong>Security &rarr; Code scanning</strong> tab, upload interactive HTML and JSON reports as workflow artifacts, and gate merges using <code>--fail-under</code>.</p>
+
+    <h3>1. Quick Setup</h3>
+    <ol>
+      <li>Create a workflow file in your repository at <code>.github/workflows/cerberus.yml</code>.</li>
+      <li>Paste the production-ready workflow template below.</li>
+      <li>Adjust the <code>--fail-under 80</code> score threshold to match your project's quality gate.</li>
+      <li>Commit and push to trigger your first automated security review.</li>
+    </ol>
+
+    <h3>2. Workflow Template (<code>.github/workflows/cerberus.yml</code>)</h3>
+    <pre><code class="language-yaml">name: Cerberus Security Review
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      feeder_mode:
+        description: Run reviewed native scanner only, or detect optional preinstalled feeders
+        required: true
+        default: native-only
+        type: choice
+        options:
+          - native-only
+          - auto
+      strict_feeders:
+        description: Fail when a requested feeder is unavailable, times out, or returns errors
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  cerberus:
+    name: Cerberus Security Review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out application code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      # Pin Cerberus checkout to a reviewed commit SHA for supply-chain security
+      - name: Check out Cerberus scanner
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: murderszn/cerberus
+          ref: eb78139399c022e2cea68dd3fdeb201f3847da48
+          path: .cerberus
+
+      - name: Exclude scanner checkout from scan
+        run: echo '.cerberus/' >> .cerberusignore
+
+      - name: Run Cerberus examination
+        id: scan
+        continue-on-error: true
+        env:
+          FEEDER_MODE: ${{ inputs.feeder_mode || 'native-only' }}
+          STRICT_FEEDERS: ${{ inputs.strict_feeders || 'false' }}
+        run: |
+          scan_args=(
+            .
+            --json cerberus-report.json
+            --html cerberus-report.html
+            --sarif cerberus.sarif
+            --fail-under 80
+            --no-color
+          )
+
+          if python3 .cerberus/examine.py --help | grep -q -- '--native-only'; then
+            if [[ "$FEEDER_MODE" == 'auto' ]]; then
+              scan_args+=(--feeders auto --feeder-json cerberus-feeders.json)
+              if [[ "$STRICT_FEEDERS" == 'true' ]]; then
+                scan_args+=(--strict-feeders)
+              fi
+            else
+              scan_args+=(--native-only)
+            fi
+          fi
+
+          python3 .cerberus/examine.py "${scan_args[@]}"
+
+      - name: Publish findings to GitHub Code Security (SARIF)
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: cerberus.sarif
+
+      - name: Upload Cerberus report artifacts
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: cerberus-security-review
+          path: |
+            cerberus-report.json
+            cerberus-report.html
+            cerberus.sarif
+            cerberus-feeders.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Add Cerberus summary
+        if: always()
+        env:
+          SCAN_OUTCOME: ${{ steps.scan.outcome }}
+          REPORT_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo '# CERBERUS LABS — Security Review'
+            echo
+            echo "Cerberus review result: **${SCAN_OUTCOME}**"
+            echo
+            echo "[Open workflow run](${REPORT_URL}) · Download the full HTML/JSON reports from artifacts below."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce score threshold
+        if: steps.scan.outcome == 'failure'
+        run: |
+          echo 'Cerberus found critical issues or the repository scored below the configured threshold.'
+          exit 1</code></pre>
+
+    <h3>3. Key Features of the GitHub Action</h3>
+    <ul>
+      <li><strong>Code Scanning Integration:</strong> Findings automatically populate inline pull request diff annotations and GitHub's Security Alerts tab via SARIF.</li>
+      <li><strong>Custom Quality Gates:</strong> <code>--fail-under 80</code> ensures pull requests cannot be merged if they introduce high-risk vulnerabilities that drop the score below 80.</li>
+      <li><strong>Artifact Downloads:</strong> Standalone interactive HTML reports (<code>cerberus-report.html</code>) and full machine-readable JSON reports (<code>cerberus-report.json</code>) are attached to each workflow run.</li>
+      <li><strong>Zero Third-Party Dependency Risk:</strong> Runs with standard Python 3.9+ runtime, requires no network downloads during scan execution, and operates in <code>native-only</code> mode by default.</li>
+    </ul>
 
     <h2>Next steps</h2>
     <ul>
-      <li>Read the full <a href="scanner.html">CLI Scanner reference</a> for every flag and the report schema.</li>
+      <li>Read the in-depth <a href="scanner.html#ci">CLI Scanner & CI Reference</a> for feeder images, timeout tuning, and strict feeder rules.</li>
       <li>Browse the <a href="checks.html">Check Catalog</a> to understand every check.</li>
       <li>Learn how <a href="scoring.html">Severity & Scoring</a> computes your final grade.</li>
     </ul>

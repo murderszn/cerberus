@@ -16,14 +16,14 @@
       <img src="../logo.png" alt="Cerberus Labs" class="brand-logo">
       <span>Cerberus Labs</span>
     </a>
-    <a class="nav-link" href="../index.html">Platform</a>
+    <a class="nav-link" href="../agent.html">Cerberus Agent</a>
   </nav>
   <nav class="right">
     <form class="search-form" onsubmit="return false">
       <svg class="search-icon"><use href="#i-search"/></svg>
       <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
     </form>
-    <a class="nav-link" href="../cerberus-report.html" target="_blank" rel="noopener noreferrer">Sample Report</a>
+    <a class="nav-link" href="../agent.html#/report/oso95/scroll-world">Sample Report</a>
     <button class="menu-toggle" aria-label="Open menu">☰</button>
   </nav>
 </header>
@@ -107,8 +107,172 @@ python3 examine.py . --feeders auto --json report.json --html report.html \
     </table>
 
     <h2 id="ci">CI / GitHub Actions</h2>
-    <p>The repository ships <code>.github/workflow-templates/cerberus-security-review.yml</code>. The production example pins Actions and Cerberus to reviewed commit SHAs, defaults to native-only, preserves <code>--fail-under</code>, supports manual auto/strict feeder inputs, and uploads JSON, HTML, SARIF, and feeder artifacts. It never installs external binaries.</p>
-    <div class="callout warning"><div class="callout-title">Pin the toolchain</div><p>Use <code>ref: main</code> only for experimentation. For feeder-enabled CI, build a reviewed runner image containing exact scanner versions and verify upstream checksums or signatures.</p></div>
+    <p>Cerberus is designed for zero-friction integration with GitHub Actions CI/CD pipelines. It ships a production-ready reusable workflow template at <code>.github/workflow-templates/cerberus-security-review.yml</code> that executes fast security audits on pull requests and pushes without requiring complex runner setups or cloud API keys.</p>
+
+    <h3>Workflow Deployment Steps</h3>
+    <ol>
+      <li>Copy the workflow file into your repository at <code>.github/workflows/cerberus.yml</code>.</li>
+      <li>Pin the Cerberus scanner checkout step to an approved commit SHA (e.g. <code>ref: eb78139399c022e2cea68dd3fdeb201f3847da48</code>). Avoid floating tags like <code>main</code> in production.</li>
+      <li>Configure your gating threshold via <code>--fail-under &lt;score&gt;</code> (default: <code>80</code>).</li>
+      <li>Ensure repository permissions include <code>security-events: write</code> so findings appear under the GitHub <strong>Security</strong> tab.</li>
+    </ol>
+
+    <h3>Workflow Architecture</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <span class="step-num">1</span>
+        <strong>Trigger & Checkout</strong>
+        <p>Checks out repository source code and pulls the reviewed Cerberus engine into a nested <code>.cerberus/</code> directory, appending it to <code>.cerberusignore</code>.</p>
+      </div>
+      <div class="flow-step">
+        <span class="step-num">2</span>
+        <strong>Examination & Scoring</strong>
+        <p>Runs <code>examine.py</code> with standard Python 3.9+. Generates JSON, standalone HTML, and standard SARIF reports with no external network calls.</p>
+      </div>
+      <div class="flow-step">
+        <span class="step-num">3</span>
+        <strong>SARIF & Report Artifacts</strong>
+        <p>Uploads SARIF to GitHub Code Scanning and archives HTML/JSON reports with a 14-day retention window.</p>
+      </div>
+      <div class="flow-step">
+        <span class="step-num">4</span>
+        <strong>Summary & Gate Enforcement</strong>
+        <p>Publishes a markdown summary to the action run and fails the build if the score is below the configured threshold.</p>
+      </div>
+    </div>
+
+    <h3>Recommended Workflow Definition</h3>
+    <pre><code class="language-yaml">name: Cerberus Security Review
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      feeder_mode:
+        description: Run reviewed native scanner only, or detect optional preinstalled feeders
+        required: true
+        default: native-only
+        type: choice
+        options:
+          - native-only
+          - auto
+      strict_feeders:
+        description: Fail when a requested feeder is unavailable, times out, or returns errors
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  cerberus:
+    name: Cerberus Security Review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out application code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      # Pin Cerberus checkout to a reviewed commit SHA for supply-chain security
+      - name: Check out Cerberus scanner
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: murderszn/cerberus
+          ref: eb78139399c022e2cea68dd3fdeb201f3847da48
+          path: .cerberus
+
+      - name: Exclude scanner checkout from scan
+        run: echo '.cerberus/' >> .cerberusignore
+
+      - name: Run Cerberus examination
+        id: scan
+        continue-on-error: true
+        env:
+          FEEDER_MODE: ${{ inputs.feeder_mode || 'native-only' }}
+          STRICT_FEEDERS: ${{ inputs.strict_feeders || 'false' }}
+        run: |
+          scan_args=(
+            .
+            --json cerberus-report.json
+            --html cerberus-report.html
+            --sarif cerberus.sarif
+            --fail-under 80
+            --no-color
+          )
+
+          if python3 .cerberus/examine.py --help | grep -q -- '--native-only'; then
+            if [[ "$FEEDER_MODE" == 'auto' ]]; then
+              scan_args+=(--feeders auto --feeder-json cerberus-feeders.json)
+              if [[ "$STRICT_FEEDERS" == 'true' ]]; then
+                scan_args+=(--strict-feeders)
+              fi
+            else
+              scan_args+=(--native-only)
+            fi
+          fi
+
+          python3 .cerberus/examine.py "${scan_args[@]}"
+
+      - name: Publish findings to GitHub Code Security (SARIF)
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: cerberus.sarif
+
+      - name: Upload Cerberus report artifacts
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: cerberus-security-review
+          path: |
+            cerberus-report.json
+            cerberus-report.html
+            cerberus.sarif
+            cerberus-feeders.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Add Cerberus summary
+        if: always()
+        env:
+          SCAN_OUTCOME: ${{ steps.scan.outcome }}
+          REPORT_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo '# CERBERUS LABS — Security Review'
+            echo
+            echo "Cerberus review result: **${SCAN_OUTCOME}**"
+            echo
+            echo "[Open workflow run](${REPORT_URL}) · Download the full HTML/JSON reports from artifacts below."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce score threshold
+        if: steps.scan.outcome == 'failure'
+        run: |
+          echo 'Cerberus found critical issues or the repository scored below the configured threshold.'
+          exit 1</code></pre>
+
+    <h3>Feeder Tools in CI</h3>
+    <p>When running in <code>auto</code> feeder mode, Cerberus executes pre-installed external security tools if available on the runner:</p>
+    <table>
+      <tr><th>Feeder</th><th>Detection Target</th><th>Runner Requirement</th></tr>
+      <tr><td><code>gitleaks</code></td><td>Committed secret discovery</td><td>Pre-installed binary on <code>$PATH</code></td></tr>
+      <tr><td><code>osv-scanner</code></td><td>Vulnerable open source dependencies</td><td>Lockfile/SBOM present + binary on <code>$PATH</code></td></tr>
+      <tr><td><code>zizmor</code></td><td>GitHub Actions workflow security flaws</td><td>Workflow files present + binary on <code>$PATH</code> (runs offline)</td></tr>
+      <tr><td><code>scorecard</code></td><td>OpenSSF supply chain posture</td><td>Git metadata / repo context + binary on <code>$PATH</code></td></tr>
+      <tr><td><code>actionlint</code></td><td>Workflow syntax & validation</td><td>Workflow files present + binary on <code>$PATH</code></td></tr>
+    </table>
+    <p>Cerberus <em>never</em> automatically downloads or executes unreviewed remote binaries during CI runs. For feeder-enabled runners, construct a hardened container image with exact tool version pins and cryptographic checksum verification.</p>
+
+    <div class="callout warning">
+      <div class="callout-title">Supply Chain Security Best Practices</div>
+      <p>Always pin third-party actions and scanner repositories to immutable commit SHAs. Do not give the workflow write permissions to repository contents (<code>contents: write</code>) or inject sensitive API tokens unless strictly necessary for downstream deployment steps.</p>
+    </div>
 
     <h2 id="exclusions">Exclusions</h2>
     <p>The native engine honours the same <code>global_exclude</code> and <code>test_paths</code> globs defined in <code>checks.json</code>. Feeder discovery additionally honors <code>.cerberusignore</code>, prunes ignored directories and symlinks, and protects the nested scanner checkout:</p>

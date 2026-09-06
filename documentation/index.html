@@ -16,14 +16,14 @@
       <img src="../logo.png" alt="Cerberus Labs" class="brand-logo">
       <span>Cerberus Labs</span>
     </a>
-    <a class="nav-link" href="../index.html">Platform</a>
+    <a class="nav-link" href="../agent.html">Cerberus Agent</a>
   </nav>
   <nav class="right">
     <form class="search-form" onsubmit="return false">
       <svg class="search-icon"><use href="#i-search"/></svg>
       <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
     </form>
-    <a class="nav-link" href="../cerberus-report.html" target="_blank" rel="noopener noreferrer">Sample Report</a>
+    <a class="nav-link" href="../agent.html#/report/oso95/scroll-world">Sample Report</a>
     <button class="menu-toggle" aria-label="Open menu">☰</button>
   </nav>
 </header>
@@ -190,11 +190,10 @@
       <p>Open <a href="../cerberus-report.html">cerberus-report.html</a> to see the exact layout, severity badges, and recommendation format your team will receive.</p>
     </div>
 
-    <h2>Quickstart</h2>
-    <p>The web app needs nothing installed — open <code>index.html</code> and paste a GitHub URL. The CLI runs the same 59-check native catalog and can append ALIGNMENT, feeder, and policy sections while preserving the legacy <code>cerberus.report/2</code> fields.</p>
+    <h2>Quickstart & CI/CD</h2>
+    <p>The web app needs nothing installed — open <a href="../agent.html">Cerberus Agent</a> and paste a GitHub URL. The CLI runs the same 59-check native catalog and can append ALIGNMENT, feeder, and policy sections while preserving the legacy <code>cerberus.report/2</code> fields.</p>
     <pre><code>python3 examine.py &lt;path-or-github-url&gt; --html report.html</code></pre>
-    <p>The scanner honours <code>global_exclude</code> and <code>test_paths</code> from <code>checks.json</code> — dependency folders, build output, lockfiles, and test/fixture/example paths are never scanned.</p>
-    <p>For the full flag reference and a CI example, see the <a href="scanner.html">CLI Scanner</a> page.</p>
+    <p>To run Cerberus automatically on every pull request and push, see our complete <a href="quickstart.html#setting-up-cerberus-as-a-github-action">GitHub Actions Setup Guide</a> or the <a href="scanner.html#ci">CI Scanner Reference</a>.</p>
 
     <h2>Cerberus Examination vs. Watchdog</h2>
     <table>
