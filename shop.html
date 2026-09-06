@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Supply Archive — Cerberus Labs</title>
+  <meta name="description" content="Cerberus Supply Archive: Heavyweight streetwear, hoodies, t-shirts, crewnecks, and dad caps crafted for security researchers and guardian architects.">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <link rel="stylesheet" href="assets/shop.css">
+  <script src="assets/shop.js" defer></script>
+  <meta property="og:title" content="Supply Archive — Cerberus Labs">
+  <meta property="og:description" content="Heavyweight streetwear, hoodies, t-shirts, and headwear featuring the Cerberus guardian branding. Made in the USA.">
+  <meta property="og:image" content="https://murderszn.github.io/cerberus/assets/cerberus-social.png">
+  <meta name="twitter:card" content="summary_large_image">
+</head>
+<body class="research-page">
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <!-- Site Header with Cart Trigger -->
+  <header class="site-header">
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="agent.html">Cerberus Agent</a>
+      <a href="shop.html" aria-current="page">Shop</a>
+      <a href="documentation/index.html">Docs</a>
+      <a href="documentation/checks.html">Checks</a>
+      <a href="agent.html#/report/oso95/scroll-world">Report</a>
+      <a href="https://github.com/murderszn/cerberus" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      <button type="button" class="cart-nav-btn" id="cart-nav-btn" aria-label="Open shopping cart">
+        Cart <span class="cart-nav-badge" id="cart-nav-badge">0</span>
+      </button>
+    </nav>
+  </header>
+
+  <main id="main-content" class="shop-main">
+    <!-- Hero banner — dogs artwork, homepage language -->
+    <section class="shop-hero" aria-labelledby="shop-title">
+      <div class="shop-hero-bg" aria-hidden="true"></div>
+      <div class="shop-hero-copy">
+        <span class="eyebrow">Cerberus Supply</span>
+        <h1 id="shop-title">Apparatus &amp; Uniform</h1>
+        <p>Made in Los Angeles — Ships worldwide</p>
+      </div>
+    </section>
+
+    <!-- Masthead -->
+    <section class="shop-masthead" aria-label="About the collection">
+      <div class="shop-masthead-copy">
+        <p class="shop-masthead-joke">Compute for agents isn't cheap, so we pay for it with hoodies. Thanks for your support.</p>
+        <p>Heavyweight staples in dense USA cotton and French terry. Garment-dyed in Los Angeles.</p>
+      </div>
+    </section>
+
+    <!-- Filters & Category Selector -->
+    <div class="shop-controls">
+      <div class="shop-filter-pills" role="tablist" aria-label="Filter products">
+        <button type="button" class="shop-pill active" data-filter="ALL" role="tab">All [4]</button>
+        <button type="button" class="shop-pill" data-filter="OUTERWEAR" role="tab">Outerwear [2]</button>
+        <button type="button" class="shop-pill" data-filter="TOPS" role="tab">Tops [1]</button>
+        <button type="button" class="shop-pill" data-filter="HEADWEAR" role="tab">Headwear [1]</button>
+      </div>
+    </div>
+
+    <!-- Product Grid -->
+    <section class="products-grid" id="products-grid" aria-label="Available products">
+      <!-- Products are dynamically rendered by assets/shop.js with interactive modals and cart integration -->
+    </section>
+
+    <!-- Shipping, Sizing, and Policy FAQ -->
+    <section class="shop-info-section" aria-labelledby="shop-faq-title">
+      <div class="shop-info-header">
+        <h2 id="shop-faq-title">Details</h2>
+      </div>
+      <div class="shop-accordions">
+        <article class="shop-acc-card">
+          <h3>Made to order</h3>
+          <p>Dyed and printed in Los Angeles. Tracking on dispatch.</p>
+        </article>
+
+        <article class="shop-acc-card">
+          <h3>Fit</h3>
+          <p>Boxy, relaxed cut. Take your normal size, size down for a slimmer fit.</p>
+        </article>
+
+        <article class="shop-acc-card">
+          <h3>Shipping & returns</h3>
+          <p>Ships to 80+ countries. Free over $140. 14-day exchanges, defects replaced.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- Product Detail Modal -->
+  <div class="modal-backdrop" id="product-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-window">
+      <button type="button" class="modal-close-btn" id="modal-close-btn" aria-label="Close modal">✕</button>
+      <div class="modal-grid">
+        <div class="modal-image-col">
+          <img id="modal-img" src="" alt="Product view" width="600" height="600">
+        </div>
+        <div class="modal-detail-col">
+          <div class="modal-header">
+            <span class="eyebrow" id="modal-type">OUTERWEAR</span>
+            <h2 id="modal-title">CERBERUS HOODIE</h2>
+            <div class="modal-price-tag">
+              <span id="modal-price">$82.00</span>
+              <span class="product-compare-price" id="modal-compare-price">$95.00</span>
+            </div>
+          </div>
+          <p class="modal-desc" id="modal-desc">Detailed product description...</p>
+          <ul class="modal-specs-list" id="modal-specs">
+            <!-- Populated dynamically -->
+          </ul>
+          
+          <div class="modal-sizing-group">
+            <div class="size-selector-label">
+              <span>Select Size</span>
+              <button type="button" class="size-guide-toggle" onclick="window.cerberusShop.toggleSizeGuide()">Measurement Guide ↗</button>
+            </div>
+            <div class="size-options" id="modal-sizes">
+              <!-- Populated dynamically -->
+            </div>
+            <div class="size-guide-box" id="size-guide-box">
+              <!-- Sizing table populated dynamically -->
+            </div>
+          </div>
+
+          <div class="purchase-row">
+            <div class="qty-stepper">
+              <button type="button" class="qty-btn" onclick="window.cerberusShop.adjustModalQty(-1)" aria-label="Decrease quantity">-</button>
+              <span class="qty-val" id="modal-qty-val">1</span>
+              <button type="button" class="qty-btn" onclick="window.cerberusShop.adjustModalQty(1)" aria-label="Increase quantity">+</button>
+            </div>
+            <button type="button" class="btn-add-cart-main" id="modal-add-btn" onclick="window.cerberusShop.modalAddToCart()">
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide-out Cart Drawer -->
+  <div class="cart-drawer-overlay" id="cart-drawer-overlay" aria-hidden="true">
+    <div class="cart-drawer" id="cart-drawer" role="dialog" aria-modal="true" aria-label="Your Cart">
+      <div class="cart-header">
+        <h3>SUPPLY CART</h3>
+        <button type="button" class="cart-close-btn" id="cart-close-btn" aria-label="Close cart">✕</button>
+      </div>
+      <div class="cart-free-shipping-bar">
+        <div id="shipping-progress-msg">Add $140.00 for FREE Worldwide Shipping</div>
+        <div class="shipping-progress-track">
+          <div class="shipping-progress-fill" id="shipping-progress-fill"></div>
+        </div>
+      </div>
+      <div class="cart-items-list" id="cart-items-list">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="cart-footer">
+        <div class="cart-subtotal-row">
+          <span>Subtotal</span>
+          <span id="cart-subtotal">$0.00</span>
+        </div>
+        <button type="button" class="cart-checkout-btn" id="cart-checkout-btn">Proceed to Checkout ↗</button>
+        <div class="cart-note">Taxes and shipping calculated at checkout · Ships worldwide</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simulated Checkout Modal -->
+  <div class="modal-backdrop" id="checkout-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-window checkout-modal-window">
+      <button type="button" class="modal-close-btn" id="checkout-close-btn" aria-label="Close checkout">✕</button>
+      <div class="checkout-grid">
+        <div class="modal-header">
+          <span class="eyebrow">CERBERUS DISPATCH // CHECKOUT</span>
+          <h2>ORDER SPECIFICATION</h2>
+        </div>
+        <div class="checkout-summary-box" id="checkout-summary-box">
+          <!-- Populated dynamically with current items and prices -->
+        </div>
+        <form id="checkout-form" class="checkout-form">
+          <div id="checkout-fields">
+            <div class="checkout-form-group">
+              <label for="checkout-email">Contact Email</label>
+              <input type="email" id="checkout-email" required placeholder="researcher@domain.com">
+            </div>
+            <div class="checkout-row-2">
+              <div class="checkout-form-group">
+                <label for="checkout-fname">First Name</label>
+                <input type="text" id="checkout-fname" required placeholder="Jane">
+              </div>
+              <div class="checkout-form-group">
+                <label for="checkout-lname">Last Name</label>
+                <input type="text" id="checkout-lname" required placeholder="Doe">
+              </div>
+            </div>
+            <div class="checkout-form-group">
+              <label for="checkout-addr">Shipping Address</label>
+              <input type="text" id="checkout-addr" required placeholder="123 Guardian Way">
+            </div>
+            <div class="checkout-row-2">
+              <div class="checkout-form-group">
+                <label for="checkout-city">City</label>
+                <input type="text" id="checkout-city" required placeholder="San Francisco">
+              </div>
+              <div class="checkout-form-group">
+                <label for="checkout-postal">Postal Code</label>
+                <input type="text" id="checkout-postal" required placeholder="94107">
+              </div>
+            </div>
+            <div class="checkout-form-group" style="margin-top:12px;">
+              <label for="checkout-country">Country / Region</label>
+              <select id="checkout-country">
+                <option value="US">United States (USD $)</option>
+                <option value="CA">Canada (CAD)</option>
+                <option value="GB">United Kingdom (GBP)</option>
+                <option value="EU">European Union (EUR)</option>
+                <option value="JP">Japan (JPY)</option>
+                <option value="AU">Australia (AUD)</option>
+                <option value="OTHER">Other International (Worldwide)</option>
+              </select>
+            </div>
+            <button type="submit" class="cart-checkout-btn" style="margin-top:20px; width:100%;">
+              Place Order // Authorize Dispatch ↗
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Site Footer -->
+  <footer class="site-footer">
+    <div>Cerberus Labs · Armored Division Uniforms & Open Security Research</div>
+    <div style="display:flex; gap:16px;">
+      <a href="index.html">Home</a>
+      <a href="agent.html">Agent</a>
+      <a href="shop.html">Shop</a>
+      <a href="documentation/index.html">Documentation</a>
+      <a href="https://github.com/murderszn/cerberus" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </footer>
+</body>
+</html>
