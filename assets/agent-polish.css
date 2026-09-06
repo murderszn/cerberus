@@ -37,8 +37,9 @@
 .agent-page .pat-field summary { display: list-item; font: 400 10px/1.7 var(--font-mono); color: var(--black); cursor: pointer; text-transform: none; margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none; }
 .optional-label { color: #757c6d; margin-left: 10px; font-size: 9px; }
 .agent-page .pat-row { border: 2px solid var(--black); box-shadow: 3px 3px 0 var(--black); margin-top: 12px; flex-wrap: wrap; }
-.agent-page .pat-row input[type="text"], .agent-page .pat-row input[type="password"] { font-size: 11px; padding: 12px; min-width: 130px; }
-.agent-page .pat-row button { padding: 10px 14px; font-size: 10px; border: 0; border-left: 2px solid var(--black); box-shadow: none; transform: none; }
+.agent-page .pat-row button { padding: 10px 16px; font-size: 10px; font-family: var(--font-mono); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border: 0; border-left: 2px solid var(--black); box-shadow: none; transform: none; background: var(--black) !important; color: var(--white) !important; cursor: pointer; }
+.agent-page .pat-row button:hover { background: #36363e !important; color: var(--white) !important; }
+.agent-page .pat-row button:active { background: #1a1a20 !important; }
 .agent-page .pat-note { font-size: 9px; line-height: 1.7; color: var(--gray-400); }
 .agent-page #view-splash .chips { margin: 22px 0 0; gap: 13px; justify-content: flex-start; align-items: center; }
 .agent-page .chip { font-size: 10px; font-weight: 700; line-height: 1.5; padding: 7px 10px; text-transform: uppercase; border: 2px solid var(--black); box-shadow: 2px 2px 0 var(--black); background: rgba(255,255,255,.96); color: var(--black); }
