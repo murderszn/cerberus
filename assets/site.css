@@ -103,12 +103,3 @@ a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visibl
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
 
-/* Sound preference stays out of the navigation and carries between pages. */
-.site-footer .sound-toggle, .agent-page .site-footer .sound-toggle {
-  display: inline-flex; align-items: center; gap: 6px; padding: 5px 0;
-  border: 0; box-shadow: none; background: transparent; color: var(--muted);
-  font: 400 10px/1.6 var(--font-mono); cursor: pointer; white-space: nowrap;
-}
-.site-footer .sound-toggle::before { content: ''; width: 5px; height: 5px; background: currentColor; }
-.site-footer .sound-toggle[aria-pressed="false"]::before { background: transparent; outline: 1px solid currentColor; }
-.site-footer .sound-toggle:hover, .agent-page .site-footer .sound-toggle:hover { color: var(--ink); transform: none; box-shadow: none; text-decoration: underline; text-underline-offset: 4px; }
