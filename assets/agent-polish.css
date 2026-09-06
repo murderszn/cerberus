@@ -11,8 +11,8 @@
 .agent-page .site-header { background: rgba(255,255,255,.88); }
 .agent-page .site-footer { background: rgba(255,255,255,.92); padding-left: 17px; padding-right: 17px; }
 .agent-page #view-splash { max-width: 672px; padding: 11px 23px 40px; overflow: visible; }
-.agent-page .hero-stage { padding: 0 0 30px; }
-.agent-page .hero-logo { width: 158px; max-width: 38vw; margin-bottom: 20px; }
+.agent-page .hero-stage { padding: 0 0 28px; }
+.agent-page .hero-logo { width: 158px; max-width: 38vw; margin-bottom: 0; }
 .agent-page .hero-stage .eyebrow { margin: 0 0 9.5px; font-size: 9.5px; }
 .agent-title { font: 400 clamp(18px, 3.1vw, 25px)/1.6 var(--font-pixel); letter-spacing: -.04em; text-transform: uppercase; margin: 0 0 20px; }
 .agent-page .hero-stage .brand-tagline { margin: 0; padding: 0; font-size: 8.5px; }
@@ -149,8 +149,8 @@
   .agent-page { background-size: auto 100vh; background-position: 65% bottom; }
   .agent-page main { padding: 28px 20px 55px; }
   .agent-page #view-splash { padding: 6px 11px 28px; background: rgba(255,255,255,.82); }
-  .agent-page .hero-logo { width: 138px; margin-bottom: 18px; }
-  .agent-page .hero-stage { padding-bottom: 26px; }
+  .agent-page .hero-logo { width: 138px; margin-bottom: 0; }
+  .agent-page .hero-stage { padding-bottom: 22px; }
   .agent-page #target-form { flex-wrap: nowrap; }
   .agent-page #target-input { padding: 12px 9px; font-size: 11px; }
   .agent-page #target-form #run-btn { width: auto; padding: 12px 14px; font-size: 9px !important; }
