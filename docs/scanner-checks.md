@@ -665,8 +665,8 @@ Every check resolves to one of four states at scan time: `pass`, `fail`, `not_ap
 #### A-03: Debug output left in source
 * **Severity**: `LOW`
 * **CWE**: CWE-489
-* **Summary**: `console.log`, bare `print`, or `debugger` statements remain in non-test source.
-* **Risk**: Noisy logs bury real signals, and `debugger` halts execution in any browser with devtools open.
+* **Summary**: `debugger` statements or `console.debug`/`console.trace` calls remain in non-test source.
+* **Risk**: `debugger` halts execution in any browser with devtools open, and verbose debug calls bury real signals.
 * **Remediation**: Route through a level-aware logger and enforce `no-console` / `no-debugger` in lint.
 
 #### A-04: No continuous integration pipeline

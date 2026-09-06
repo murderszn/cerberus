@@ -32,9 +32,21 @@ For a feeder-enabled CI deployment, build or select a reviewed runner image cont
 | `scorecard` | OpenSSF repository posture | Apache-2.0 |
 | `actionlint` | Workflow syntax and semantic validation | MIT |
 
+Applicability is determined before executable availability. Gitleaks scans
+working-tree files only in Phase 1; OSV-Scanner requires a supported manifest,
+lockfile, or SBOM; Zizmor and actionlint require GitHub Actions workflows; and
+Scorecard requires Git metadata or GitHub repository context. Zizmor is invoked
+offline. Cerberus applies `.cerberusignore` and excludes the nested `.cerberus/`
+scanner checkout from feeder input as well as native checks.
+
 When a specifically selected feeder is mandatory, pass both `--feeders <list>` and `--strict-feeders`. Strict mode makes unavailable, timed-out, malformed, and failed requested executions policy blockers. Without strict mode those conditions remain visible warnings. Policy status is included in reports but does not introduce a new implicit process failure; `--fail-under` remains the native-score gate.
 
-The artifact upload includes the normalized main report, standalone HTML, SARIF, and the feeder report when created. Raw output is bounded and retained only when practical; normalized reports redact possible credential values. Treat all scanner output as sensitive security data and set artifact retention and access accordingly.
+The artifact upload includes the normalized main report, standalone HTML, SARIF,
+and the feeder report when created. SARIF keeps native Cerberus results first and
+adds runs per producer. Raw output is bounded and retained only when practical;
+secret-bearing Gitleaks fields and source snippets that may contain credentials
+are omitted. Treat all scanner output as sensitive security data and set artifact
+retention and access accordingly.
 
 ## Security notes
 

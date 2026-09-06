@@ -8,17 +8,15 @@
 <link rel="stylesheet" href="assets/docs.css">
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
 
 <header class="docs-header">
   <nav class="left">
     <a class="brand-mini" href="../index.html">
-      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
-      <span>CERBERUS DOCS</span>
+      <img src="../logo.png" alt="Cerberus Labs" class="brand-logo">
+      <span>Cerberus Labs</span>
     </a>
     <a class="nav-link" href="../index.html">Platform</a>
-    <a class="nav-link" href="agents.html">Agents</a>
-    <a class="nav-link" href="checks.html">Checks</a>
   </nav>
   <nav class="right">
     <form class="search-form" onsubmit="return false">
@@ -51,6 +49,17 @@
     <a class="sidebar-link" href="#output">Output Schema</a>
     <a class="sidebar-link" href="#limitations">Limitations</a>
 
+    <div class="sidebar-title">Reference</div>
+    <a class="sidebar-link" href="agents.html#sentinel">SENTINEL</a>
+    <a class="sidebar-link" href="agents.html#gatekeeper">GATEKEEPER</a>
+    <a class="sidebar-link" href="agents.html#vault">VAULT</a>
+    <a class="sidebar-link" href="agents.html#conduit">CONDUIT</a>
+    <a class="sidebar-link" href="agents.html#watchtower">WATCHTOWER</a>
+    <a class="sidebar-link" href="agents.html#librarian">LIBRARIAN</a>
+    <a class="sidebar-link" href="agents.html#shield">SHIELD</a>
+    <a class="sidebar-link" href="agents.html#auditor">AUDITOR</a>
+    <a class="sidebar-link" href="agents.html#architect">ARCHITECT</a>
+
     <div class="sidebar-title">Support</div>
     <a class="sidebar-link" href="faq.html">FAQ</a>
     <a class="sidebar-link" href="security.html">Security & Privacy</a>
@@ -58,7 +67,7 @@
 
   <main class="docs-content">
     <h1>CLI Scanner Reference</h1>
-    <p class="lead"><code>examine.py</code> is a single Python file that runs the full 58-check catalog in <code>checks.json</code> — the same catalog the web app uses. It is useful for local runs, private repositories, non-GitHub targets, and CI gating.</p>
+    <p class="lead"><code>examine.py</code> runs the 59 native checks in <code>checks.json</code>, the native ALIGNMENT analyzer, and optional allowlisted security feeders. Native scoring remains identical to the web app; orchestration evidence is reported separately.</p>
 
     <h2 id="usage">Usage</h2>
     <pre><code>python3 examine.py &lt;path-or-github-url&gt; [options]</code></pre>
@@ -69,7 +78,15 @@
 python3 examine.py ./my-saas-app
 
 # GitHub URL
-python3 examine.py https://github.com/owner/repo</code></pre>
+python3 examine.py https://github.com/owner/repo
+
+# Native checks only, fully offline
+python3 examine.py . --native-only
+
+# ALIGNMENT plus every applicable Phase 1 feeder
+python3 examine.py . --feeders auto --json report.json --html report.html \
+  --sarif report.sarif --feeder-json feeders.json</code></pre>
+    <p>The default runs native checks plus ALIGNMENT with feeders disabled. Cerberus never downloads or installs external tools.</p>
 
     <h2 id="flags">Flags</h2>
     <table>
@@ -77,43 +94,29 @@ python3 examine.py https://github.com/owner/repo</code></pre>
       <tr><td><code>--json &lt;file&gt;</code></td><td>Write the full report object (schema <code>cerberus.report/2</code>) as JSON.</td></tr>
       <tr><td><code>--html &lt;file&gt;</code></td><td>Write a standalone HTML report.</td></tr>
       <tr><td><code>--sarif &lt;file&gt;</code></td><td>Write a SARIF file for GitHub code scanning upload.</td></tr>
-      <tr><td><code>--fail-under &lt;score&gt;</code></td><td>Exit non-zero if the final score is below this threshold. Use this to gate a CI pipeline.</td></tr>
+      <tr><td><code>--feeders auto|&lt;list&gt;</code></td><td>Run all Phase 1 adapters or a comma-separated selection of <code>gitleaks</code>, <code>osv-scanner</code>, <code>zizmor</code>, <code>scorecard</code>, and <code>actionlint</code>. Default: <code>none</code>.</td></tr>
+      <tr><td><code>--native-only</code></td><td>Disable ALIGNMENT and every feeder for the smallest offline trust boundary.</td></tr>
+      <tr><td><code>--feeder-timeout &lt;seconds&gt;</code></td><td>Set the positive per-feeder timeout. Default: 60 seconds.</td></tr>
+      <tr><td><code>--feeder-json &lt;file&gt;</code></td><td>Write the normalized <code>cerberus.feeders/1</code> bundle.</td></tr>
+      <tr><td><code>--strict-feeders</code></td><td>Exit non-zero when a requested feeder is unavailable or fails.</td></tr>
+      <tr><td><code>--fail-under &lt;score&gt;</code></td><td>Exit non-zero if the native Cerberus score is below this threshold.</td></tr>
       <tr><td><code>--only &lt;agent,agent,...&gt;</code></td><td>Restrict the run to specific agent IDs (e.g. <code>sentinel,vault</code>).</td></tr>
       <tr><td><code>--severity &lt;level&gt;</code></td><td>Only report findings at or above the given severity (<code>critical</code>, <code>high</code>, <code>medium</code>, <code>low</code>).</td></tr>
+      <tr><td><code>--quiet</code> / <code>--no-color</code></td><td>Reduce terminal output or disable ANSI colors.</td></tr>
+      <tr><td><code>--serve</code> / <code>--port &lt;n&gt;</code></td><td>Start a dev-only static file server on 127.0.0.1 instead of scanning (default port <code>8080</code>).</td></tr>
     </table>
 
     <h2 id="ci">CI / GitHub Actions</h2>
-    <p>Because <code>examine.py</code> has no external dependencies, it drops into any CI runner with Python installed. <code>--fail-under</code> makes the step fail the build; <code>--sarif</code> lets GitHub's code scanning UI show findings inline on the PR.</p>
-    <pre><code># .github/workflows/cerberus.yml
-name: cerberus
-on: [pull_request]
-jobs:
-  scan:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-      - name: Run Cerberus
-        run: python3 examine.py . --sarif cerberus.sarif --json cerberus.json --fail-under 80
-      - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: cerberus.sarif</code></pre>
-    <p>The job fails at the <code>--fail-under 80</code> step whenever the score drops below 80, independent of whether the SARIF upload succeeds — the <code>if: always()</code> on the upload step just ensures findings still show up on a failing run.</p>
+    <p>The repository ships <code>.github/workflow-templates/cerberus-security-review.yml</code>. The production example pins Actions and Cerberus to reviewed commit SHAs, defaults to native-only, preserves <code>--fail-under</code>, supports manual auto/strict feeder inputs, and uploads JSON, HTML, SARIF, and feeder artifacts. It never installs external binaries.</p>
+    <div class="callout warning"><div class="callout-title">Pin the toolchain</div><p>Use <code>ref: main</code> only for experimentation. For feeder-enabled CI, build a reviewed runner image containing exact scanner versions and verify upstream checksums or signatures.</p></div>
 
     <h2 id="exclusions">Exclusions</h2>
-    <p><code>examine.py</code> honours the same <code>global_exclude</code> and <code>test_paths</code> globs defined in <code>checks.json</code>, so the CLI and the web app never scan the same noise:</p>
+    <p>The native engine honours the same <code>global_exclude</code> and <code>test_paths</code> globs defined in <code>checks.json</code>. Feeder discovery additionally honors <code>.cerberusignore</code>, prunes ignored directories and symlinks, and protects the nested scanner checkout:</p>
     <pre><code>node_modules/, vendor/, .git/, dist/, build/, out/, target/, coverage/,
 .next/, .nuxt/, *.min.js, *.min.css, *.bundle.js, *.map,
 package-lock.json, yarn.lock, pnpm-lock.yaml, poetry.lock, Cargo.lock,
 composer.lock, Gemfile.lock, go.sum, *.snap, __snapshots__/, migrations/</code></pre>
-    <p>Paths under <code>test/</code>, <code>tests/</code>, <code>spec/</code>, <code>__tests__/</code>, <code>fixtures/</code>, <code>examples/</code>, <code>docs/</code>, and similar are excluded from content-matching checks by default (per-check, via <code>exclude_tests</code>) so fixtures and sample code don't inflate your score.</p>
+    <p>Paths under <code>test/</code>, <code>tests/</code>, <code>spec/</code>, <code>__tests__/</code>, <code>fixtures/</code>, <code>examples/</code>, <code>docs/</code>, and similar are excluded from native content-matching checks by default. Specialized feeders may intentionally consume files that native content checks exclude—for example, OSV-Scanner consumes lockfiles—but only from their filtered applicable input set.</p>
 
     <h2 id="output">Output schema</h2>
     <p><code>examine.py</code> emits the same <code>Report</code> shape as the web app — see <code>docs/IMPROVEMENTS.md</code> §3.3 for the authoritative schema. In short:</p>
@@ -123,28 +126,33 @@ composer.lock, Gemfile.lock, go.sum, *.snap, __snapshots__/, migrations/</code><
   "score": 87.5,
   "grade": "B",
   "counts": { "critical": 0, "high": 2, "medium": 5, "low": 3,
-              "pass": 46, "fail": 9, "not_applicable": 2, "skipped": 1, "total": 58 },
+              "pass": 47, "fail": 9, "not_applicable": 2, "skipped": 1, "total": 59 },
   "coverage": { "filesInTree": 842, "filesEligible": 310, "filesScanned": 310,
                 "filesSkipped": 0, "bytesScanned": 4210233, "truncated": false },
   "agents": [
     { "id": "sentinel", "name": "SENTINEL", "domain": "Code Analysis", "weight": 14, "score": 12.0,
       "checks": [ { "id": "S-01", "status": "fail", "findings": [ { "path": "...", "line": 42, "snippet": "...", "url": "https://github.com/o/r/blob/sha/path#L42" } ] } ] }
-  ]
+  ],
+  "native": { "score": 87.5, "grade": "B", "findings": [] },
+  "alignment": { "schema": "cerberus.alignment/1", "score": 94, "grade": "A", "findings": [] },
+  "feeders": { "schema": "cerberus.feeders/1",
+    "summary": { "completed": 3, "not_applicable": 1, "unavailable": 1, "failed": 0 },
+    "tools": [], "findings": [] },
+  "policy": { "passed": true, "blockers": [], "warnings": [] }
 }</code></pre>
-    <p>Every check in every agent is always present in the output, including passes — the score is not credible without them. See <a href="reports.html">Reading Reports</a> for how to interpret each field.</p>
+    <p>Legacy top-level fields retain <code>cerberus.report/2</code> semantics. Every native check remains present, including passes. Additive sections distinguish the native score, ALIGNMENT score, feeder evidence, and combined policy. SARIF keeps Cerberus native results first and adds producer-specific runs with provenance and fingerprints.</p>
 
     <h2 id="limitations">Limitations</h2>
     <div class="callout warning">
       <div class="callout-title">What the scanner does not do</div>
-      <p><code>examine.py</code> is a static pattern-matching engine over file content and file presence/absence. It does not execute code, does not perform live CVE database lookups, does not inspect cloud IAM policies or running infrastructure, and does not do dynamic/runtime analysis. Every check's exact detector is documented on the <a href="checks.html">Check Catalog</a> page.</p>
+      <p>Native checks and ALIGNMENT are static and execute no repository content. Optional feeders expand coverage but do not provide complete security assurance: Gitleaks currently scans files rather than Git history, Scorecard may need GitHub/network context, upstream output formats can change, and ALIGNMENT heuristics require human review. Every native detector is documented on the <a href="checks.html">Check Catalog</a> page.</p>
     </div>
   </main>
 </div>
 
 <footer class="docs-footer">
   <div class="inner">
-    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
-    <span><a href="index.html">Docs home</a> · <a href="quickstart.html">Quickstart</a> · <a href="checks.html">Checks</a></span>
+    <span>Cerberus Labs 2026</span>
   </div>
 </footer>
 

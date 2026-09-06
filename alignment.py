@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 SCHEMA = "cerberus.alignment/1"
-MAX_FILE_BYTES = 512 * 1024
+MAX_FILE_BYTES = 2 * 1024 * 1024  # 2 MB
 MAX_TOTAL_BYTES = 16 * 1024 * 1024
 MAX_FILES = 5000
 

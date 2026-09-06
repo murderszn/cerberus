@@ -8,17 +8,15 @@
 <link rel="stylesheet" href="assets/docs.css">
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
 
 <header class="docs-header">
   <nav class="left">
     <a class="brand-mini" href="../index.html">
-      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
-      <span>CERBERUS DOCS</span>
+      <img src="../logo.png" alt="Cerberus Labs" class="brand-logo">
+      <span>Cerberus Labs</span>
     </a>
     <a class="nav-link" href="../index.html">Platform</a>
-    <a class="nav-link" href="agents.html">Agents</a>
-    <a class="nav-link" href="checks.html">Checks</a>
   </nav>
   <nav class="right">
     <form class="search-form" onsubmit="return false">
@@ -61,10 +59,10 @@
 
   <main class="docs-content">
     <h1>Agent Swarm Architecture</h1>
-    <p class="lead">Cerberus is not a single monolithic scanner. Its 58-check catalog is organized into nine named agent domains, each responsible for one slice of the security surface and one share of the 100-point score. Dividing the catalog this way mirrors a real human red team: a backend auditor, an auth specialist, an infrastructure engineer, and so on — even though every agent's checks run over the same fetched file set in a single pass.</p>
+    <p class="lead">Cerberus is not a single monolithic scanner. Its 59-check native catalog is organized into nine weighted agent domains. The CLI adds a separately scored ALIGNMENT agent plus external feeder evidence without changing those native weights.</p>
 
     <h2>How an examination runs</h2>
-    <p>The web app and the CLI (<code>examine.py</code>) share one pipeline, driven entirely by <code>checks.json</code>:</p>
+    <p>The web app and CLI share the native pipeline driven by <code>checks.json</code>. After native evaluation, the CLI can inspect agent-policy surfaces and orchestrate selected external tools:</p>
 
     <div class="flow">
       <div class="flow-step">
@@ -75,7 +73,7 @@
       <div class="flow-step">
         <div class="num">2</div>
         <h4>Fetch</h4>
-        <p>Download eligible files (≤400 files, ≤512 KB each) via the GitHub raw CDN, respecting <code>global_exclude</code> and <code>test_paths</code>.</p>
+        <p>Download eligible files (≤2,000 files, ≤2 MB each) via the GitHub raw CDN, respecting <code>global_exclude</code> and <code>test_paths</code>.</p>
       </div>
       <div class="flow-step">
         <div class="num">3</div>
@@ -84,8 +82,8 @@
       </div>
       <div class="flow-step">
         <div class="num">4</div>
-        <h4>Score</h4>
-        <p>Each failed check deducts from its agent's weight (floored at 0); agent scores sum to the final 0–100 score.</p>
+        <h4>Score & orchestrate</h4>
+        <p>Native agent scores sum to 100. CLI ALIGNMENT and feeder results remain separate and feed a combined policy result.</p>
       </div>
     </div>
 
@@ -93,13 +91,18 @@
 
     <div class="callout warning">
       <div class="callout-title">What Cerberus does not do</div>
-      <p>There is no sandboxed per-agent runtime, no WASM isolation, and no dynamic/runtime analysis. Every check in <code>checks.json</code> is a static pattern match over file content or a check for a file's presence/absence — see the <a href="checks.html">Check Catalog</a> for the exact detector behind every check.</p>
+      <p>Native catalog agents and ALIGNMENT execute no repository code. Optional feeders are separate, allowlisted executables run with argv-only subprocesses, bounded output, timeouts, filtered inputs, and no automatic installation. They expand coverage but also expand the trust boundary.</p>
     </div>
 
+    <h2 id="alignment">ALIGNMENT — Repository & Agent Policy</h2>
+    <p><span class="badge agent">Separate score</span> <span class="badge">17 rule categories</span></p>
+    <p>ALIGNMENT inspects agent instructions, contribution/security guidance, package scripts, Makefiles and Justfiles, setup scripts, and GitHub Actions. It detects conflicting or destructive directions, disabled validation, secret exposure, remote-script execution, unsafe trust of repository/web content, hidden directives, prompt-injection-like overrides, missing guidance, project-command mismatches, broad workflow permissions, unpinned actions, and untrusted workflow interpolation.</p>
+    <p>ALIGNMENT findings include severity, location, explanation, remediation, confidence, category, and a stable fingerprint. Its score and grade never alter the native 100 points.</p>
+
     <h2 id="sentinel">SENTINEL — Code Analysis</h2>
-    <p><span class="badge agent">Code Analysis</span> <span class="badge">10 checks · weight 14</span></p>
+    <p><span class="badge agent">Code Analysis</span> <span class="badge">11 checks · weight 14</span></p>
     <p>SENTINEL is the first line of defense against classic application vulnerabilities. It performs static analysis over source files, looking for unsafe execution paths, weak cryptography, and improper handling of untrusted input.</p>
-    <h3>Checks S-01 → S-10</h3>
+    <h3>Checks S-01 → S-10, plus S-06P</h3>
     <ul>
       <li>Hardcoded credential assignment, AWS access key IDs, and private key material committed to source.</li>
       <li>SQL built by string concatenation and shell execution with interpolated input.</li>
@@ -192,7 +195,7 @@
     <h3>Checks A-01 → A-04</h3>
     <ul>
       <li>Credentials passed to the logger, and stack traces returned to the client.</li>
-      <li>Debug output (<code>console.log</code>, <code>debugger</code>) left in non-test source.</li>
+      <li>Debug statements (<code>debugger</code>) or verbose debug calls (<code>console.debug</code>/<code>console.trace</code>) left in non-test source.</li>
       <li>No continuous integration pipeline found in the repository.</li>
     </ul>
     <p><strong>Example finding:</strong> a logger call including a <code>password</code> field triggers A-01 with a <span class="badge high">HIGH</span> severity.</p>
@@ -228,8 +231,7 @@
 
 <footer class="docs-footer">
   <div class="inner">
-    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
-    <span><a href="index.html">Docs home</a> · <a href="checks.html">Checks</a> · <a href="scoring.html">Scoring</a></span>
+    <span>Cerberus Labs 2026</span>
   </div>
 </footer>
 

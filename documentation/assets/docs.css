@@ -87,19 +87,10 @@ button, input, select, textarea {
     font-family: var(--font-display);
 }
 
-.brand-mark {
-    width: 30px;
-    height: 30px;
-    background: var(--black);
-    display: grid;
-    place-items: center;
-    border-radius: 0;
-}
-
-.brand-mark svg {
-    width: 19px;
-    height: 19px;
-    color: var(--white);
+.brand-logo {
+    height: 28px;
+    width: auto;
+    display: block;
 }
 
 .docs-header .search-form {
@@ -805,9 +796,9 @@ button, input, select, textarea {
 
 /* Footer */
 .docs-footer {
-    background: var(--white);
-    border-top: 1px solid var(--gray-200);
-    color: var(--gray-300);
+    background: transparent;
+    border-top: 1px solid rgba(10, 10, 12, 0.12);
+    color: rgba(255, 255, 255, 0.92);
     padding: 28px 42px 18px;
     margin-top: auto;
 }

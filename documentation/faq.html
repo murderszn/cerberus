@@ -8,17 +8,15 @@
 <link rel="stylesheet" href="assets/docs.css">
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
 
 <header class="docs-header">
   <nav class="left">
     <a class="brand-mini" href="../index.html">
-      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
-      <span>CERBERUS DOCS</span>
+      <img src="../logo.png" alt="Cerberus Labs" class="brand-logo">
+      <span>Cerberus Labs</span>
     </a>
     <a class="nav-link" href="../index.html">Platform</a>
-    <a class="nav-link" href="agents.html">Agents</a>
-    <a class="nav-link" href="checks.html">Checks</a>
   </nav>
   <nav class="right">
     <form class="search-form" onsubmit="return false">
@@ -43,6 +41,17 @@
     <a class="sidebar-link" href="checks.html">Check Catalog</a>
     <a class="sidebar-link" href="scoring.html">Severity & Scoring</a>
 
+    <div class="sidebar-title">Reference</div>
+    <a class="sidebar-link" href="agents.html#sentinel">SENTINEL</a>
+    <a class="sidebar-link" href="agents.html#gatekeeper">GATEKEEPER</a>
+    <a class="sidebar-link" href="agents.html#vault">VAULT</a>
+    <a class="sidebar-link" href="agents.html#conduit">CONDUIT</a>
+    <a class="sidebar-link" href="agents.html#watchtower">WATCHTOWER</a>
+    <a class="sidebar-link" href="agents.html#librarian">LIBRARIAN</a>
+    <a class="sidebar-link" href="agents.html#shield">SHIELD</a>
+    <a class="sidebar-link" href="agents.html#auditor">AUDITOR</a>
+    <a class="sidebar-link" href="agents.html#architect">ARCHITECT</a>
+
     <div class="sidebar-title">Support</div>
     <a class="sidebar-link active" href="faq.html">FAQ</a>
     <a class="sidebar-link" href="security.html">Security & Privacy</a>
@@ -54,7 +63,7 @@
     <h2>General</h2>
 
     <h3>What is Cerberus?</h3>
-    <p>Cerberus is a security scanner for GitHub repositories (and local directories via the CLI). It evaluates a 58-check catalog, organized into nine named agent domains, and returns a scored, actionable report with file-and-line findings.</p>
+    <p>Cerberus is a security-orchestration platform for GitHub repositories and local directories. It combines a 59-check native catalog, CLI ALIGNMENT analysis, and optional normalized findings from five open-source security tools.</p>
 
     <h3>Who is Cerberus for?</h3>
     <p>Solo founders, indie hackers, seed-stage startups, development agencies, and any team that ships AI-assisted code and wants a fast first pass before a real security review.</p>
@@ -63,7 +72,7 @@
     <p>No. Cerberus is a static pattern-matching scanner. It catches common, well-known mistakes in seconds; it does not replace a human-driven review of business logic, authorization edge cases, or anything requiring runtime analysis.</p>
 
     <h3>How long does a scan take?</h3>
-    <p>Typically seconds to a couple of minutes, bounded by the scan budget (≤400 files fetched, ≤512 KB per file, 90-second wall clock for the web app).</p>
+    <p>Typically seconds to a couple of minutes, bounded by the scan budget (≤2,000 files fetched, ≤2 MB per file, 120-second wall clock for the web app).</p>
 
     <h2>Agents & Checks</h2>
 
@@ -71,7 +80,7 @@
     <p>SENTINEL (code analysis), GATEKEEPER (access control), VAULT (data security), CONDUIT (network & API), WATCHTOWER (application config), LIBRARIAN (dependencies), SHIELD (client security), AUDITOR (logging & monitoring), and ARCHITECT (infrastructure).</p>
 
     <h3>How many checks does Cerberus run?</h3>
-    <p>58, defined in <code>checks.json</code> — the single source of truth for the web app, the CLI, and this documentation. Each check has a unique ID, severity, CWE, summary, risk, and remediation. Browse the full list on the <a href="checks.html">Check Catalog</a> page.</p>
+    <p>59 native checks, defined in <code>checks.json</code> — the source of truth for web and CLI native scoring. ALIGNMENT and feeder rules are additive and are not counted in those 59. Browse the native list on the <a href="checks.html">Check Catalog</a> page.</p>
 
     <h3>How do you avoid false positives?</h3>
     <p>Each check honors placeholder filtering (so <code>your_api_key_here</code> or <code>process.env.X</code> don't trigger a secrets check), test-path exclusion, and a hit cap per check so one noisy file doesn't dominate the score. The ship gate for the catalog is a ≤10% false-positive rate on manual review; noisy checks get tightened, not shipped.</p>
@@ -91,7 +100,10 @@
     <p>The CLI writes wherever you point <code>--json</code>, <code>--html</code>, or <code>--sarif</code>. The web app caches reports in the browser's <code>localStorage</code> and lets you download JSON/HTML or copy a Markdown summary.</p>
 
     <h3>Can I run Cerberus in CI/CD?</h3>
-    <p>Yes. <code>examine.py</code> has no external dependencies and supports <code>--fail-under &lt;score&gt;</code> to fail a build below a threshold, plus <code>--sarif</code> for GitHub code scanning. See the <a href="scanner.html">CLI Scanner</a> page for a ready-to-use GitHub Actions example.</p>
+    <p>Yes. Native operation needs only Python and supports <code>--fail-under &lt;score&gt;</code> for the native score plus <code>--sarif</code> for GitHub code scanning. The pinned workflow template defaults to native-only and can optionally use preinstalled feeders.</p>
+
+    <h3>What happens when a feeder is not installed?</h3>
+    <p>The result is <code>unavailable</code>, not a crash. It is a warning by default and becomes a blocker/non-zero exit only when <code>--strict-feeders</code> is requested. Repositories without applicable input receive <code>not_applicable</code>.</p>
 
     <h3>What is a good score?</h3>
     <p>90–100 is an A. 80–89 is a B. A clean, well-run repository should be able to score in the 90s — if a healthy reference repo can't break 80, that's a signal the catalog needs tightening, not that the repo is unusually risky.</p>
@@ -119,8 +131,7 @@
 
 <footer class="docs-footer">
   <div class="inner">
-    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
-    <span><a href="index.html">Docs home</a> · <a href="security.html">Security</a> · <a href="agents.html">Agents</a></span>
+    <span>Cerberus Labs 2026</span>
   </div>
 </footer>
 

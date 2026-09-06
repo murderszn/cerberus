@@ -29,7 +29,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CHECKS_JSON_PATH = os.path.join(SCRIPT_DIR, "checks.json")
 
 ENGINE_VERSION = "2.0.0"
-MAX_FILE_BYTES = 512 * 1024  # 512 KB
+MAX_FILE_BYTES = 2 * 1024 * 1024  # 2 MB
 SCHEMA = "cerberus.report/2"
 
 SEVERITY_ORDER = {"critical": 4, "high": 3, "medium": 2, "low": 1}
@@ -780,7 +780,7 @@ def build_report(catalog, target_info, root_dir, repo_meta, only_agents, notes, 
 
     if evaluator.skip_counts["too_large"]:
         notes.append(
-            f"{evaluator.skip_counts['too_large']} file(s) exceeded the 512 KB limit and were not scanned."
+            f"{evaluator.skip_counts['too_large']} file(s) exceeded the 2 MB limit and were not scanned."
         )
     if evaluator.skip_counts["binary"]:
         notes.append(f"{evaluator.skip_counts['binary']} binary file(s) were skipped.")
@@ -1001,6 +1001,10 @@ def render_html(report):
                 f"<div class='reason'>{html_escape(c.get('reason', ''))}</div>"
                 if c.get("reason") else ""
             )
+            remediation_html = (
+                f"<div class='remediation'><strong>Remediation:</strong> {html_escape(c['remediation'])}</div>"
+                if c.get("remediation") and c["status"] == "fail" else ""
+            )
             
             status_svg = get_status_svg(c['status'])
             check_blocks.append(
@@ -1012,7 +1016,7 @@ def render_html(report):
                 f"<span class='check-id'>{html_escape(c['id'])}</span>"
                 f"<span class='deduction'>-{c['deduction']}</span></div>"
                 f"<div class='summary'>{html_escape(c.get('summary',''))}</div>"
-                f"{reason_html}{findings_html}</div>"
+                f"{reason_html}{findings_html}{remediation_html}</div>"
             )
         details.append(
             f"<section class='agent-section'><h2>{html_escape(agent['name'])} "
@@ -1336,6 +1340,21 @@ th {{
     padding: 0.5rem 1rem;
     border-left: 3px solid var(--gray-300);
     margin: 0.5rem 0;
+}}
+.remediation {{
+    font-size: 0.82rem;
+    color: var(--gray-400);
+    background: var(--gray-100);
+    padding: 0.5rem 1rem;
+    border-left: 3px solid var(--black);
+    margin: 0.5rem 0;
+}}
+.remediation strong {{
+    color: var(--black);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }}
 .finding {{
     margin-top: 0.75rem;

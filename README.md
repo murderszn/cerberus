@@ -31,11 +31,11 @@
 
 **Cerberus** is an automated, zero-configuration security scanner designed for modern, rapid-deployment engineering teams. As developers leverage AI assistants to ship features in minutes, security reviews are frequently compromised. Cerberus replaces slow, costly human auditing with a high-rigor, collaborative **AI agent swarm** that validates code, infrastructure, and configuration against a comprehensive checks catalog.
 
-It operates entirely client-side with **no server, no build step, and no signup**:
+Its native scanner operates locally with **no server, no build step, and no signup**:
 - **The Web App ([index.html](index.html))** runs completely in your browser, analyzing public GitHub repositories using the GitHub API. It features real-time progress indicators, interactive check filters, history persistence, and shareable deep links.
-- **The CLI ([examine.py](examine.py))** is a single Python 3 file with zero third-party dependencies, perfect for local directories, private repositories, and CI/CD pipelines.
+- **The CLI ([examine.py](examine.py))** uses Python 3 and the standard library for native checks, ALIGNMENT, orchestration, normalization, and reporting. Optional feeder executables are installed separately only when their specialized analysis is wanted.
 
-Both interfaces consume the exact same unified check catalog, ensuring perfectly consistent results whether you scan from a terminal or a dashboard.
+Both interfaces consume the same native [`checks.json`](checks.json) catalog and preserve the same native scoring semantics. ALIGNMENT and external feeders are additive CLI capabilities and do not alter web scanner behavior.
 
 ---
 
@@ -56,6 +56,15 @@ Cerberus is built to serve three core workflows:
 - **Unified Engine**: Both the web dashboard and CLI execute the same rules from [`checks.json`](checks.json), emitting matching `cerberus.report/2` reports.
 - **Frictionless Integration**: Drop a repository URL in the browser, run it locally via a terminal, or gate pull requests in CI/CD using `--fail-under`.
 - **GitHub Actions Template**: Copy [`.github/workflow-templates/cerberus-security-review.yml`](.github/workflow-templates/cerberus-security-review.yml) into another repository to run JSON, HTML, and SARIF reviews on pull requests and main-branch pushes. See the [deployment guide](docs/cerberus-github-action-template.md).
+
+### What the orchestration release adds
+
+- Five allowlisted Phase 1 adapters: Gitleaks, OSV-Scanner, Zizmor, OpenSSF Scorecard, and actionlint.
+- A native ALIGNMENT analyzer for unsafe, conflicting, or incomplete coding-agent guidance and workflow policy.
+- Versioned normalized findings with source provenance, stable fingerprints, severity mapping, deduplication, and secret redaction.
+- Independent native and ALIGNMENT scores plus a combined policy result with strict-feeder controls.
+- Multi-producer JSON, HTML, and SARIF reports that still render when no feeder is installed.
+- Safe execution boundaries: argv-only subprocesses, per-tool timeouts, bounded output, fixed executable allowlists, isolated filtered scan trees, and `.cerberusignore` support.
 
 ---
 
@@ -84,6 +93,8 @@ Run the scanner directly from your terminal. Since it is a raw Python 3 script, 
 python3 examine.py <path-to-local-directory-or-github-url>
 ```
 
+The default invocation runs the unchanged native checks plus ALIGNMENT, with external feeders disabled. Use `--native-only` for the exact native/offline path, or `--feeders auto` to discover all Phase 1 tools without installing anything automatically.
+
 #### CLI Reference & Flags
 
 | Flag | Argument | Description |
@@ -91,7 +102,7 @@ python3 examine.py <path-to-local-directory-or-github-url>
 | `--json` | `path` | Write the complete, raw JSON report (matches the `cerberus.report/2` schema). |
 | `--html` | `path` | Output a standalone, interactive HTML report. |
 | `--sarif` | `path` | Generate SARIF format output to upload directly to GitHub Code Scanning. |
-| `--fail-under` | `score` | Exit non-zero if the final score is below the threshold (e.g. `80`) — perfect for blocking failing PRs. |
+| `--fail-under` | `score` | Exit non-zero if the native Cerberus score is below the threshold (e.g. `80`). |
 | `--only` | `agents` | Restrict evaluation to a comma-separated list of agent IDs (e.g. `sentinel,vault`). |
 | `--severity` | `level` | Filter terminal output to show only findings at or above `critical`, `high`, `medium`, or `low`. |
 | `--quiet` | *None* | Suppress file listings and print only the final score and grade. |
@@ -107,11 +118,12 @@ python3 examine.py <path-to-local-directory-or-github-url>
 Examples:
 
 ```bash
-# Exact legacy/offline behavior
+# Native/offline mode with legacy scoring semantics
 python3 examine.py . --native-only
 
-# Run every installed, applicable feeder; unavailable tools are warnings
-python3 examine.py . --feeders auto --json report.json --feeder-json feeders.json
+# Run every applicable feeder and write every supported report format
+python3 examine.py . --feeders auto --json report.json --html report.html \
+  --sarif report.sarif --feeder-json feeders.json
 
 # Require selected tools to execute successfully
 python3 examine.py . --feeders gitleaks,osv-scanner,zizmor --strict-feeders
@@ -119,36 +131,17 @@ python3 examine.py . --feeders gitleaks,osv-scanner,zizmor --strict-feeders
 
 Cerberus never downloads scanners during a scan. Install and version-pin them separately in your workstation or CI image. See the [GitHub Actions deployment guide](docs/cerberus-github-action-template.md) for the security and licensing notes.
 
-#### Example: GitHub Actions CI/CD Integration
+#### GitHub Actions CI/CD integration
 
-To run Cerberus on every pull request and upload findings directly to GitHub's Security tab:
+Use the reviewed template at [`.github/workflow-templates/cerberus-security-review.yml`](.github/workflow-templates/cerberus-security-review.yml). It:
 
-```yaml
-# .github/workflows/cerberus.yml
-name: Cerberus Security Scan
-on: [pull_request]
+- defaults to `native-only` so missing third-party tools cannot weaken the baseline;
+- preserves the native `--fail-under` gate;
+- supports manual `auto` and strict feeder modes;
+- pins GitHub Actions and the Cerberus checkout to reviewed commit SHAs; and
+- uploads normalized JSON, HTML, SARIF, and feeder artifacts.
 
-jobs:
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: Run Cerberus Scanner
-        run: python3 examine.py . --sarif cerberus.sarif --fail-under 80
-
-      - name: Upload SARIF Report
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: cerberus.sarif
-```
+The template never installs scanner binaries. Build a reviewed runner image with exact feeder versions if feeder execution is required in CI. `ref: main` is suitable only for experimentation, not production.
 
 ---
 
@@ -175,13 +168,15 @@ The table above is the native score model and is unchanged. The CLI's additional
 
 | Feeder | Specialized evidence | Upstream license |
 | :--- | :--- | :--- |
-| [Gitleaks](https://github.com/gitleaks/gitleaks) | Secrets in files and, when configured, Git history | MIT |
+| [Gitleaks](https://github.com/gitleaks/gitleaks) | Secrets in repository files (`--no-git`; history scanning is not enabled in Phase 1) | MIT |
 | [OSV-Scanner](https://github.com/google/osv-scanner) | Known vulnerabilities in manifests, lockfiles, and SBOMs | Apache-2.0 |
-| [Zizmor](https://github.com/woodruffw/zizmor) | GitHub Actions security weaknesses | MIT |
+| [Zizmor](https://github.com/woodruffw/zizmor) | GitHub Actions security weaknesses; invoked in offline mode | MIT |
 | [OpenSSF Scorecard](https://github.com/ossf/scorecard) | Repository supply-chain posture | Apache-2.0 |
 | [actionlint](https://github.com/rhysd/actionlint) | GitHub Actions syntax and semantic errors | MIT |
 
 Each adapter records tool provenance, normalizes severity, redacts possible secret values, and creates stable fingerprints for deduplication. `not_applicable` means the repository had no suitable input; `unavailable` means the executable was not installed; and `failed` covers timeout, invalid output, or another execution failure. Review upstream licenses yourself before redistributing scanner binaries.
+
+Applicability is evaluated before availability: OSV-Scanner requires a supported manifest, lockfile, or SBOM; Zizmor and actionlint require `.github/workflows/**/*.yml` or `.yaml`; Scorecard requires Git metadata or GitHub repository context; and Gitleaks requires repository files. Ignored paths and nested scanner checkouts are excluded before applicable feeders run.
 
 ### Grading Rubric
 - **A**: $\ge$ 90
@@ -194,21 +189,34 @@ Each adapter records tool provenance, normalizes severity, redacts possible secr
 
 ## Architecture
 
-```
-                 [ checks.json ] (Native Source of Truth)
-                        │
-         ┌──────────────┼──────────────┐
-         ▼              ▼              ▼
-   [ Web App ]     [ CLI Tool ]   [ Doc Generator ]
-   (index.html)    (examine.py)   (generate-checks-docs.py)
-         │              │              │
-         ▼              ▼              ▼
-    HTML Report    JSON/SARIF/HTML   documentation/checks.html
+```text
+                       checks.json
+                  native source of truth
+                     /             \
+                    v               v
+              Browser scanner    CLI native scan
+                                      |
+                   +------------------+------------------+
+                   |                                     |
+                   v                                     v
+             ALIGNMENT analyzer                 Phase 1 feeder registry
+                                                 /  /  |  \  \
+                                      Gitleaks OSV Zizmor Scorecard actionlint
+                   |                                     |
+                   +------------------+------------------+
+                                      v
+                         normalization + deduplication
+                                      |
+                                      v
+                cerberus.report/2 + HTML + SARIF + feeder JSON
+                   native score | alignment | feeders | policy
 ```
 
 - **[`checks.json`](checks.json)** remains the single source of truth for native checks and scoring. Feeder adapters and ALIGNMENT are additive CLI orchestration layers; they do not change the browser scanner or silently affect the native score.
 - **[`assets/scanner.js`](assets/scanner.js)** reads the rules and evaluates them concurrently (up to 8 files at a time) against downloaded repository files.
 - **[`examine.py`](examine.py)** parses the same rules and evaluates them locally.
+- **[`alignment.py`](alignment.py)** performs bounded, read-only analysis of coding-agent policies, operational scripts, project metadata, and GitHub Actions workflows.
+- **[`feeders/`](feeders/)** contains the fixed registry, safe subprocess runner, normalization utilities, and five Phase 1 adapters.
 - **[`scripts/generate-checks-docs.py`](scripts/generate-checks-docs.py)** compiles the JSON catalog into customer-facing markdown files (`docs/scanner-checks.md`) and HTML sites (`documentation/checks.html`).
 
 ---
@@ -264,19 +272,71 @@ tool result uses `cerberus.feeder/1`; the feeder collection uses
 native Cerberus run first and adds separate runs for ALIGNMENT and each feeder so
 source provenance is not lost.
 
+```json
+{
+  "schema": "cerberus.report/2",
+  "score": 100,
+  "grade": "A",
+  "native": { "score": 100, "grade": "A", "findings": [] },
+  "alignment": { "schema": "cerberus.alignment/1", "score": 99, "grade": "A", "findings": [] },
+  "feeders": {
+    "schema": "cerberus.feeders/1",
+    "summary": { "completed": 0, "not_applicable": 1, "unavailable": 4, "failed": 0 },
+    "tools": [],
+    "findings": []
+  },
+  "policy": { "passed": true, "blockers": [], "warnings": [] }
+}
+```
+
+Each tool entry in `feeders.tools` uses `cerberus.feeder/1` and records its version, status, target, duration, normalized findings, sanitized raw evidence when practical, and structured errors. Secret-bearing Gitleaks fields and source snippets that may contain credentials are omitted rather than copied into reports.
+
+### ALIGNMENT scope
+
+ALIGNMENT checks supported instruction files such as `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `TEAM.md`, Cursor rules, Copilot instructions, `CONTRIBUTING.md`, `README.md`, and `SECURITY.md`. It also inspects package scripts, Makefiles and Justfiles, setup and shell scripts, and GitHub Actions workflows.
+
+Its rules cover instruction conflicts, disabled validation or security controls, credential exposure, destructive Git operations, remote code piping, unsafe trust of issue or web content, hidden directives, missing policy/validation/secret guidance, documentation and stack mismatches, broad workflow permissions, unpinned actions, workflow expression injection, repository-boundary violations, and prompt-injection-like overrides. These are heuristic policy findings and should be reviewed in context.
+
+### Development verification
+
+```bash
+python3 -m py_compile examine.py alignment.py feeders/*.py
+python3 -m unittest discover -s tests -v
+python3 scripts/build-checks.py
+python3 scripts/generate-checks-docs.py
+python3 examine.py . --native-only --json /tmp/cerberus-native.json --no-color
+python3 examine.py . --feeders auto --json /tmp/cerberus-full.json --no-color
+git diff --check
+```
+
+The test suite covers registry behavior, applicability, unavailable tools, timeouts, malformed output, exit codes, normalization, redaction, fingerprint stability, deduplication, report rendering, CLI modes, ALIGNMENT rules, workflow checks, and scanner-checkout exclusion.
+
+### Current limitations
+
+- Phase 1 implements only the five feeders listed above; it does not claim complete security coverage.
+- External output formats can change between tool versions, so pin and validate versions before relying on CI policy.
+- Gitleaks scans the working tree in this release, not Git history.
+- Scorecard may require repository metadata, credentials, or network access that are unavailable in restricted environments.
+- ALIGNMENT is contextual static analysis and can produce false positives in documentation, fixtures, or quoted unsafe examples.
+- The combined policy result is report data. It does not implicitly replace the native `--fail-under` exit gate; `--strict-feeders` additionally fails on unavailable or failed requested feeders.
+
 ---
 
 ## Repository Structure
 
 * [index.html](index.html) — The web dashboard scanner.
 * [ceberus-classic.html](ceberus-classic.html) — The legacy static HTML scanner page.
-* [examine.py](examine.py) — The Python CLI scanner.
-* [checks.json](checks.json) — The unified check catalog rules engine.
+* [examine.py](examine.py) — The Python CLI, native report builder, orchestration entry point, and JSON/HTML/SARIF renderer.
+* [alignment.py](alignment.py) — Native repository and coding-agent alignment analyzer.
+* [feeders/](feeders/) — Phase 1 external-tool adapters, registry, runner, and normalization contract.
+* [checks.json](checks.json) — Native check catalog and scoring source of truth.
 * [logo.png](logo.png) — The official Cerberus Labs logo.
 * [assets/](assets/) — Core JS assets including [`scanner.js`](assets/scanner.js) and [`checks.js`](assets/checks.js).
 * [documentation/](documentation/) — Static documentation site.
-* [docs/](docs/) — Additional specification docs (e.g. [`brand.md`](docs/brand.md), [`IMPROVEMENTS.md`](docs/IMPROVEMENTS.md), compliance guides).
-* [scripts/](scripts/) — Internal developer tools, test runners, and doc generators.
+* [docs/](docs/) — Scanner catalog, examination specification, GitHub Actions guide, product documentation, and compliance material.
+* [scripts/](scripts/) — Check asset builders, documentation generation, and the browser scanner integration harness.
+* [tests/](tests/) — Native engine, feeder, ALIGNMENT, CLI mode, orchestration, SARIF, HTML, and safety tests.
+* [.github/workflow-templates/cerberus-security-review.yml](.github/workflow-templates/cerberus-security-review.yml) — Pinned native-first CI review template with optional feeders.
 
 ---
 

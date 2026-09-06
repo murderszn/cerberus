@@ -4,8 +4,8 @@
 > Cerberus inspection — the full set of checks we intend to build out over time. It is
 > **not** a record of what the product does today.
 >
-> **What actually ships today is 58 checks across the same nine agent domains, defined in
-> `/checks.json`** — the single source of truth consumed by the web app, `examine.py`, and
+> **What actually ships today is 59 checks across the same nine agent domains, defined in
+> `/checks.json`** — the native source of truth consumed by the web app, `examine.py`, and
 > the generated docs at `documentation/checks.html` / `docs/scanner-checks.md`. If a check
 > isn't in `checks.json`, it does not run, no matter what this document says.
 >
@@ -29,7 +29,8 @@ sections distinguish:
   external tools; and
 - `policy`: combined blockers and warnings without rewriting the native score.
 
-The feeder envelope is versioned as `cerberus.feeder/1`. Findings use normalized
+Each tool envelope is versioned as `cerberus.feeder/1`, the collection as
+`cerberus.feeders/1`, and ALIGNMENT as `cerberus.alignment/1`. Findings use normalized
 `critical`, `high`, `medium`, `low`, or `info` severity and retain the source
 tool, raw rule ID, location, remediation, confidence when available, and a
 stable fingerprint. Potential secret values are redacted. Raw output is kept
@@ -37,8 +38,8 @@ only when practical, is size-limited, and must be treated as sensitive.
 
 The default combined policy fails when an ALIGNMENT or feeder finding is
 critical, or when at least two are high. An unavailable optional tool is a
-warning. A requested tool's timeout, malformed output, or execution failure is
-a blocker only with `--strict-feeders`. The policy result is reported but does
+warning. An unavailable explicitly requested tool, timeout, malformed output,
+or execution failure is a blocker only with `--strict-feeders`. The policy result is reported but does
 not silently replace historical CLI exit behavior: `--fail-under` independently
 gates the native score.
 
@@ -51,6 +52,12 @@ workflow permissions or interpolation. Findings are contextual heuristics, not
 proof of exploitability. Documentation examples, fixtures, generated files, and
 quoted malicious text can create false positives; suppress or review them only
 after confirming the surrounding context.
+
+Phase 1 feeder applicability is explicit: Gitleaks scans working-tree files
+without Git history; OSV-Scanner requires a supported manifest, lockfile, or
+SBOM; Zizmor and actionlint require GitHub Actions workflows; and Scorecard
+requires Git metadata or GitHub repository context. Ignored paths, symlinks,
+Git metadata, and nested scanner checkouts are excluded where applicable.
 >
 > Shipped counts today, per agent (see `checks.json` for authoritative detail):
 >

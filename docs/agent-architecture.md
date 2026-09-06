@@ -5,17 +5,17 @@
 > architecture that is not what ships today. The real, shipped architecture is much
 > simpler and is authoritative in `docs/IMPROVEMENTS.md`:
 >
-> - There is no orchestrator process, no sandboxed per-agent runtime, and no WASM.
+> - The CLI now orchestrates ALIGNMENT and optional external feeders, but there is no
+>   sandboxed per-agent runtime and no WASM.
 > - "Agents" are a grouping in `/checks.json`: each check has an `agent` field, and
->   each agent has a `weight`. All 58 checks run as static pattern matches (regex over
+>   each agent has a `weight`. All 59 checks run as static pattern matches (regex over
 >   fetched file content, or file-presence checks) in one pass — in the browser for the
 >   web app, or in the CLI process for `examine.py`.
 > - There is no cross-agent deduplication step. Each check independently resolves to
 >   `pass` / `fail` / `not_applicable` / `skipped`.
-> - The only network calls are to `api.github.com` (tree/metadata) and
->   `raw.githubusercontent.com` (file contents). There is no live CVE database lookup —
->   LIBRARIAN's known-vulnerable-version check is a regex against version ranges recorded
->   directly in `checks.json`.
+> - Native repository acquisition uses `api.github.com` and GitHub tarballs for remote
+>   targets; native checks and ALIGNMENT do not perform live CVE lookups. Optional
+>   OSV-Scanner and Scorecard runs may use the network according to their own behavior.
 > - Real scoring is per-agent weight minus per-hit deductions, not a flat `100 - Σ`
 >   deduction — see §2.3 of `docs/IMPROVEMENTS.md` and `documentation/scoring.html`.
 >
@@ -24,6 +24,10 @@
 > Configuration" lines are aspirational/roadmap flavor text, not real infrastructure.
 > For the exact, currently-running checks per agent, see `docs/scanner-checks.md` or
 > `documentation/checks.html`, both generated straight from `checks.json`.
+>
+> The shipped orchestration layer reports native scoring, a separate ALIGNMENT score,
+> feeder provenance/status, and combined policy independently. External findings never
+> deduct native points. See `README.md` and `docs/cerberus-github-action-template.md`.
 
 Cerberus divides its check catalog into 9 discrete, specialized agent domains, mimicking the workflow of a cross-functional human red-teaming unit — even though every check runs as a single static pass over the same fetched files.
 
@@ -137,7 +141,7 @@ This is the real, current count from `/checks.json`, weight included:
 
 | Agent | Real domain name | Weight | Checks shipped |
 |---|---|---|---|
-| SENTINEL | Code Analysis | 14 | 10 |
+| SENTINEL | Code Analysis | 14 | 11 |
 | VAULT | Data Security | 13 | 8 |
 | GATEKEEPER | Access Control | 12 | 6 |
 | LIBRARIAN | Dependencies | 12 | 6 |
@@ -146,7 +150,7 @@ This is the real, current count from `/checks.json`, weight included:
 | SHIELD | Client Security | 11 | 6 |
 | AUDITOR | Logging & Monitoring | 8 | 4 |
 | ARCHITECT | Infrastructure | 8 | 5 |
-| **Total** |  | **100** | **58** |
+| **Total** |  | **100** | **59** |
 
 For the exact check IDs, detectors, CWEs, and remediations, see `docs/scanner-checks.md`
 or `documentation/checks.html` — both generated from `checks.json` by

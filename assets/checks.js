@@ -1385,12 +1385,12 @@ window.CERBERUS_CHECKS = {
       "name": "Debug output left in source",
       "severity": "low",
       "cwe": "CWE-489",
-      "summary": "`console.log`, bare `print`, or `debugger` statements remain in non-test source.",
-      "risk": "Noisy logs bury real signals, and `debugger` halts execution in any browser with devtools open.",
+      "summary": "`debugger` statements or `console.debug`/`console.trace` calls remain in non-test source.",
+      "risk": "`debugger` halts execution in any browser with devtools open, and verbose debug calls bury real signals.",
       "remediation": "Route through a level-aware logger and enforce `no-console` / `no-debugger` in lint.",
       "detector": {
         "kind": "content",
-        "pattern": "^\\s*(console\\.log\\s*\\(|debugger\\s*;)",
+        "pattern": "^\\s*(debugger\\s*;|console\\.(?:debug|trace)\\s*\\()",
         "flags": "m",
         "include": [
           "**/*.js",

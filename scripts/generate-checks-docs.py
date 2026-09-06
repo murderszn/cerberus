@@ -194,11 +194,16 @@ def build_checks_html():
 
 {page_header("checks", order)}
     <h1>Check Catalog</h1>
-    <p class="lead">The complete set of checks Cerberus agents evaluate during every examination, generated directly from <code>checks.json</code> — the single source of truth shared by the web app, the CLI (<code>examine.py</code>), and this page. The catalog currently holds <strong>{total} checks</strong> across nine agent domains, weighted to {weight_sum} points.</p>
+    <p class="lead">The complete native check set, generated directly from <code>checks.json</code> — the source of truth shared by the web app and CLI native engine. The catalog currently holds <strong>{total} checks</strong> across nine agent domains, weighted to {weight_sum} points.</p>
 
     <div class="callout info">
       <div class="callout-title">How this catalog is built</div>
       <p>Every check below is read straight from <code>checks.json</code> by <code>scripts/generate-checks-docs.py</code>. Nothing here is hand-written or aspirational — if a check is not in <code>checks.json</code>, it does not run, and it is not listed here. For planned checks that are not yet implemented, see the roadmap section of <a href="../docs/examination-spec.md">the examination spec</a>.</p>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">Orchestration is additive</div>
+      <p>The CLI can also run the separately scored ALIGNMENT analyzer and optional Gitleaks, OSV-Scanner, Zizmor, OpenSSF Scorecard, and actionlint feeders. Their rules are not part of this catalog and never alter native points. See the <a href="scanner.html">CLI Scanner</a> and <a href="reports.html">Reading Reports</a> pages.</p>
     </div>
 
     <h2>Check states</h2>

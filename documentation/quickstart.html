@@ -8,17 +8,15 @@
 <link rel="stylesheet" href="assets/docs.css">
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
 
 <header class="docs-header">
   <nav class="left">
     <a class="brand-mini" href="../index.html">
-      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
-      <span>CERBERUS DOCS</span>
+      <img src="../logo.png" alt="Cerberus Labs" class="brand-logo">
+      <span>Cerberus Labs</span>
     </a>
     <a class="nav-link" href="../index.html">Platform</a>
-    <a class="nav-link" href="agents.html">Agents</a>
-    <a class="nav-link" href="checks.html">Checks</a>
   </nav>
   <nav class="right">
     <form class="search-form" onsubmit="return false">
@@ -61,7 +59,7 @@
 
   <main class="docs-content">
     <h1>Quickstart</h1>
-    <p class="lead">There are two ways to run Cerberus: the web app (no install, GitHub targets only) and the CLI (any local directory or GitHub URL, scriptable for CI). Both share the same 58-check catalog in <code>checks.json</code>.</p>
+    <p class="lead">There are two ways to run Cerberus: the web app for native GitHub scans and the CLI for local or GitHub targets, ALIGNMENT analysis, optional security feeders, and CI. Both share the same 59-check native catalog in <code>checks.json</code>.</p>
 
     <h2>Option A: Web app</h2>
     <p>The web app is a static site — no build step, no server required. Open <code>index.html</code> in a browser and paste a GitHub repository URL.</p>
@@ -73,15 +71,19 @@
     <h2>Option B: CLI (<code>examine.py</code>)</h2>
     <h3>1. Prerequisites</h3>
     <ul>
-      <li><strong>Python 3.7 or later</strong>, no third-party packages required.</li>
+      <li><strong>Python 3.9 or later</strong>. Native checks, ALIGNMENT, normalization, and reporting use only the standard library.</li>
       <li>A local clone of the project you want to scan, or a public GitHub URL.</li>
+      <li>Optional feeder executables installed and version-pinned separately if you want their specialized coverage.</li>
     </ul>
 
     <h3>2. Run a scan</h3>
     <pre><code>python3 examine.py &lt;path-or-github-url&gt;</code></pre>
     <p>Examples:</p>
     <pre><code>python3 examine.py ./my-project
-python3 examine.py https://github.com/owner/repo</code></pre>
+python3 examine.py https://github.com/owner/repo
+python3 examine.py . --native-only
+python3 examine.py . --feeders auto --json report.json --html report.html --sarif report.sarif</code></pre>
+    <p>A normal CLI run performs native checks and ALIGNMENT. Feeders default to <code>none</code>; <code>auto</code> records unavailable tools gracefully and never installs them.</p>
 
     <h3>3. Useful flags</h3>
     <table>
@@ -89,7 +91,12 @@ python3 examine.py https://github.com/owner/repo</code></pre>
       <tr><td><code>--json out.json</code></td><td>Write the full report object (schema <code>cerberus.report/2</code>) to a file.</td></tr>
       <tr><td><code>--html out.html</code></td><td>Write a standalone HTML report.</td></tr>
       <tr><td><code>--sarif out.sarif</code></td><td>Write SARIF for GitHub code scanning upload.</td></tr>
-      <tr><td><code>--fail-under 80</code></td><td>Exit non-zero if the score is below the threshold — use this to gate CI.</td></tr>
+      <tr><td><code>--feeders auto</code></td><td>Run all applicable Phase 1 adapters; missing tools are warnings.</td></tr>
+      <tr><td><code>--native-only</code></td><td>Run only the catalog checks and disable ALIGNMENT/feeders.</td></tr>
+      <tr><td><code>--feeder-timeout 60</code></td><td>Set the timeout independently for each external tool.</td></tr>
+      <tr><td><code>--feeder-json feeders.json</code></td><td>Write normalized feeder statuses and findings.</td></tr>
+      <tr><td><code>--strict-feeders</code></td><td>Fail when a requested feeder is unavailable or fails.</td></tr>
+      <tr><td><code>--fail-under 80</code></td><td>Exit non-zero if the native score is below the threshold.</td></tr>
       <tr><td><code>--only sentinel,vault</code></td><td>Restrict the run to specific agents.</td></tr>
       <tr><td><code>--severity high</code></td><td>Only report findings at or above a severity level.</td></tr>
     </table>
@@ -105,23 +112,7 @@ python3 examine.py https://github.com/owner/repo</code></pre>
     </ol>
 
     <h2>CI example</h2>
-    <p>Gate a pull request on a minimum score with <code>--fail-under</code>:</p>
-    <pre><code># .github/workflows/cerberus.yml
-name: cerberus
-on: [pull_request]
-jobs:
-  scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-      - run: python3 examine.py . --sarif cerberus.sarif --fail-under 80
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: cerberus.sarif</code></pre>
+    <p>Copy the pinned <code>.github/workflow-templates/cerberus-security-review.yml</code> template into the target repository. It defaults to native-only, preserves the native <code>--fail-under</code> gate, offers optional auto/strict feeder inputs, excludes the nested scanner checkout, and uploads all report formats. Do not replace reviewed SHAs with floating tags in production.</p>
 
     <h2>Next steps</h2>
     <ul>
@@ -134,8 +125,7 @@ jobs:
 
 <footer class="docs-footer">
   <div class="inner">
-    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
-    <span><a href="index.html">Docs home</a> · <a href="scanner.html">Scanner</a> · <a href="reports.html">Reports</a></span>
+    <span>Cerberus Labs 2026</span>
   </div>
 </footer>
 

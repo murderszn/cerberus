@@ -227,7 +227,11 @@
       if (!resp.ok) {
         throw ScanError('NETWORK', 'GitHub API request failed with status ' + resp.status + ' for ' + url);
       }
-      return resp.json().then(function (json) {
+      return resp.json().catch(function () {
+        // A large recursive tree response (or any malformed/truncated body) can fail to
+        // parse. Surface a clear typed error instead of a cryptic raw SyntaxError.
+        throw ScanError('BAD_RESPONSE', 'GitHub API returned an unreadable response for ' + url);
+      }).then(function (json) {
         return { json: json, rateLimit: rl };
       });
     }, function (err) {
@@ -290,14 +294,65 @@
   ];
   var PRIORITY_DIRS = ['src/', 'app/', 'lib/', 'api/'];
 
-  function priorityRank(path) {
+  // Path segments that usually hold security-relevant code. Matched as substrings
+  // of individual segments (never across `/`), so `rapid.js` does not match `api`.
+  var HOT_SEGMENT_SUBSTRINGS = [
+    'auth', 'login', 'logout', 'session', 'password', 'passwd', 'credential',
+    'secret', 'token', 'oauth', 'sso', 'saml', 'ldap', 'crypto', 'encrypt',
+    'decrypt', 'jwt', 'apikey', 'api_key', 'private_key', 'private-key',
+    'middleware', 'permission', 'privilege', 'csrf', 'vault', 'admin',
+    'account', 'payment', 'webhook', 'upload', 'security', 'signin', 'signup',
+    'register'
+  ];
+
+  // Directories whose contents are almost never worth a fetch slot: copy,
+  // fixtures, generated UI stories, and end-to-end harnesses.
+  var LOW_SIGNAL_DIRS = [
+    'locales', 'locale', 'i18n', 'lang', 'languages', 'translations',
+    'assets', 'static', 'public', 'docs', 'examples', 'example', 'samples',
+    'sample', 'demo', 'fixtures', 'mocks', 'mock', 'snapshots', '__snapshots__',
+    'e2e', 'playwright', 'cypress', 'storybook', 'stories'
+  ];
+
+  function pathSegments(path) {
+    return path.toLowerCase().split('/');
+  }
+
+  function hasHotSegment(path) {
+    var segs = pathSegments(path);
+    for (var i = 0; i < segs.length; i++) {
+      var seg = segs[i].replace(/\.[a-z0-9]+$/, '');
+      for (var k = 0; k < HOT_SEGMENT_SUBSTRINGS.length; k++) {
+        if (seg.indexOf(HOT_SEGMENT_SUBSTRINGS[k]) !== -1) return true;
+      }
+    }
+    return false;
+  }
+
+  function inLowSignalDir(path) {
+    var segs = pathSegments(path);
+    for (var i = 0; i < segs.length - 1; i++) {
+      if (LOW_SIGNAL_DIRS.indexOf(segs[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  // Lower number = fetched earlier. Rank 0-2 hold the files most likely to
+  // change a verdict; 4-5 are fetched only when budget remains. Path-existence
+  // checks read the full tree regardless, so demotion only affects which file
+  // *contents* content checks get to see — never existence verdicts.
+  function priorityRank(path, catalog) {
     var base = path.indexOf('/') === -1 ? path : path.slice(path.lastIndexOf('/') + 1);
     if (MANIFEST_BASENAMES.indexOf(base) !== -1) return 0;
     if (base.indexOf('Dockerfile') === 0 || /\.tf$/.test(base)) return 0;
-    if (path.indexOf('/') === -1) return 1; // top-level
+    if (hasHotSegment(path)) return 1;
+    if (path.indexOf('/') === -1) return 2; // top-level
     for (var i = 0; i < PRIORITY_DIRS.length; i++) {
       if (path.indexOf(PRIORITY_DIRS[i]) === 0) return 2;
     }
+    if (inLowSignalDir(path)) return 4;
+    if (/\.md$/i.test(base)) return 4;
+    if (catalog && matchesAny(path, catalog.test_paths || [])) return 5;
     return 3;
   }
 
@@ -333,8 +388,8 @@
     });
   }
 
-  var FILE_BUDGET = 1200;
-  var SIZE_BUDGET = 512 * 1024;
+  var FILE_BUDGET = 2000;
+  var SIZE_BUDGET = 2 * 1024 * 1024;
   var TIME_BUDGET_MS = 120 * 1000;
   var CONCURRENCY = 12;
 
@@ -407,7 +462,7 @@
       var fetchable = eligible.filter(function (b) { return !(typeof b.size === 'number' && b.size > SIZE_BUDGET); });
 
       fetchable.sort(function (a, b) {
-        var ra = priorityRank(a.path), rb = priorityRank(b.path);
+        var ra = priorityRank(a.path, catalog), rb = priorityRank(b.path, catalog);
         if (ra !== rb) return ra - rb;
         return a.path < b.path ? -1 : (a.path > b.path ? 1 : 0);
       });
@@ -469,9 +524,9 @@
       }).then(function () {
         var filesSkipped = Object.keys(skipReasons).reduce(function (sum, k) { return sum + skipReasons[k]; }, 0);
         var notes = [];
-        if (skipReasons.file_too_large) notes.push(skipReasons.file_too_large + ' file(s) exceeded the 512 KB limit and were not scanned.');
-        if (skipReasons.file_budget_exceeded) notes.push(skipReasons.file_budget_exceeded + ' file(s) exceeded the 400-file scan budget and were not scanned.');
-        if (skipReasons.time_budget_exceeded) notes.push('The 90 s acquisition time budget was reached before all files could be fetched.');
+        if (skipReasons.file_too_large) notes.push(skipReasons.file_too_large + ' file(s) exceeded the 2 MB limit and were not scanned.');
+        if (skipReasons.file_budget_exceeded) notes.push(skipReasons.file_budget_exceeded + ' file(s) exceeded the ' + FILE_BUDGET + '-file scan budget and were not scanned.');
+        if (skipReasons.time_budget_exceeded) notes.push('The ' + Math.round(TIME_BUDGET_MS / 1000) + ' s acquisition time budget was reached before all files could be fetched.');
         if (skipReasons.fetch_error) notes.push(skipReasons.fetch_error + ' file(s) could not be fetched due to a network error.');
         if (base.treeTruncated) notes.push('The repository tree response was truncated by the GitHub API; some files may be missing from this scan.');
 
@@ -763,7 +818,11 @@
     return 'F';
   }
 
-  function evaluate(catalog, acquired, target, onProgress) {
+  function yieldToUI() {
+    return new Promise(function (resolve) { setTimeout(resolve, 0); });
+  }
+
+  async function evaluate(catalog, acquired, target, onProgress, signal) {
     var ctx = {
       catalog: catalog,
       allPaths: acquired.allPaths,
@@ -787,13 +846,23 @@
     var totalAgentCount = catalog.agents.length;
     var agentsDone = 0;
 
-    catalog.agents.forEach(function (agentDef) {
+    for (var a = 0; a < catalog.agents.length; a++) {
+      var agentDef = catalog.agents[a];
       var agentId = agentDef.id;
+      if (signal && signal.aborted) {
+        throw ScanError('ABORTED', 'Scan aborted by caller.');
+      }
       onProgress({ phase: 'evaluating', agentId: agentId, pct: 70 + Math.round((agentsDone / totalAgentCount) * 25), message: 'Evaluating ' + agentDef.name + '…' });
 
       var checks = checksByAgent[agentId] || [];
+      var checkTotal = Math.max(1, checks.length);
       var deductionSum = 0;
-      var checkResults = checks.map(function (ch) {
+      var checkResults = [];
+      for (var i = 0; i < checks.length; i++) {
+        var ch = checks[i];
+        if (signal && signal.aborted) {
+          throw ScanError('ABORTED', 'Scan aborted by caller.');
+        }
         var res = evaluateCheck(ch, ctx);
         counts[res.status]++;
         if (res.status === 'fail') {
@@ -811,15 +880,22 @@
         if (ch.fix) entry.fix = ch.fix;
         if (res.status !== 'fail' && res.reason) entry.reason = res.reason;
         if (res.status === 'fail' && res.reason) entry.reason = res.reason;
-        return entry;
-      });
+        checkResults.push(entry);
+        onProgress({
+          phase: 'check', agentId: agentId,
+          checkId: ch.id, checkName: ch.name, status: res.status,
+          pct: 70 + Math.round(((agentsDone + (i + 1) / checkTotal) / totalAgentCount) * 25),
+          message: res.status.toUpperCase() + ' ' + ch.id
+        });
+        await yieldToUI();
+      }
 
       var agentScore = Math.max(0, agentDef.weight - deductionSum);
       byAgent[agentId].checks = checkResults;
       byAgent[agentId].score = Math.round(agentScore * 100) / 100;
       agentsDone++;
       onProgress({ phase: 'evaluating', agentId: agentId, pct: 70 + Math.round((agentsDone / totalAgentCount) * 25), message: agentDef.name + ' complete.' });
-    });
+    }
 
     var agents = catalog.agents.map(function (a) {
       return {
@@ -860,46 +936,46 @@
 
     return acquireRepo(target, opts, onProgress).then(function (acquired) {
       onProgress({ phase: 'evaluating', pct: 70, message: 'Evaluating checks…' });
-      var evalResult = evaluate(catalog, acquired, target, onProgress);
+      return evaluate(catalog, acquired, target, onProgress, opts.signal).then(function (evalResult) {
+        onProgress({ phase: 'scoring', pct: 97, message: 'Scoring…' });
 
-      onProgress({ phase: 'scoring', pct: 97, message: 'Scoring…' });
+        var notes = acquired.notes.slice();
+        if (acquired.rateLimit && acquired.rateLimit.remaining !== null && acquired.rateLimit.remaining < 5) {
+          notes.push('GitHub API rate limit is low (' + acquired.rateLimit.remaining + ' requests remaining, resets ' + acquired.rateLimit.resetAt + ').');
+        }
 
-      var notes = acquired.notes.slice();
-      if (acquired.rateLimit && acquired.rateLimit.remaining !== null && acquired.rateLimit.remaining < 5) {
-        notes.push('GitHub API rate limit is low (' + acquired.rateLimit.remaining + ' requests remaining, resets ' + acquired.rateLimit.resetAt + ').');
-      }
+        var report = {
+          schema: 'cerberus.report/2',
+          target: {
+            kind: 'github',
+            display: target.owner + '/' + target.repo,
+            url: 'https://github.com/' + target.owner + '/' + target.repo,
+            owner: target.owner,
+            repo: target.repo,
+            ref: acquired.ref,
+            sha: acquired.sha
+          },
+          scannedAt: new Date().toISOString(),
+          engine: { version: ENGINE_VERSION, checksVersion: catalog.version, source: source },
+          score: evalResult.score,
+          grade: evalResult.grade,
+          counts: evalResult.counts,
+          repo: {
+            description: acquired.repoMeta.description || '',
+            stars: acquired.repoMeta.stargazers_count || 0,
+            license: (acquired.repoMeta.license && acquired.repoMeta.license.spdx_id) || null,
+            archived: !!acquired.repoMeta.archived,
+            pushedAt: acquired.repoMeta.pushed_at,
+            primaryLanguage: acquired.repoMeta.language || null
+          },
+          coverage: acquired.coverage,
+          agents: evalResult.agents,
+          notes: notes
+        };
 
-      var report = {
-        schema: 'cerberus.report/2',
-        target: {
-          kind: 'github',
-          display: target.owner + '/' + target.repo,
-          url: 'https://github.com/' + target.owner + '/' + target.repo,
-          owner: target.owner,
-          repo: target.repo,
-          ref: acquired.ref,
-          sha: acquired.sha
-        },
-        scannedAt: new Date().toISOString(),
-        engine: { version: ENGINE_VERSION, checksVersion: catalog.version, source: source },
-        score: evalResult.score,
-        grade: evalResult.grade,
-        counts: evalResult.counts,
-        repo: {
-          description: acquired.repoMeta.description || '',
-          stars: acquired.repoMeta.stargazers_count || 0,
-          license: (acquired.repoMeta.license && acquired.repoMeta.license.spdx_id) || null,
-          archived: !!acquired.repoMeta.archived,
-          pushedAt: acquired.repoMeta.pushed_at,
-          primaryLanguage: acquired.repoMeta.language || null
-        },
-        coverage: acquired.coverage,
-        agents: evalResult.agents,
-        notes: notes
-      };
-
-      onProgress({ phase: 'done', pct: 100, message: 'Scan complete.' });
-      return report;
+        onProgress({ phase: 'done', pct: 100, message: 'Scan complete.' });
+        return report;
+      });
     });
   }
 

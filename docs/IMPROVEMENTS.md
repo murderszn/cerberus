@@ -38,7 +38,7 @@ different findings, and different file citations — because the files were actu
   > everything else. Report what was skipped and why — never silently truncate.
 
 ### 2.2 Real evaluation
-- The check catalog lives in **`/checks.json`** and nowhere else. 51 checks across
+- The native check catalog lives in **`/checks.json`** and nowhere else. 59 checks across
   9 agents. Web, CLI, and docs all consume that one file.
 - Every check resolves to exactly one of four states:
   - `pass` — applicable, evaluated, clean
@@ -102,7 +102,7 @@ window.CerberusScanner = {
   "score": 87.5,
   "grade": "B",
   "counts": { "critical":0, "high":2, "medium":5, "low":3,
-              "pass":38, "fail":9, "not_applicable":3, "skipped":1, "total":51 },
+              "pass":46, "fail":9, "not_applicable":3, "skipped":1, "total":59 },
   "repo":  { "description":"…", "stars":1234, "license":"MIT", "archived":false,
              "pushedAt":"2026-07-30T…", "primaryLanguage":"TypeScript" },
   "coverage": { "filesInTree":842, "filesEligible":310, "filesScanned":310,
@@ -127,16 +127,27 @@ window.CerberusScanner = {
           "findingsTruncated": false, "totalFindings": 1 }
       ] }
   ],
-  "notes": [ "3 files exceeded the 512 KB limit and were not scanned." ]
+  "notes": [ "3 files exceeded the 512 KB limit and were not scanned." ],
+  "native": { "score":87.5, "grade":"B", "findings":[] },
+  "alignment": { "schema":"cerberus.alignment/1", "score":94, "grade":"A", "findings":[] },
+  "feeders": { "schema":"cerberus.feeders/1", "summary":{}, "tools":[], "findings":[] },
+  "policy": { "passed":true, "blockers":[], "warnings":[] }
 }
 ```
 Rules: `agents[]` always contains all 9. `checks[]` always contains every check for
 that agent, including passes. A `fail` always has ≥1 finding **or** a `reason`
 explaining a repository-level failure (e.g. "No SECURITY.md found").
 
+The top-level schema, native score, grade, counts, and nine native agents remain
+backward compatible. CLI orchestration appends the four sections shown above;
+external and ALIGNMENT findings never change native points.
+
 ### 3.4 `examine.py`
-Must emit byte-identical schema. `python3 examine.py <path-or-github-url> --json out.json`.
-`--fail-under 80` exits non-zero for CI use. `--sarif out.sarif` for code scanning upload.
+Must preserve the native `cerberus.report/2` contract. Run
+`python3 examine.py <path-or-github-url> --json out.json`; use `--native-only` for
+catalog-only operation, `--feeders auto` for optional adapters, and
+`--strict-feeders` to require selected tools. `--fail-under 80` continues to gate
+the native score. `--sarif out.sarif` includes native, ALIGNMENT, and feeder runs.
 
 ---
 
@@ -150,7 +161,7 @@ Current app is three `display:none` divs and a `resetApp()` that wipes state. Re
    re-scans if the cache is cold. A report URL is shareable.
 2. **Persistence.** Cache reports in `localStorage` keyed by `owner/repo@sha`, 24 h TTL.
    A "Recent scans" list on the splash with score, grade, and timestamp.
-3. **Full check visibility.** Default view shows all 51 checks grouped by agent, with
+3. **Full check visibility.** Default view shows all 59 checks grouped by agent, with
    filter chips: All · Failed · Passed · N/A, plus severity filters and a text search.
    Passed checks are collapsed but present — the score is not credible without them.
 4. **Findings UI.** Each finding shows the snippet with its line number, a
@@ -177,7 +188,7 @@ Assert:
 2. Every finding's `path` exists in that repo's tree, and its `line` contains the
    snippet claimed. Spot-check five permalinks by opening them.
 3. The healthy reference scores ≥ 80. If not, the catalog is too noisy.
-4. Check states sum: `pass + fail + not_applicable + skipped == 51` for both.
+4. Check states sum: `pass + fail + not_applicable + skipped == 59` for both.
 5. `examine.py` on a local clone produces the same findings as the web scan of the
    same SHA (allow differences only where the web file budget truncated).
 6. Manually review 10 findings across both reports and record the false-positive rate.
@@ -194,4 +205,4 @@ Assert:
 - All user-controlled strings HTML-escaped at render. Findings contain attacker-authored
   source code — treat every snippet as hostile input.
 - `documentation/` reflects the real implemented checks and the real count. If the
-  catalog holds 51 checks, the site does not claim 151.
+  catalog holds 59 checks, the site does not claim 151.

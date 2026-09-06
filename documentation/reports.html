@@ -8,17 +8,15 @@
 <link rel="stylesheet" href="assets/docs.css">
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute"><symbol id="i-cerb" viewBox="0 0 24 24"><path d="M5 9.5 3.2 5l4.7 2.1L12 4l4.1 3.1L20.8 5 19 9.5c.7 1.2 1 2.6 1 4 0 3.7-3.6 6.5-8 6.5s-8-2.8-8-6.5c0-1.4.3-2.8 1-4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 11.5h.01M12 10h.01M16 11.5h.01M10 15.5c1.2.8 2.8.8 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
 
 <header class="docs-header">
   <nav class="left">
     <a class="brand-mini" href="../index.html">
-      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
-      <span>CERBERUS DOCS</span>
+      <img src="../logo.png" alt="Cerberus Labs" class="brand-logo">
+      <span>Cerberus Labs</span>
     </a>
     <a class="nav-link" href="../index.html">Platform</a>
-    <a class="nav-link" href="agents.html">Agents</a>
-    <a class="nav-link" href="checks.html">Checks</a>
   </nav>
   <nav class="right">
     <form class="search-form" onsubmit="return false">
@@ -51,6 +49,17 @@
     <a class="sidebar-link" href="#remediation">Remediation</a>
     <a class="sidebar-link" href="#metadata">Coverage Metadata</a>
 
+    <div class="sidebar-title">Reference</div>
+    <a class="sidebar-link" href="agents.html#sentinel">SENTINEL</a>
+    <a class="sidebar-link" href="agents.html#gatekeeper">GATEKEEPER</a>
+    <a class="sidebar-link" href="agents.html#vault">VAULT</a>
+    <a class="sidebar-link" href="agents.html#conduit">CONDUIT</a>
+    <a class="sidebar-link" href="agents.html#watchtower">WATCHTOWER</a>
+    <a class="sidebar-link" href="agents.html#librarian">LIBRARIAN</a>
+    <a class="sidebar-link" href="agents.html#shield">SHIELD</a>
+    <a class="sidebar-link" href="agents.html#auditor">AUDITOR</a>
+    <a class="sidebar-link" href="agents.html#architect">ARCHITECT</a>
+
     <div class="sidebar-title">Support</div>
     <a class="sidebar-link" href="faq.html">FAQ</a>
     <a class="sidebar-link" href="security.html">Security & Privacy</a>
@@ -61,28 +70,37 @@
     <p class="lead">A Cerberus report is designed to be useful to three audiences at once: executives who need a score, engineers who need line numbers, and security leads who need remediation guidance. This page explains each section and how to turn it into action.</p>
 
     <h2 id="summary">Executive summary</h2>
-    <p>The top of the report shows the target, the scan timestamp, the overall score, and the letter grade. This is the slide you show to founders, investors, or customers who ask, "How secure is your app?"</p>
+    <p>The top of the report shows the target, scan timestamp, native Cerberus score, and native letter grade. Feeder and ALIGNMENT evidence never silently changes this score.</p>
     <div class="callout info">
       <div class="callout-title">What the score means</div>
-      <p>The score sums nine per-agent weights (out of 100) based on the 58-check catalog in <code>checks.json</code>. A higher score means fewer and less severe failed checks. See the <a href="scoring.html">Severity & Scoring</a> page for the exact math.</p>
+      <p>The native score sums nine per-agent weights (out of 100) based on the 59-check catalog in <code>checks.json</code>. A higher score means fewer and less severe native failures. ALIGNMENT has its own score and feeders are unscored external evidence. See <a href="scoring.html">Severity & Scoring</a> for the exact math.</p>
     </div>
 
     <h2 id="states">Check states</h2>
-    <p>Every one of the 58 checks in a report is in exactly one of four states — a report is not credible unless all four are visible, not just failures:</p>
+    <p>Every one of the 59 native checks in a report is in exactly one of four states — a report is not credible unless all four are visible, not just failures:</p>
     <ul>
       <li><strong>pass</strong> — applicable, evaluated, no findings.</li>
       <li><strong>fail</strong> — applicable, evaluated, one or more findings (or a stated repository-level reason, e.g. "No SECURITY.md found").</li>
       <li><strong>not_applicable</strong> — the check's precondition wasn't met (for example, a Docker-specific check when the repo has no Dockerfile), with the reason shown.</li>
       <li><strong>skipped</strong> — the check couldn't be evaluated (file budget exhausted, a fetch error), with the reason shown.</li>
     </ul>
-    <p>The four counts always sum to 58. If they don't, something in the scan is broken — trust the report only when the arithmetic checks out.</p>
+    <p>The four counts always sum to 59. If they do not, something in the native scan is broken.</p>
+
+    <h2 id="orchestration">Orchestration sections</h2>
+    <ul>
+      <li><strong>native</strong> mirrors the unchanged native score, grade, counts, and flattened findings while legacy top-level fields remain compatible.</li>
+      <li><strong>alignment</strong> contains a separate score, grade, counts, and findings for repository and coding-agent policy.</li>
+      <li><strong>feeders</strong> summarizes <code>completed</code>, <code>not_applicable</code>, <code>unavailable</code>, and <code>failed</code> tools and preserves per-tool provenance.</li>
+      <li><strong>policy</strong> records combined blockers and warnings. Critical evidence or at least two high findings fails the default policy; optional missing tools warn, while strict requested-tool failures block.</li>
+    </ul>
+    <p>The combined policy is visible report data. It does not implicitly replace the native <code>--fail-under</code> exit gate.</p>
 
     <h2 id="agent-summary">Agent summary</h2>
     <p>The next section breaks the score down by agent. Each row shows:</p>
     <ul>
       <li>The agent name and domain (for example, SENTINEL · Code Analysis).</li>
       <li>The agent's score out of its weight (its share of the 100-point total).</li>
-      <li>Severity badges showing how many critical, high, medium, and low findings that agent produced.</li>
+      <li>The check counts broken down by state (pass, fail, n/a, and skip).</li>
     </ul>
     <p>Use this table to assign work. If SHIELD has two high findings, assign the frontend team to it. If WATCHTOWER is clean, your infrastructure/CI configuration is in good shape.</p>
 
@@ -95,6 +113,7 @@
       <li><strong>Snippet</strong> — the actual matched line from the source file, and a permalink pinned to the scanned commit SHA (<code>.../blob/{sha}/{path}#L{n}</code>) so the link never rots.</li>
       <li><strong>Risk and remediation</strong> — why it matters and a concrete fix; many checks also include a copyable suggested-fix code block.</li>
     </ul>
+    <p>Normalized ALIGNMENT and feeder findings add a source tool, raw rule ID, confidence when available, alignment category where applicable, stable fingerprint, and remediation. Secret values and potentially secret-bearing source snippets are omitted or redacted.</p>
 
     <h3>How to prioritize</h3>
     <p>Work in severity order:</p>
@@ -120,7 +139,7 @@
     <ul>
       <li><strong>filesInTree</strong> — total files in the repository's tree.</li>
       <li><strong>filesEligible</strong> — files that matched a source glob and weren't excluded.</li>
-      <li><strong>filesScanned</strong> — files actually fetched and evaluated (bounded by the ≤400 files / ≤512 KB per file budget).</li>
+      <li><strong>filesScanned</strong> — files actually fetched and evaluated (bounded by the ≤2,000 files / ≤2 MB per file budget).</li>
       <li><strong>filesSkipped</strong> and <strong>skipReasons</strong> — anything left out, and why. Cerberus never silently truncates without saying so.</li>
       <li><strong>bytesScanned</strong> and <strong>truncated</strong> — total volume scanned, and whether the file budget was hit.</li>
     </ul>
@@ -132,21 +151,20 @@
     </div>
 
     <h2>Sharing and archiving</h2>
-    <p>A report can be exported as JSON (<code>--json</code> from the CLI, or the "Download JSON" action in the web app), as a standalone HTML file (<code>--html</code>, or "Download HTML report"), or as a copyable Markdown summary from the web app. All three are self-contained — you can:</p>
+    <p>A report can be exported as normalized JSON (<code>--json</code>), standalone HTML (<code>--html</code>), SARIF (<code>--sarif</code>), or a separate feeder bundle (<code>--feeder-json</code>). Browser exports continue to cover the native web scan.</p>
     <ul>
       <li>Email it to stakeholders.</li>
       <li>Attach it to a fundraising data room or security questionnaire.</li>
       <li>Upload it to a compliance folder for audit evidence.</li>
       <li>Feed the JSON into other tooling, or the SARIF output into GitHub code scanning.</li>
     </ul>
-    <p>Web-app scans are cached in the browser's <code>localStorage</code> keyed by <code>owner/repo@sha</code> for 24 hours, so a report URL is shareable and reloads instantly until the cache expires. CLI reports are written wherever you point <code>--json</code>/<code>--html</code>/<code>--sarif</code>.</p>
+    <p>Web-app scans are cached in the browser's <code>localStorage</code> keyed by <code>owner/repo@sha</code> for 24 hours. CLI reports are written wherever you point the output flags. Treat every report as sensitive: paths, dependency names, and vulnerability descriptions may disclose useful security information even after credential redaction.</p>
   </main>
 </div>
 
 <footer class="docs-footer">
   <div class="inner">
-    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
-    <span><a href="index.html">Docs home</a> · <a href="scanner.html">Scanner</a> · <a href="scoring.html">Scoring</a></span>
+    <span>Cerberus Labs 2026</span>
   </div>
 </footer>
 

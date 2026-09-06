@@ -23,5 +23,10 @@ jobs:
       - name: Fail if generated catalog is stale
         run: git diff --exit-code assets/checks.js
 
+      # Offline engine tests: report schema, counts invariants, and targeted check
+      # outcomes against synthetic directories (no network).
+      - name: Run unit tests
+        run: python3 -m unittest discover -s tests -v
+
       - name: Self-scan
         run: python3 examine.py . --fail-under 80

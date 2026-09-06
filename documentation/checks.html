@@ -13,8 +13,8 @@
 <header class="docs-header">
   <nav class="left">
     <a class="brand-mini" href="../index.html">
-      <span class="brand-mark"><svg><use href="#i-cerb"/></svg></span>
-      <span>CERBERUS DOCS</span>
+      <img src="../logo.png" alt="Cerberus Labs" class="brand-logo">
+      <span>Cerberus Labs</span>
     </a>
     <a class="nav-link" href="../index.html">Platform</a>
     <a class="nav-link" href="agents.html">Agents</a>
@@ -61,11 +61,16 @@
 
   <main class="docs-content">
     <h1>Check Catalog</h1>
-    <p class="lead">The complete set of checks Cerberus agents evaluate during every examination, generated directly from <code>checks.json</code> — the single source of truth shared by the web app, the CLI (<code>examine.py</code>), and this page. The catalog currently holds <strong>59 checks</strong> across nine agent domains, weighted to 100 points.</p>
+    <p class="lead">The complete native check set, generated directly from <code>checks.json</code> — the source of truth shared by the web app and CLI native engine. The catalog currently holds <strong>59 checks</strong> across nine agent domains, weighted to 100 points.</p>
 
     <div class="callout info">
       <div class="callout-title">How this catalog is built</div>
       <p>Every check below is read straight from <code>checks.json</code> by <code>scripts/generate-checks-docs.py</code>. Nothing here is hand-written or aspirational — if a check is not in <code>checks.json</code>, it does not run, and it is not listed here. For planned checks that are not yet implemented, see the roadmap section of <a href="../docs/examination-spec.md">the examination spec</a>.</p>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">Orchestration is additive</div>
+      <p>The CLI can also run the separately scored ALIGNMENT analyzer and optional Gitleaks, OSV-Scanner, Zizmor, OpenSSF Scorecard, and actionlint feeders. Their rules are not part of this catalog and never alter native points. See the <a href="scanner.html">CLI Scanner</a> and <a href="reports.html">Reading Reports</a> pages.</p>
     </div>
 
     <h2>Check states</h2>
@@ -900,9 +905,9 @@ sh install.sh</code></pre>
 <span class="sev low">low</span>
 <span class="cwe-tag">CWE-489</span>
 </div>
-<p>`console.log`, bare `print`, or `debugger` statements remain in non-test source.</p>
+<p>`debugger` statements or `console.debug`/`console.trace` calls remain in non-test source.</p>
 <div class="field-label">Risk</div>
-<p>Noisy logs bury real signals, and `debugger` halts execution in any browser with devtools open.</p>
+<p>`debugger` halts execution in any browser with devtools open, and verbose debug calls bury real signals.</p>
 <div class="field-label">Remediation</div>
 <p>Route through a level-aware logger and enforce `no-console` / `no-debugger` in lint.</p>
 </div>
@@ -1019,8 +1024,7 @@ jobs:
 
 <footer class="docs-footer">
   <div class="inner">
-    <span>© 2026 Cerberus Intelligence. All rights reserved.</span>
-    <span><a href="index.html">Docs home</a> · <a href="agents.html">Agents</a> · <a href="scoring.html">Scoring</a></span>
+    <span>Cerberus Labs 2026</span>
   </div>
 </footer>
 
