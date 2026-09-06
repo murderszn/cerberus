@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Releases — Cerberus Labs</title>
+  <meta name="description" content="Software releases from Cerberus Labs. Currently in beta: the Cerberus Agent CLI, a terminal workbench for security research.">
+  <meta name="theme-color" content="#ffffff">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Releases — Cerberus Labs">
+  <meta property="og:description" content="Software releases from Cerberus Labs. Currently in beta: the Cerberus Agent CLI.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Releases — Cerberus Labs">
+  <meta name="twitter:description" content="Software releases from Cerberus Labs. Currently in beta: the Cerberus Agent CLI.">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+  <link rel="stylesheet" href="assets/releases.css">
+  <meta property="og:image" content="https://murderszn.github.io/cerberus/assets/cerberus-social.png">
+  <meta property="og:url" content="https://murderszn.github.io/cerberus/releases.html">
+</head>
+<body class="research-page">
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a href="index.html" class="brand-link" aria-label="Cerberus Labs home"><img src="logo.png" alt="Cerberus Labs Logo" class="nav-logo"></a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="agent.html">Cerberus Agent</a>
+      <a href="releases.html" aria-current="page">Releases</a>
+      <a href="shop.html">Shop</a>
+      <a href="documentation/index.html">Docs</a>
+      <a href="https://github.com/murderszn/cerberus" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main class="research-main" id="main-content">
+    <div class="research-masthead">
+      <h1>Releases</h1>
+    </div>
+
+    <article class="release" aria-labelledby="release-title">
+      <div class="release-head">
+        <p class="eyebrow">Latest</p>
+        <h2 id="release-title">Cerberus Agent CLI</h2>
+        <p class="release-version">1.0.0-beta</p>
+        <p><span class="release-badge">Beta</span></p>
+      </div>
+      <div class="release-body">
+        <p>Our terminal workbench for security research: nine specialist agents, an evidence-led review loop, and a full-screen Ink interface — direct from your shell, no browser required.</p>
+        <ul class="release-includes">
+          <li>Ink TUI workbench plus a classic REPL</li>
+          <li>Specialist personas and team fan-out</li>
+          <li>Plan mode and accept-edits mode with ask-first approvals</li>
+          <li>Saved sessions, model picker, and token usage</li>
+        </ul>
+        <h3>Requirements</h3>
+        <p>Python 3, plus the agent runtime dependencies in <code>servers/requirements-agent.txt</code>. The deterministic scanner (<code>examine.py</code>) stays stdlib-only and needs nothing extra.</p>
+        <h3>Install</h3>
+        <pre class="release-install"><code>git clone https://github.com/murderszn/cerberus.git
+cd cerberus
+pip install -r servers/requirements-agent.txt
+python -m servers.cli --help</code></pre>
+        <p class="release-links">
+          <a class="note-link" href="https://github.com/murderszn/cerberus" target="_blank" rel="noopener noreferrer">Get it on GitHub <span aria-hidden="true">↗</span></a>
+          <a class="note-link" href="documentation/index.html">Read the docs <span aria-hidden="true">→</span></a>
+        </p>
+      </div>
+      <aside class="note-index" aria-label="Release 1">
+        <span class="note-number">01</span><span>BETA</span><span>Agent CLI</span>
+      </aside>
+    </article>
+  </main>
+  <footer class="site-footer">
+    <a href="index.html">Cerberus Labs</a>
+    <span>Open research. Observable security.</span>
+    <span>© 2026</span>
+  </footer>
+</body>
+</html>

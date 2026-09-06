@@ -1,0 +1,335 @@
+"""Tests for shared slash-command helpers, model persistence, and new REPL slash wiring."""
+
+import subprocess
+import sys
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from servers.config import AppConfig  # noqa: E402
+from servers.models import Message  # noqa: E402
+
+
+class StubRegistry:
+    mode = "plan"
+
+
+class StubLoop:
+    def __init__(self, config):
+        self.config = config
+        self.registry = StubRegistry()
+        self.messages: list[Message] = []
+
+    def set_mode(self, mode):
+        if mode not in {"build", "plan"}:
+            raise ValueError(mode)
+        self.config.agent_mode = mode
+
+
+class ConsoleStub:
+    def __init__(self, ui):
+        self.ui = ui
+
+    def print(self, *args, **kwargs):
+        self.ui.lines.append(("print", " ".join(str(a) for a in args)))
+
+
+class RecordingUI:
+    def __init__(self):
+        self.lines: list[tuple[str, str]] = []
+        self.console = ConsoleStub(self)
+
+    def info(self, msg):
+        self.lines.append(("info", str(msg)))
+
+    def warn(self, msg):
+        self.lines.append(("warn", str(msg)))
+
+    def error(self, msg):
+        self.lines.append(("error", str(msg)))
+
+    def texts(self, kind=None):
+        return [m for k, m in self.lines if kind is None or k == kind]
+
+
+def make_config(tmpdir: str) -> AppConfig:
+    config = AppConfig()
+    config.workspace = Path(tmpdir)
+    return config
+
+
+class PickModelTest(unittest.TestCase):
+    def test_empty_shows_active(self):
+        from servers.commands import pick_model
+
+        picked, msg = pick_model(AppConfig(), "")
+        self.assertIsNone(picked)
+        self.assertIn("Active model", msg)
+
+    def test_bad_index_warns(self):
+        from servers.commands import pick_model
+
+        picked, msg = pick_model(AppConfig(), "999")
+        self.assertIsNone(picked)
+        self.assertIn("No model #999", msg)
+
+    def test_name_passthrough(self):
+        from servers.commands import pick_model
+
+        picked, msg = pick_model(AppConfig(), "my-private-model")
+        self.assertEqual(picked, "my-private-model")
+        self.assertIn("Switched model", msg)
+
+    def test_catalog_lines_mark_current(self):
+        from servers.commands import catalog_lines
+
+        lines = catalog_lines(AppConfig())
+        self.assertTrue(lines[0].startswith("Models"))
+        self.assertTrue(any("●" in ln for ln in lines))
+
+
+class SaveModelTest(unittest.TestCase):
+    def test_json_roundtrip(self):
+        import json
+        import tempfile
+
+        from servers.config import load_config, save_model
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.json"
+            path.write_text('{"provider": {"model": "kimi"}}', encoding="utf-8")
+            saved = save_model("deepseek", path)
+            self.assertEqual(saved, path)
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(raw["provider"]["model"], "deepseek")
+            self.assertEqual(load_config(path).provider.model, "deepseek")
+
+    def test_yaml_roundtrip(self):
+        import tempfile
+
+        try:
+            import yaml  # noqa: F401
+            has_yaml = True
+        except ImportError:
+            has_yaml = False
+        from servers.config import load_config, save_model
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.yaml"
+            body = (
+                "# comment\nprovider:\n  base_url: \"https://x/v1\"\n"
+                '  model: "kimi"\n\nagent_mode: "plan"\n'
+            )
+            path.write_text(body, encoding="utf-8")
+            save_model("openai", path)
+            text = path.read_text(encoding="utf-8")
+            self.assertRegex(text, r"model:\s*[\"']?openai[\"']?")  # quoted or plain
+            self.assertNotIn("kimi", text)
+            self.assertIn("agent_mode:", text)  # rest of file preserved
+            if has_yaml:
+                self.assertEqual(load_config(path).provider.model, "openai")
+
+
+class CompactTest(unittest.TestCase):
+    def test_drops_middle_keeps_system_and_tail(self):
+        from servers.commands import compact_history
+
+        msgs = [Message(role="system", content="sys")]
+        msgs += [Message(role="user", content=f"m{i}") for i in range(15)]
+        out = compact_history(msgs)
+        self.assertIn("dropped 5", out)
+        self.assertEqual(len(msgs), 11)
+        self.assertEqual(msgs[0].role, "system")
+        self.assertEqual(msgs[-1].content, "m14")
+
+    def test_short_history_noop(self):
+        from servers.commands import compact_history
+
+        msgs = [Message(role="user", content="hi")]
+        out = compact_history(msgs)
+        self.assertIn("already compact", out)
+        self.assertEqual(len(msgs), 1)
+
+
+class AttachTest(unittest.TestCase):
+    def test_attaches_file_content(self):
+        import tempfile
+
+        from servers.commands import attach_files
+
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "a.txt").write_text("hello attach\n", encoding="utf-8")
+            msgs: list[Message] = []
+            out = attach_files(msgs, Path(tmp), "a.txt")
+            self.assertIn("Attached 1 file", out)
+            self.assertEqual(len(msgs), 1)
+            self.assertIn("hello attach", msgs[0].content or "")
+
+    def test_rejects_outside_and_missing(self):
+        import tempfile
+
+        from servers.commands import attach_files
+
+        with tempfile.TemporaryDirectory() as tmp:
+            msgs: list[Message] = []
+            out = attach_files(msgs, Path(tmp), "../escape.txt nope.txt")
+            self.assertIn("Nothing attached", out)
+            self.assertEqual(msgs, [])
+
+    def test_empty_spec_usage(self):
+        import tempfile
+
+        from servers.commands import attach_files
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIn("Usage", attach_files([], Path(tmp), ""))
+
+
+class TeamParseTest(unittest.TestCase):
+    def test_comma_and_space_teams(self):
+        from servers.commands import parse_team_arg
+
+        valid = ["sentinel", "vault", "architect"]
+        names, task, err = parse_team_arg("sentinel,vault audit auth", valid)
+        self.assertEqual((names, task, err), (["sentinel", "vault"], "audit auth", ""))
+        names, task, err = parse_team_arg("sentinel vault audit auth", valid)
+        self.assertEqual(names, ["sentinel", "vault"])
+        self.assertEqual(task, "audit auth")
+
+    def test_repeated_name_dedupes(self):
+        from servers.commands import parse_team_arg
+
+        names, task, err = parse_team_arg("vault vault audit", ["vault"])
+        self.assertEqual(names, ["vault"])
+        self.assertEqual(task, "audit")
+        self.assertEqual(err, "")
+
+    def test_usage_errors(self):
+        from servers.commands import parse_team_arg
+
+        _, _, err = parse_team_arg("do the thing", ["sentinel"])
+        self.assertIn("Usage", err)
+        _, _, err = parse_team_arg("sentinel", ["sentinel"])
+        self.assertIn("Give the team a task", err)
+
+    def test_persona_lines_roster(self):
+        from servers.commands import persona_lines
+
+        lines = persona_lines(["sentinel", "vault"])
+        self.assertTrue(lines[0].startswith("Specialists"))
+        self.assertTrue(any("sentinel" in ln for ln in lines))
+
+
+class InitDiffTest(unittest.TestCase):
+    def test_init_creates_and_never_overwrites(self):
+        import tempfile
+
+        from servers.commands import init_project_file
+
+        with tempfile.TemporaryDirectory() as tmp:
+            first = init_project_file(Path(tmp))
+            self.assertIn("Wrote project memory", first)
+            target = Path(tmp) / "CERBERUS.md"
+            target.write_text("custom\n", encoding="utf-8")
+            second = init_project_file(Path(tmp))
+            self.assertIn("already exists", second)
+            self.assertEqual(target.read_text(encoding="utf-8"), "custom\n")
+
+    def test_diff_outside_git(self):
+        import tempfile
+
+        from servers.commands import workspace_diff_summary
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIn("Not a git repo", workspace_diff_summary(Path(tmp)))
+
+    def test_diff_shows_changes(self):
+        import tempfile
+
+        from servers.commands import workspace_diff_summary
+
+        with tempfile.TemporaryDirectory() as tmp:
+            r = subprocess.run(["git", "init", tmp], capture_output=True, text=True)
+            if r.returncode != 0:
+                self.skipTest("git not available")
+            subprocess.run(
+                ["git", "-C", tmp, "config", "user.email", "t@t"],
+                capture_output=True, check=False,
+            )
+            subprocess.run(
+                ["git", "-C", tmp, "config", "user.name", "t"],
+                capture_output=True, check=False,
+            )
+            Path(tmp, "f.txt").write_text("v1\n", encoding="utf-8")
+            subprocess.run(["git", "-C", tmp, "add", "."],
+                           capture_output=True, check=False)
+            subprocess.run(["git", "-C", tmp, "commit", "-m", "init"],
+                           capture_output=True, check=False)
+            Path(tmp, "f.txt").write_text("v2\n", encoding="utf-8")
+            out = workspace_diff_summary(Path(tmp))
+            self.assertIn("f.txt", out)
+
+
+class SlashWiringTest(unittest.TestCase):
+    def _run(self, line, tmpdir):
+        from servers.cli import _handle_slash
+
+        config = make_config(tmpdir)
+        loop = StubLoop(config)
+        ui = RecordingUI()
+        _handle_slash(line, loop, ui, config)
+        return config, loop, ui
+
+    def test_slash_model_switches(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config, _, ui = self._run("/model deepseek", tmp)
+            self.assertEqual(config.provider.model, "deepseek")
+            self.assertTrue(any("Switched model" in m for m in ui.texts("info")))
+
+    def test_slash_model_bad_index_warns(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            _, _, ui = self._run("/model 999", tmp)
+            self.assertTrue(any("No model" in m for m in ui.texts("warn")))
+
+    def test_slash_add_and_compact(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "a.txt").write_text("ctx\n", encoding="utf-8")
+            from servers.cli import _handle_slash
+
+            config = make_config(tmp)
+            loop = StubLoop(config)
+            ui = RecordingUI()
+            _handle_slash("/add a.txt", loop, ui, config)
+            self.assertEqual(len(loop.messages), 1)
+            for i in range(15):
+                loop.messages.append(Message(role="user", content=f"m{i}"))
+            _handle_slash("/compact", loop, ui, config)
+            self.assertLess(len(loop.messages), 17)
+            self.assertTrue(any("Compacted" in m for m in ui.texts("info")))
+
+    def test_slash_diff_and_init(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            from servers.cli import _handle_slash
+
+            config = make_config(tmp)
+            loop = StubLoop(config)
+            ui = RecordingUI()
+            _handle_slash("/init", loop, ui, config)
+            self.assertTrue((Path(tmp) / "CERBERUS.md").exists())
+            _handle_slash("/diff", loop, ui, config)
+            self.assertTrue(any("Not a git repo" in m for m in ui.texts("print")))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,74 @@
+/* Releases page: one card per shipped release, in the site idiom. */
+.release {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 0 50px;
+  padding: 38px 0 54px;
+  border-top: 2px solid var(--ink);
+}
+.release-head { grid-column: 1; grid-row: 1; }
+.release-body { grid-column: 1; grid-row: 2; min-width: 0; }
+.release > .note-index { grid-column: 2; grid-row: 1 / span 2; }
+.release-head h2 {
+  margin: 0 0 6px;
+  font: 400 11.5px/1.9 var(--font-pixel);
+  text-transform: uppercase;
+}
+.release-version {
+  margin: 0 0 14px;
+  font: 600 13.5px/1.6 var(--font-mono);
+  color: var(--muted);
+}
+.release-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 2px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+  font: 700 10.5px/1.6 var(--font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.release-body p {
+  margin: 0 0 14px;
+  max-width: 62ch;
+  font: 400 13.5px/1.85 var(--font-mono);
+  color: var(--muted);
+}
+.release-body h3 {
+  margin: 26px 0 10px;
+  font: 400 11px/1.9 var(--font-pixel);
+  text-transform: uppercase;
+}
+.release-includes { margin: 0 0 6px; padding-left: 20px; }
+.release-includes li {
+  margin-bottom: 6px;
+  font: 400 13px/1.8 var(--font-mono);
+  color: var(--muted);
+}
+.release-body code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: #f1f1f4;
+  padding: 1px 6px;
+}
+.release-install {
+  margin: 0 0 6px;
+  padding: 16px 18px;
+  border: 2px solid var(--ink);
+  background: #0a0a0c;
+  box-shadow: 5.5px 5.5px 0 var(--ink);
+  overflow-x: auto;
+}
+.release-install code {
+  background: transparent;
+  padding: 0;
+  color: #f2f2f4;
+  font-size: 12.5px;
+  line-height: 1.9;
+}
+.release-links { display: flex; flex-wrap: wrap; gap: 0 34px; }
+@media (max-width: 680px) {
+  .release { grid-template-columns: 1fr 63px; gap: 19px 14.5px; padding: 27px 0 37px; }
+  .release-body p { font-size: 12.5px; }
+}
