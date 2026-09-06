@@ -257,12 +257,10 @@
         width: 100%;
         margin-top: 1.5rem;
         text-align: left;
-        background: rgba(255, 255, 255, 0.88);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 2px solid var(--black);
-        box-shadow: 4px 4px 0px var(--black);
-        padding: 1rem 1.25rem;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0;
         box-sizing: border-box;
     }
     .recent-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--black); padding-bottom: 0.5rem; margin-bottom: 0.75rem; }
@@ -345,6 +343,20 @@
     }
     /* Leaderboard & Loser Board */
     .pat-note { font-size: 0.7rem; color: var(--gray-300); margin-top: 0.75rem; font-family: var(--font-mono); text-align: left; }
+
+    /* Splash options (token + local AI): containerless, see-through. */
+    #view-splash .pat-field summary {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        padding: 0.25rem 0;
+    }
+    #view-splash .pat-field summary:hover {
+        text-decoration: underline;
+        text-underline-offset: 4px;
+    }
 
     /* Scan / Progress view */
     #view-scan { max-width: 900px; margin: 0 auto; width: 100%; }
@@ -959,6 +971,7 @@
         text-align: center;
         letter-spacing: 0.08em;
     }
+    .brand-link { display: inline-flex; align-items: center; margin-right: 30px; }
 
     .report-right { display: flex; flex-direction: column; width: 100%; }
 
@@ -1068,7 +1081,7 @@
         color: #0A0A0C;
         letter-spacing: 0;
     }
-    .nav-logo { image-rendering: pixelated; }
+    .nav-logo { height: 28px; width: auto; display: block; image-rendering: auto; }
     header nav a {
         font-family: var(--font-mono);
         color: var(--px-mute);
@@ -1490,11 +1503,12 @@
         padding: 0 1.5rem;
         min-height: 56px;
         display: flex; align-items: center; justify-content: center;
+        gap: 0;
         box-shadow: 0 1px 3px rgba(10,10,12,0.04);
     }
     .site-nav {
         display: flex; align-items: center; justify-content: center;
-        gap: 2.5rem; flex-wrap: wrap; margin: 0 auto;
+        gap: 30px; flex-wrap: wrap; margin: 0;
     }
     .site-nav a {
         text-decoration: none; color: #555560; font-size: 0.75rem; font-weight: 700;
@@ -1872,13 +1886,13 @@
         </defs>
     </svg>
     <header class="site-header">
+        <a href="index.html" class="brand-link" aria-label="Cerberus Labs home"><img src="logo.png" alt="Cerberus Labs Logo" class="nav-logo" id="nav-logo"></a>
         <nav class="site-nav" aria-label="Primary">
             <a href="index.html">Home</a>
             <a href="#/" data-nav="scanner" aria-current="page">Cerberus Agent</a>
+            <a href="releases.html">Releases</a>
             <a href="shop.html">Shop</a>
             <a href="documentation/index.html">Docs</a>
-            <a href="documentation/checks.html">Checks</a>
-            <a href="#/report/oso95/scroll-world">Report</a>
             <a href="https://github.com/murderszn/cerberus" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
         </nav>
     </header>
@@ -1886,10 +1900,6 @@
     <main id="main-content">
         <!-- Splash / target entry -->
         <section id="view-splash" hidden>
-            <div class="hero-stage">
-                <img src="logo.png" alt="Cerberus Labs Logo" class="hero-logo" id="hero-logo">
-            </div>
-
             <p class="form-label" id="examination-label">Examine a repository</p>
             <form aria-labelledby="examination-label" id="target-form" class="input-group" novalidate>
                         <label for="target-input" class="visually-hidden">GitHub repository URL</label>
