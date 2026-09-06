@@ -234,6 +234,19 @@
     </div>
   </div>
 
+  <!-- Orders Paused Notice -->
+  <div class="modal-backdrop" id="order-paused-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-window order-paused-window">
+      <button type="button" class="modal-close-btn" id="order-paused-close-btn" aria-label="Close notice">✕</button>
+      <div class="order-paused-body">
+        <span class="eyebrow">Cerberus Supply</span>
+        <h2>Not taking orders yet</h2>
+        <p>Compute for agents isn't cheap — but the shop isn't open just yet. Check back soon.</p>
+        <button type="button" class="btn-buy-direct" onclick="window.cerberusShop.closeOrderPaused()">Got it</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Site Footer -->
   <footer class="site-footer">
     <div>Cerberus Labs · Armored Division Uniforms & Open Security Research</div>

@@ -285,8 +285,31 @@
     }
   }
 
+  // Orders are paused — every purchase attempt shows the notice instead.
+  const ORDERS_PAUSED = true;
+
+  function showOrderPaused() {
+    const pausedModal = document.getElementById('order-paused-modal');
+    if (pausedModal) {
+      pausedModal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function closeOrderPaused() {
+    const pausedModal = document.getElementById('order-paused-modal');
+    if (pausedModal) {
+      pausedModal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  }
+
   // Cart Logic
   function addToCart(productId, size, qty = 1) {
+    if (ORDERS_PAUSED) {
+      showOrderPaused();
+      return;
+    }
     const p = PRODUCTS.find(x => x.id === productId);
     if (!p) return;
 
@@ -309,6 +332,10 @@
   }
 
   function quickAdd(productId) {
+    if (ORDERS_PAUSED) {
+      showOrderPaused();
+      return;
+    }
     const p = PRODUCTS.find(x => x.id === productId);
     if (!p) return;
     const defaultSize = p.sizes.includes('M') ? 'M' : p.sizes[0];
@@ -316,6 +343,10 @@
   }
 
   function modalAddToCart() {
+    if (ORDERS_PAUSED) {
+      showOrderPaused();
+      return;
+    }
     if (!currentModalProduct) return;
     addToCart(currentModalProduct.id, selectedSize, selectedQty);
 
@@ -421,6 +452,11 @@
 
   // Simulated Checkout
   function openCheckout() {
+    if (ORDERS_PAUSED) {
+      closeCart();
+      showOrderPaused();
+      return;
+    }
     if (cart.length === 0) return;
     closeCart();
 
@@ -459,6 +495,11 @@
 
   function handleCheckoutSubmit(e) {
     e.preventDefault();
+    if (ORDERS_PAUSED) {
+      closeCheckout();
+      showOrderPaused();
+      return;
+    }
     const orderNumber = 'CRB-' + Math.floor(100000 + Math.random() * 900000);
     const email = document.getElementById('checkout-email')?.value || 'security@cerberus.internal';
 
@@ -530,12 +571,22 @@
       checkoutForm.addEventListener('submit', handleCheckoutSubmit);
     }
 
+    const pausedModal = document.getElementById('order-paused-modal');
+    const pausedCloseBtn = document.getElementById('order-paused-close-btn');
+    if (pausedCloseBtn) pausedCloseBtn.addEventListener('click', closeOrderPaused);
+    if (pausedModal) {
+      pausedModal.addEventListener('click', (e) => {
+        if (e.target === pausedModal) closeOrderPaused();
+      });
+    }
+
     // Keyboard ESC to close any open modal
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeModal();
         closeCart();
         closeCheckout();
+        closeOrderPaused();
       }
     });
   });
@@ -555,7 +606,9 @@
     updateCartQty,
     removeCartItem,
     openCheckout,
-    closeCheckout
+    closeCheckout,
+    showOrderPaused,
+    closeOrderPaused
   };
 
 })();
