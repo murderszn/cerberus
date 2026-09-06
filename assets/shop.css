@@ -49,63 +49,7 @@
   padding: 36px 29px 80px;
 }
 
-/* Hero banner — dogs stipple as background, homepage figure language */
-.shop-hero {
-  position: relative;
-  border: 2px solid var(--shop-ink);
-  background: #0A0A0C;
-  box-shadow: 5.5px 5.5px 0 var(--shop-ink);
-  overflow: hidden;
-  margin: 0 5px 5px 0;
-  min-height: 300px;
-  display: flex;
-  align-items: flex-end;
-}
-.shop-hero-bg {
-  position: absolute;
-  inset: 0;
-  background-image: url('cerberus-stipple.png');
-  background-size: 142% auto;
-  background-position: 82% 38%;
-  background-repeat: no-repeat;
-  filter: grayscale(1) contrast(1.05);
-}
-.shop-hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(transparent 20%, rgba(10,10,12,.82) 100%);
-}
-.shop-hero-copy {
-  position: relative;
-  z-index: 1;
-  padding: 64px 28px 22px;
-  color: #fff;
-  max-width: 640px;
-}
-.shop-hero-copy .eyebrow {
-  color: rgba(255,255,255,.75);
-  font: 600 10px/1.6 var(--font-mono);
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  display: block;
-  margin-bottom: 10px;
-}
-.shop-hero-copy h1 {
-  font: 400 clamp(18px, 2.6vw, 28px)/1.5 var(--font-pixel);
-  text-transform: uppercase;
-  letter-spacing: -.02em;
-  margin: 0 0 10px;
-}
-.shop-hero-copy p {
-  margin: 0;
-  font: 600 11px/1.6 var(--font-mono);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,.85);
-}
-
-/* Slim intro line under hero */
+/* Slim intro line */
 .shop-masthead {
   padding: 22px 0;
   border-bottom: 2px dashed var(--shop-rule);
@@ -159,32 +103,31 @@
   color: #FFFFFF;
 }
 
-/* Product grid — 2x2, bordered like homepage figures */
+/* Product grid — 2x2, containerless images */
 .products-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 32px;
+  gap: 40px 32px;
   margin: 0 0 72px;
 }
 
 .product-card {
-  border: 2px solid var(--shop-ink);
-  box-shadow: 5.5px 5.5px 0 var(--shop-ink);
-  background: #fff;
+  border: none;
+  box-shadow: none;
+  background: transparent;
   display: flex;
   flex-direction: column;
-  transition: transform .15s, box-shadow .15s;
 }
 .product-card:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: var(--shop-shadow-lg);
+  transform: none;
+  box-shadow: none;
 }
 .product-media {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
-  background: var(--shop-soft);
-  border-bottom: 2px solid var(--shop-ink);
+  aspect-ratio: 1 / 1;
+  background: transparent;
+  border: none;
   overflow: hidden;
   cursor: pointer;
 }
@@ -199,7 +142,7 @@
   transform: scale(1.03);
 }
 .product-info {
-  padding: 20px 22px;
+  padding: 16px 2px 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -695,14 +638,12 @@
   .modal-grid { grid-template-columns: 1fr; }
   .modal-image-col { border-right: none; border-bottom: 2px solid var(--shop-ink); }
   .shop-accordions { grid-template-columns: 1fr; }
-  .shop-hero { min-height: 240px; }
-  .shop-hero-bg { background-size: 210% auto; background-position: 74% 36%; }
 }
 
 @media (max-width: 700px) {
   .shop-main { padding: 20px 16px 60px; }
   .products-grid { grid-template-columns: 1fr; gap: 28px; }
-  .product-media { aspect-ratio: 4 / 3; }
+  .product-media { aspect-ratio: 1 / 1; }
   .product-info-buy { align-items: flex-start; }
   .modal-detail-col { padding: 20px 18px; }
   .checkout-row-2 { grid-template-columns: 1fr; }
