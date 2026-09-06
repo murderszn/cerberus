@@ -233,6 +233,47 @@ def parse_team_arg(arg: str, valid: list[str]) -> tuple[list[str], str, str]:
     return names, task, ""
 
 
+#: Canonical slash-command registry: (command, usage, blurb).
+#: Shared by TUI inline autocomplete, the classic REPL completer, and help.
+SLASH_COMMANDS: tuple[tuple[str, str, str], ...] = (
+    ("help", "", "list commands"),
+    ("mode", " [plan|yolo]", "switch plan / accept-edits"),
+    ("model", " [name]", "show or switch active model"),
+    ("models", "", "list configured models"),
+    ("persona", " [name]", "show or switch the agent you're talking to"),
+    ("personas", "", "list specialist agents"),
+    ("team", " a,b <task>", "fan a task out to a crew"),
+    ("scan", " <target>", "run scanner, attach findings"),
+    ("approvals", "", "ask-first policy for web + builds"),
+    ("tools", "", "list registered tools"),
+    ("usage", "", "token usage this session"),
+    ("login", "", "sign in with Pollen"),
+    ("logout", "", "sign out"),
+    ("init", "", "scaffold CERBERUS.md"),
+    ("add", " <files…>", "attach workspace files"),
+    ("diff", "", "workspace changes"),
+    ("compact", "", "trim older history"),
+    ("reset", "", "clear conversation history"),
+    ("save", " [name]", "save conversation"),
+    ("load", " <name>", "restore saved conversation"),
+    ("sessions", "", "list saved sessions"),
+    ("config", "", "show effective configuration"),
+    ("workspace", " [path]", "show or change workspace"),
+    ("clear", "", "clear the screen"),
+    ("exit", "", "quit"),
+)
+
+
+def suggest_commands(fragment: str, limit: int = 7) -> list[tuple[str, str, str]]:
+    """Fuzzy-filter SLASH_COMMANDS: prefix matches first, then substring."""
+    frag = fragment.strip().lower().lstrip("/")
+    if not frag:
+        return list(SLASH_COMMANDS[:limit])
+    starts = [c for c in SLASH_COMMANDS if c[0].startswith(frag)]
+    subs = [c for c in SLASH_COMMANDS if frag in c[0] and c not in starts]
+    return (starts + subs)[:limit]
+
+
 def persona_lines(valid: list[str]) -> list[str]:
     """One-line roster for /personas (name + domain)."""
     try:

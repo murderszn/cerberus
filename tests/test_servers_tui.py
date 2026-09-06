@@ -273,6 +273,39 @@ class InkTuiTest(unittest.IsolatedAsyncioTestCase):
             await pilot.pause()
             self.assertIn("Usage", self.work_text(app))
 
+    async def test_inline_autocomplete(self):
+        from servers.ui.tui import SubmitArea
+
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            area = app.query_one("#prompt", SubmitArea)
+            await pilot.press("/", "p", "e", "r")
+            shown = await self.wait_for(
+                lambda: "/persona" in str(app.query_one("#suggest-rows").render()),
+                timeout=5.0,
+            )
+            self.assertTrue(shown, "suggest list missing /persona")
+            body = str(app.query_one("#suggest-rows").render())
+            self.assertIn("/personas", body)
+            # Down moves the highlight, Tab completes it.
+            await pilot.press("down", "tab")
+            await pilot.pause()
+            self.assertEqual(area.text, "/personas ")
+            self.assertFalse(app._suggest_visible())
+            # Typing a new fragment then Esc dismisses without completing.
+            await pilot.press("backspace", "backspace", "backspace", "backspace",
+                              "backspace", "backspace", "backspace", "backspace",
+                              "backspace", "backspace", "/", "m", "o")
+            shown = await self.wait_for(
+                lambda: "/mode" in str(app.query_one("#suggest-rows").render()),
+                timeout=5.0,
+            )
+            self.assertTrue(shown, "suggest list missing /mode")
+            await pilot.press("escape")
+            await pilot.pause()
+            self.assertFalse(app._suggest_visible())
+            self.assertEqual(area.text, "/mo")
+
     async def test_narrow_layout_collapses_sidebar(self):
         from textual.widgets import Button
 

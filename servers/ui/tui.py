@@ -262,6 +262,14 @@ ApprovalScreen { align: center middle; }
 .you { text-style: bold; }
 .thinking { color: #575C55; }
 .dark .thinking { color: #8B9089; }
+
+/* Inline autocomplete above the composer. */
+#suggest { display: none; height: auto; max-height: 10; border-top: solid #AAA9A0; }
+#suggest-rows { padding: 0 2; color: #575C55; }
+.dark #suggest { border-top: solid #2E322C; }
+.dark #suggest-rows { color: #8B9089; }
+.black #suggest { border-top: solid #262626; }
+.black #suggest-rows { color: #9A9A9A; }
 """
 
 VIEWS = (("task", "01 / Current task"), ("files", "02 / Files"), ("changes", "03 / Changes"), ("history", "04 / History"))
@@ -287,6 +295,22 @@ class SubmitArea(TextArea):
             event.stop()
             self.app.action_cycle_theme()
             return
+        if self.app._suggest_visible():
+            if event.key in {"up", "down"}:
+                event.prevent_default()
+                event.stop()
+                self.app._suggest_move(-1 if event.key == "up" else 1)
+                return
+            if event.key == "tab":
+                event.prevent_default()
+                event.stop()
+                self.app._accept_suggest()
+                return
+            if event.key == "escape":
+                event.prevent_default()
+                event.stop()
+                self.app._hide_suggest()
+                return
         if event.key == "enter":
             event.prevent_default()
             event.stop()
@@ -457,6 +481,8 @@ class InkApp(App):
         self.running = False
         self._draft_text = ""
         self._draft_widget = None
+        self._suggest_matches: list = []
+        self._suggest_index = 0
 
     # -- compose ------------------------------------------------------
     def compose(self) -> ComposeResult:
@@ -476,6 +502,8 @@ class InkApp(App):
                 yield Static("", classes="spacer")
                 yield Static("", id="side-foot")
             yield VerticalScroll(id="work")
+        with Vertical(id="suggest"):
+            yield Static("", id="suggest-rows")
         with Horizontal(id="compose"):
             yield Static("❯", classes="glyph")
             yield SubmitArea(id="prompt")
@@ -889,8 +917,82 @@ class InkApp(App):
                 break
         return box.get("r", False)
 
+    # -- inline autocomplete ------------------------------------------------
+    def _suggest_visible(self) -> bool:
+        return bool(getattr(self, "_suggest_matches", []))
+
+    def _update_suggest(self, text: str) -> None:
+        from servers.commands import suggest_commands
+
+        matches: list = []
+        if text.startswith("/") and "\n" not in text and " " not in text:
+            matches = suggest_commands(text[1:])
+        self._suggest_matches = matches
+        self._suggest_index = 0
+        self._render_suggest()
+
+    def _render_suggest(self) -> None:
+        try:
+            box = self.query_one("#suggest")
+            rows = self.query_one("#suggest-rows", Static)
+        except Exception:
+            return
+        matches = getattr(self, "_suggest_matches", [])
+        if not matches:
+            box.styles.display = "none"
+            return
+        lines = ["commands — tab to complete · esc dismiss"]
+        for i, (cmd, usage, blurb) in enumerate(matches):
+            mark = "❯" if i == getattr(self, "_suggest_index", 0) else " "
+            lines.append("{} /{}{} — {}".format(mark, cmd, usage, blurb))
+        rows.update("\n".join(lines))
+        box.styles.display = "block"
+
+    def _suggest_move(self, delta: int) -> None:
+        matches = getattr(self, "_suggest_matches", [])
+        if not matches:
+            return
+        self._suggest_index = (getattr(self, "_suggest_index", 0) + delta) % len(matches)
+        self._render_suggest()
+
+    def _accept_suggest(self) -> None:
+        matches = getattr(self, "_suggest_matches", [])
+        if not matches:
+            return
+        cmd = matches[getattr(self, "_suggest_index", 0) % len(matches)][0]
+        try:
+            area = self.query_one("#prompt", SubmitArea)
+            area.load_text("/{} ".format(cmd))
+            try:
+                # load_text parks the cursor at the start; put it after the text.
+                area.action_cursor_line_end()
+            except Exception:
+                pass
+            area.focus()
+        except Exception:
+            pass
+        self._hide_suggest()
+
+    def _hide_suggest(self) -> None:
+        self._suggest_matches = []
+        self._suggest_index = 0
+        try:
+            self.query_one("#suggest").styles.display = "none"
+        except Exception:
+            pass
+
+    @on(TextArea.Changed)
+    def _prompt_changed(self, event: TextArea.Changed) -> None:
+        try:
+            if event.control.id != "prompt":
+                return
+            self._update_suggest(event.control.text)
+        except Exception:
+            pass
+
     # -- submit routing -----------------------------------------------------
     def submit_text(self, text: str) -> None:
+        self._hide_suggest()
         if not text:
             return
         if self.running:

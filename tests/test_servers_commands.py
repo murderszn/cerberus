@@ -223,6 +223,65 @@ class TeamParseTest(unittest.TestCase):
         self.assertTrue(any("sentinel" in ln for ln in lines))
 
 
+class SuggestTest(unittest.TestCase):
+    def test_prefix_first(self):
+        from servers.commands import suggest_commands
+
+        names = [c[0] for c in suggest_commands("per")]
+        self.assertEqual(names[:2], ["persona", "personas"])
+
+    def test_substring_still_found(self):
+        from servers.commands import suggest_commands
+
+        names = [c[0] for c in suggest_commands("mod")]
+        self.assertIn("model", names)
+        self.assertIn("models", names)
+
+    def test_bare_slash_lists_head(self):
+        from servers.commands import suggest_commands, SLASH_COMMANDS
+
+        self.assertEqual(suggest_commands(""), list(SLASH_COMMANDS[:7]))
+        self.assertEqual(suggest_commands("/"), list(SLASH_COMMANDS[:7]))
+
+    def test_no_match_and_limit(self):
+        from servers.commands import suggest_commands
+
+        self.assertEqual(suggest_commands("zzz"), [])
+        self.assertLessEqual(len(suggest_commands("", limit=3)), 3)
+
+    def test_registry_covers_handlers(self):
+        from servers.commands import SLASH_COMMANDS
+
+        cli = Path(__file__).resolve().parents[1].joinpath("servers/cli.py").read_text()
+        tui = Path(__file__).resolve().parents[1].joinpath("servers/ui/tui.py").read_text()
+        for cmd, _, _ in SLASH_COMMANDS:
+            self.assertIn(f'"/{cmd}"', cli, f"REPL missing /{cmd}")
+            self.assertIn(f'"/{cmd}"', tui, f"TUI missing /{cmd}")
+
+
+class ReplCompleterTest(unittest.TestCase):
+    def _completions(self, text):
+        try:
+            from prompt_toolkit.document import Document
+        except ImportError:
+            self.skipTest("prompt_toolkit not installed")
+        from servers.cli import _make_completer
+
+        comp = _make_completer()
+        self.assertIsNotNone(comp)
+        doc = Document(text=text, cursor_position=len(text))
+        return list(comp.get_completions(doc, None))
+
+    def test_completes_fragment(self):
+        found = {c.text for c in self._completions("/per")}
+        self.assertIn("/persona ", found)
+        self.assertIn("/personas ", found)
+
+    def test_silent_off_slash(self):
+        self.assertEqual(self._completions("hello model"), [])
+        self.assertEqual(self._completions("/model x"), [])
+
+
 class InitDiffTest(unittest.TestCase):
     def test_init_creates_and_never_overwrites(self):
         import tempfile

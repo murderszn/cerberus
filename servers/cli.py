@@ -633,6 +633,7 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
   /sessions          List saved sessions
   /config            Show effective configuration
   /workspace [path]  Show or change workspace
+  /clear             Clear the screen
   /exit              Quit
 """
         )
@@ -735,6 +736,9 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
         from servers.commands import workspace_diff_summary
 
         ui.console.print(workspace_diff_summary(config.workspace))
+        return True
+    if cmd == "/clear":
+        print("\033[2J\033[H", end="")
         return True
     if cmd == "/compact":
         from servers.commands import compact_history
@@ -868,6 +872,32 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
     return True
 
 
+def _make_completer() -> Optional[Any]:
+    """prompt_toolkit completer for slash commands (None when unavailable)."""
+    try:
+        from prompt_toolkit.completion import Completer, Completion
+        from prompt_toolkit.document import Document
+    except ImportError:
+        return None
+    from servers.commands import suggest_commands
+
+    class _SlashCompleter(Completer):
+        def get_completions(self, document: Document, complete_event: Any):
+            text = document.text_before_cursor
+            if "\n" in text or not text.startswith("/") or " " in text:
+                return
+            frag = text[1:]
+            for cmd, usage, blurb in suggest_commands(frag):
+                yield Completion(
+                    f"/{cmd} ",
+                    start_position=-(len(frag) + 1),
+                    display=f"/{cmd}{usage}",
+                    display_meta=blurb,
+                )
+
+    return _SlashCompleter()
+
+
 def repl(loop: AgentLoop, ui: TerminalUI, config: AppConfig) -> int:
     session: Optional[Any] = None
     try:
@@ -885,6 +915,8 @@ def repl(loop: AgentLoop, ui: TerminalUI, config: AppConfig) -> int:
         session = PromptSession(
             history=FileHistory(str(DEFAULT_CONFIG_DIR / "history")),
             key_bindings=bindings,
+            completer=_make_completer(),
+            complete_while_typing=True,
         )
     except ImportError:
         session = None

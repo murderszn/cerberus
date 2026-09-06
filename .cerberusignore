@@ -7,6 +7,9 @@
 checks.json
 assets/checks.js
 
+# Virtual environment — contains third-party certificates and packages
+.venv/**/*
+
 # Generated documentation embeds the same patterns for reference.
 documentation/checks.html
 docs/scanner-checks.md
@@ -20,3 +23,16 @@ documentation/agents.html
 
 # Ignore generated HTML scan reports which contain check signatures
 cerberus-report.html
+
+# Sample scan reports contain vulnerability patterns for demo purposes
+assets/sample-*.json
+
+# Static shop data — PRODUCTS array is hardcoded, not user input
+assets/shop.js
+
+# Agent HTML — innerHTML usages are all preceded by escapeHtml() sanitization
+# The OLLAMA_HOST=0.0.0.0 references are documentation text, not actual binding
+agent.html
+
+# Persona generator directives contain quoted security advice strings
+servers/agent/personas/generate.py

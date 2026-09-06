@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cerberus — Ink Terminal</title>
+<meta name="description" content="Ink Terminal: a monochrome workbench for running Cerberus security scans." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/ink-terminal.css" />
+<link rel="icon" href="favicon.ico" />
+</head>
+<body>
+
+<header class="ink-head">
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <span class="word">C E R B E R U S</span>
+  </div>
+  <div class="env" id="envState" data-state="checking" role="status" aria-live="polite">
+    <button class="palette-btn" id="paletteBtn" type="button" title="Command palette (Ctrl/⌘+K)">⌘K</button>
+    <span id="envText">local / checking</span>
+    <span class="dot" id="envDot" aria-hidden="true">●</span>
+  </div>
+</header>
+
+<div class="ink-main">
+  <aside class="ink-side" aria-label="Workbench">
+    <div class="side-label">WORKBENCH</div>
+    <nav class="side-nav" id="sideNav" aria-label="Views">
+      <button class="side-item" type="button" data-view="task" aria-current="true">01 / Current task</button>
+      <button class="side-item" type="button" data-view="files" aria-current="false">02 / Files</button>
+      <button class="side-item" type="button" data-view="changes" aria-current="false">03 / Changes</button>
+      <button class="side-item" type="button" data-view="history" aria-current="false">04 / History</button>
+    </nav>
+    <div class="side-foot" id="sideFoot" aria-live="polite">
+      <span><strong id="sfRepo">no repo loaded</strong></span>
+      <span id="sfRef">—</span>
+      <span id="sfStatus">workspace idle</span>
+    </div>
+  </aside>
+
+  <main class="ink-work" id="work" tabindex="-1" aria-live="off">
+    <div class="session-line">
+      <span id="sessionId">SESSION — / IDLE</span>
+      <span class="state" id="sessionState" data-s="idle">idle</span>
+    </div>
+    <div id="viewRoot"></div>
+  </main>
+</div>
+
+<form class="ink-compose" id="composerForm" aria-label="Command composer">
+  <span class="prompt" aria-hidden="true">❯</span>
+  <label class="visually-hidden" for="composer" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Enter a task or /command</label>
+  <textarea id="composer" rows="2" placeholder="Enter a task or /command" aria-describedby="composerHelp"></textarea>
+  <div class="compose-side">
+    <button class="btn" id="sendBtn" type="submit">SEND</button>
+    <button class="btn btn-secondary" id="stopBtn" type="button" hidden>STOP</button>
+  </div>
+  <span id="composerHelp" hidden>Enter submits. Shift+Enter adds a line. Esc stops a running scan.</span>
+</form>
+
+<footer class="ink-foot" aria-label="Keyboard hints">
+  <span><b>/</b> commands</span><span class="sep">·</span>
+  <span><b>ctrl+k</b> palette</span><span class="sep">·</span>
+  <span><b>tab</b> focus</span><span class="sep">·</span>
+  <span><b>enter</b> submit</span><span class="sep">·</span>
+  <span><b>esc</b> stop / close</span>
+  <span style="margin-left:auto" id="footNote">cerberus ink terminal</span>
+</footer>
+
+<div class="palette-veil" id="paletteVeil" hidden>
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+    <input id="paletteInput" type="text" placeholder="Type a command, view, or repo…" aria-label="Filter commands" autocomplete="off" spellcheck="false" />
+    <ul id="paletteList" role="listbox" aria-label="Results"></ul>
+  </div>
+</div>
+
+<noscript><p style="padding:20px">Ink Terminal needs JavaScript: the scan engine runs locally in your browser.</p></noscript>
+
+<script src="assets/checks.js"></script>
+<script src="assets/scanner.js"></script>
+<script src="assets/ink-terminal.js"></script>
+</body>
+</html>

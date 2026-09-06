@@ -2,6 +2,7 @@
 # scan + test artifacts
 .playwright-mcp/
 __pycache__/
+.venv/
 .DS_Store
 *.png
 !logo.png
