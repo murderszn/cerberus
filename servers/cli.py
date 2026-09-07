@@ -667,6 +667,11 @@ def cmd_config(
             f"builds: {'ask' if config.tools.approve_builds else 'allow'}"
         )
         console.console.print(f"  theme:     {config.ui.theme}")
+        console.console.print(
+            f"  mcp:       {len(config.tools.mcp_servers)} server(s)"
+            + (" (" + ", ".join(s.get("name", "?") for s in config.tools.mcp_servers) + ")"
+               if config.tools.mcp_servers else "")
+        )
         console.console.print(f"  api key:   {_auth_label(config)}")
         console.console.print(
             f"  instructions: {len(config.system_prompt_extra)} chars"

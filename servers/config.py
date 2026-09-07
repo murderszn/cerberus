@@ -58,6 +58,7 @@ class ToolConfig:
     approve_external: bool = True
     approve_builds: bool = True
     permissions: dict[str, str] = field(default_factory=dict)
+    mcp_servers: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -288,6 +289,7 @@ def _from_dict(data: dict[str, Any]) -> AppConfig:
         approve_external=bool(tools.get("approve_external", True)),
         approve_builds=bool(tools.get("approve_builds", True)),
         permissions=permissions,
+        mcp_servers=_normalize_mcp(tools.get("mcp_servers")),
     )
 
     ui_cfg = UIConfig(
@@ -405,6 +407,15 @@ def load_config(
 
 
 PERMISSION_TARGETS = ("external", "builds")
+
+
+def _normalize_mcp(raw: Any) -> list[dict[str, Any]]:
+    """Validate tools.mcp_servers entries (disabled unless configured)."""
+    try:
+        from servers.tools.mcp import normalize_servers
+    except ImportError:
+        return []
+    return normalize_servers(raw)
 
 
 def effective_tier(tools: ToolConfig, kind: str) -> str:
@@ -635,6 +646,12 @@ tools:
   redact_secrets_in_output: true
   approve_external: true   # ask before web fetches / searches / PR creation
   approve_builds: true     # ask before build & test commands (pytest, npm, make…)
+  # MCP servers (disabled by default — never auto-installed):
+  # mcp_servers:
+  #   - name: "gh"
+  #     command: "gh"
+  #     args: []
+  #     tools: ["issue_read"]
 
 ui:
   theme: "verdant"

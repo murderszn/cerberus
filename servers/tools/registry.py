@@ -22,6 +22,9 @@ from servers.tools.files import glob_files, list_directory, read_file, write_fil
 from servers.tools.git import git_branch, git_diff, git_log, git_status
 from servers.tools.inspect import file_tree, http_request, python_eval
 from servers.tools.multiedit import multi_edit_file
+from servers.tools.lsp import python_diagnostics
+from servers.tools.mcp import invoke as mcp_invoke
+from servers.tools.mcp import tool_name as mcp_tool_name
 from servers.tools.pr import create_pull_request
 from servers.tools.safety import EXTERNAL_APPROVAL_TOOLS, is_build_command
 from servers.tools.search import grep_search, search_workspace
@@ -46,6 +49,8 @@ READ_ONLY_TOOLS = {
     "git_log",
     "git_branch",
     "browse_web_content",
+    "lsp_symbols",
+    "diagnostics",
 }
 
 
@@ -113,6 +118,15 @@ class ToolRegistry:
 
     def _approval_gate(self, name: str, args: dict[str, Any]) -> Optional[Tuple[str, str, str]]:
         """Return (kind, command, reason) unless the tier allows outright."""
+        if name.startswith("mcp_"):
+            kind = f"external:{name}"
+            if self.permission_tier(kind) == "allow":
+                return None
+            return (
+                kind,
+                name,
+                f"MCP tool `{name}` spawns an external subprocess.",
+            )
         if name in EXTERNAL_APPROVAL_TOOLS:
             kind = f"external:{name}"
             if self.permission_tier(kind) == "allow":
@@ -294,6 +308,30 @@ class ToolRegistry:
             )
         )
 
+        # 6b. lsp_symbols (LSP-lite alias over the same AST outline)
+        self.register(
+            ToolSpec(
+                name="lsp_symbols",
+                description="LSP-style symbol outline (functions, classes, methods) for a file.",
+                parameters=[
+                    ToolParameter("path", "string", "Path to code file."),
+                ],
+                handler=lambda path: list_symbols(path, workspace=ws, enforce_boundary=enforce_bound),
+            )
+        )
+
+        # 6c. diagnostics (read-only syntax/marker check)
+        self.register(
+            ToolSpec(
+                name="diagnostics",
+                description="Report syntax errors (Python) or TODO/FIXME markers (other text) for a file. Read-only.",
+                parameters=[
+                    ToolParameter("path", "string", "Path to file."),
+                ],
+                handler=lambda path: python_diagnostics(path, workspace=ws, enforce_boundary=enforce_bound),
+            )
+        )
+
         # 7. list_directory
         self.register(
             ToolSpec(
@@ -459,3 +497,32 @@ class ToolRegistry:
                 handler=lambda code: python_eval(code, workspace=ws, timeout=bash_to),
             )
         )
+
+        # 19. MCP stub tools (only when tools.mcp_servers is configured)
+        for server in self.config.mcp_servers or []:
+            for tool in server.get("tools", []) or []:
+                name = mcp_tool_name(server.get("name", ""), tool)
+                self.register(
+                    ToolSpec(
+                        name=name,
+                        description=(
+                            f"MCP tool {tool} on server {server.get('name')} "
+                            "(external subprocess; gated like web access)."
+                        ),
+                        parameters=[
+                            ToolParameter("input", "string", "JSON object string for the tool."),
+                        ],
+                        handler=(
+                            lambda input="{}", _s=server, _t=tool: mcp_invoke(
+                                _s, _t, self._parse_mcp_input(input)
+                            )
+                        ),
+                    )
+                )
+
+    @staticmethod
+    def _parse_mcp_input(text: str) -> Any:
+        try:
+            return json.loads(text or "{}")
+        except ValueError:
+            return {"_raw": text}
