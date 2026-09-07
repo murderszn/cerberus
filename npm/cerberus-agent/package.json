@@ -13,7 +13,8 @@
   },
   "license": "MIT",
   "bin": {
-    "cerberus": "bin/cerberus.js"
+    "cerberus": "bin/cerberus.js",
+    "cerberus-agent": "bin/cerberus.js"
   },
   "files": ["bin", "README.md"],
   "engines": {
