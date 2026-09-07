@@ -295,6 +295,12 @@ class SubmitArea(TextArea):
             event.stop()
             self.app.action_cycle_theme()
             return
+        if getattr(event, "character", "") == "?" and not self.text.strip():
+            # Empty composer + ? opens the palette (Claude-style).
+            event.prevent_default()
+            event.stop()
+            self.app.action_command_palette()
+            return
         if self.app._suggest_visible():
             if event.key in {"up", "down"}:
                 event.prevent_default()
@@ -344,6 +350,9 @@ class InkCommands(Provider):
             ("/personas", "list specialists", lambda: app.action_compose_text("/personas")),
             ("/persona name", "talk to a specialist", lambda: app.action_compose_text("/persona ")),
             ("/team a,b task", "consult a crew", lambda: app.action_compose_text("/team ")),
+            ("/review", "hunk review", lambda: app.action_compose_text("/review")),
+            ("/undo", "restore tracked files", lambda: app.action_compose_text("/undo")),
+            ("/sessions delete", "delete a session", lambda: app.action_compose_text("/sessions delete ")),
             ("/usage", "token usage", lambda: app.action_compose_text("/usage")),
             ("/reset", "clear conversation", lambda: app.action_reset()),
             ("/save name", "save session", lambda: app.action_compose_text("/save ")),
@@ -458,6 +467,7 @@ class InkApp(App):
         Binding("shift+tab", "toggle_mode", "Plan/YOLO", show=True),
         Binding("ctrl+t", "cycle_theme", "Theme", show=True),
         Binding("escape", "stop_or_close", "Stop", show=True),
+        Binding("ctrl+c", "stop_or_close", "Stop", show=False),
     ]
     NARROW_UNDER = 96
 
@@ -468,6 +478,7 @@ class InkApp(App):
         *,
         persona_name: Optional[str] = None,
         loop_factory: Optional[Callable] = None,
+        preload_messages: Optional[list] = None,
     ) -> None:
         super().__init__()
         self.config = config
@@ -475,6 +486,7 @@ class InkApp(App):
         self.persona_name = persona_name
         self._ink_theme = "paper"
         self.loop_factory = loop_factory
+        self.preload_messages = list(preload_messages) if preload_messages else []
         self.loop = None
         self.view = "task"
         self.run_token = 0
@@ -518,13 +530,21 @@ class InkApp(App):
         return "{} · {} · {}".format(who, self.config.provider.model, "YOLO" if self.config.agent_mode == "build" else "plan")
 
     def _foot_text(self) -> str:
-        return "/ commands · ctrl+k palette · enter submit · esc stop · shift+tab mode · ctrl+t theme"
+        return "/ commands · ? palette · enter submit · esc/ctrl+c stop · shift+tab mode · ctrl+t theme"
 
     def on_mount(self) -> None:
         self._build_loop()
         self._mark_nav()
         self._render_side_foot()
         self.show_view("task")
+        if self.preload_messages:
+            try:
+                self.loop.messages = list(self.preload_messages)
+            except Exception:
+                pass
+            self._append_msg(
+                "Resumed session ({} messages) — history kept.".format(len(self.preload_messages))
+            )
         self.query_one("#prompt", SubmitArea).focus()
 
     # -- loop ----------------------------------------------------------
@@ -589,6 +609,25 @@ class InkApp(App):
         except Exception:
             pass
         self._render_side_foot()
+        self._update_foot()
+
+    def _update_foot(self) -> None:
+        """Footer hints plus live session token counter."""
+        try:
+            base = self._foot_text()
+            usage = getattr(getattr(self, "loop", None), "session_usage", None)
+            total = getattr(usage, "total_tokens", 0) or 0
+            if total > 0:
+                if total >= 1_000_000:
+                    tok = "{:.1f}M".format(total / 1_000_000)
+                elif total >= 1000:
+                    tok = "{:.1f}k".format(total / 1000)
+                else:
+                    tok = str(total)
+                base += " · {} tok".format(tok)
+            self.query_one("#foot", Static).update(base)
+        except Exception:
+            pass
 
     def _mark_nav(self) -> None:
         for key, _label in VIEWS:
@@ -626,7 +665,7 @@ class InkApp(App):
 
     def action_show_help(self) -> None:
         self.show_view("task")
-        self._append_msg("Commands: /scan target · /help · /mode · /theme · /model · /persona · /team · /approvals · /init · /add files · /diff · /compact · /usage · /save · /load · /clear · plain text runs the agent.")
+        self._append_msg("Commands: /scan target · /help · /mode · /theme · /model · /persona · /team · /approvals · /init · /add files · /diff · /review · /undo · /compact · /usage · /save · /load · /clear · plain text runs the agent. @files attach · !cmd runs bash.")
 
     @property
     def ink_theme(self) -> str:
@@ -675,6 +714,7 @@ class InkApp(App):
         self.loop.reset()
         self.show_view("task")
         self._append_msg("Conversation history cleared.")
+        self._update_foot()
 
     def action_show_models(self) -> None:
         from servers.models_catalog import build_catalog
@@ -863,6 +903,7 @@ class InkApp(App):
             work.scroll_end(animate=False)
         except Exception:
             pass
+        self._update_foot()
 
     # -- actions ----------------------------------------------------------
     def action_command_palette(self) -> None:
@@ -1001,7 +1042,58 @@ class InkApp(App):
         if text.startswith("/"):
             self._slash(text)
             return
-        self._start_run(text)
+        from servers.commands import attach_files, parse_composer_line
+
+        action, spec, payload = parse_composer_line(text)
+        if action == "attach":
+            self._append_msg(attach_files(self.loop.messages, self.config.workspace, spec))
+            return
+        if action == "bash":
+            self._start_bash(payload)
+            return
+        if spec:
+            self._append_msg(attach_files(self.loop.messages, self.config.workspace, spec))
+        self._start_run(payload)
+
+    def _job_begin(self) -> int:
+        token = self.run_token + 1
+        self.run_token = token
+        self.running = True
+        try:
+            self.query_one("#stop", Button).disabled = False
+        except Exception:
+            pass
+        return token
+
+    def _job_end(self, token: int) -> None:
+        if token == self.run_token:
+            self.running = False
+            try:
+                self.query_one("#stop", Button).disabled = True
+            except Exception:
+                pass
+
+    def _start_bash(self, command: str) -> None:
+        self._append_msg("❯ !{}".format(command))
+        self.run_worker(self._do_bash(command), exclusive=True)
+
+    async def _do_bash(self, command: str) -> None:
+        import asyncio as _aio
+
+        token = self._job_begin()
+        try:
+            out = await _aio.to_thread(
+                self.loop.registry.dispatch,
+                "execute_bash_command", {"command": command},
+            )
+            if token != self.run_token:
+                return
+            self._append_msg((out or "(no output)")[:4000])
+        except Exception as exc:
+            if token == self.run_token:
+                self._append_msg("Bash failed: {}".format(exc))
+        finally:
+            self._job_end(token)
 
     def _slash(self, text: str) -> None:
         parts = text.split(None, 1)
@@ -1077,7 +1169,11 @@ class InkApp(App):
         elif cmd == "/load":
             self.action_load_session(arg)
         elif cmd == "/sessions":
-            self._slash_sessions()
+            self._slash_sessions(arg)
+        elif cmd == "/review":
+            self._slash_review(arg)
+        elif cmd == "/undo":
+            self._slash_undo()
         elif cmd == "/tools":
             names = self.loop.registry.list_names()
             self._append_msg("Tools ({}): {}".format(len(names), ", ".join(names)))
@@ -1172,9 +1268,39 @@ class InkApp(App):
         path = save_session(name, transcript, model=self.config.provider.model, workspace=str(self.config.workspace))
         self._append_msg("Saved '{}' ({} messages) → {}".format(name, len(transcript), path))
 
-    def _slash_sessions(self) -> None:
-        from servers.session_store import list_sessions
+    def _slash_sessions(self, arg: str = "") -> None:
+        from servers.session_store import delete_session, fork_session, list_sessions
 
+        parts = arg.split()
+        if parts and parts[0] == "delete" and len(parts) == 2:
+            try:
+                ok = delete_session(parts[1])
+            except Exception as exc:
+                self._append_msg("Could not delete session: {}".format(exc))
+                return
+            self._append_msg(
+                "Deleted session '{}'.".format(parts[1]) if ok
+                else "Session not found: '{}'.".format(parts[1])
+            )
+            if self.view == "history":
+                self.show_view("history")
+            return
+        if parts and parts[0] == "fork" and len(parts) == 3:
+            try:
+                path = fork_session(parts[2], parts[1])
+            except FileNotFoundError:
+                self._append_msg("Session not found: '{}'.".format(parts[2]))
+                return
+            except Exception as exc:
+                self._append_msg("Could not fork session: {}".format(exc))
+                return
+            self._append_msg("Forked '{}' → '{}' ({}).".format(parts[2], parts[1], path))
+            if self.view == "history":
+                self.show_view("history")
+            return
+        if parts:
+            self._append_msg("Usage: /sessions [delete <name>|fork <new> <src>]")
+            return
         try:
             sessions = list_sessions()
         except Exception as exc:
@@ -1311,6 +1437,45 @@ class InkApp(App):
                     self.query_one("#stop", Button).disabled = True
                 except Exception:
                     pass
+
+    def _slash_review(self, arg: str) -> None:
+        self._append_msg(
+            "/review needs an interactive terminal — "
+            "run `cerberus --classic` and type /review{} there.".format(
+                " " + arg if arg else ""
+            )
+        )
+
+    def _slash_undo(self) -> None:
+        from servers.commands import git_working_tree
+
+        modified, untracked, err = git_working_tree(self.config.workspace)
+        if err:
+            self._append_msg(err)
+            return
+        if not modified:
+            self._append_msg("Nothing to undo — no tracked modifications.")
+            return
+        lines = ["Undo will restore to HEAD:"]
+        lines.extend("  {}".format(p) for p in modified[:20])
+        if len(modified) > 20:
+            lines.append("  …and {} more".format(len(modified) - 20))
+        self._append_msg("\n".join(lines))
+        self.push_screen(
+            ApprovalScreen(
+                "git checkout -- {} file(s)".format(len(modified)),
+                "Discards uncommitted changes to tracked files. Untracked files are kept.",
+            ),
+            lambda r: self._undo_decided(bool(r), modified),
+        )
+
+    def _undo_decided(self, approved: bool, modified: list) -> None:
+        if not approved:
+            self._append_msg("Undo cancelled.")
+            return
+        from servers.commands import git_restore_paths
+
+        self._append_msg(git_restore_paths(self.config.workspace, modified))
 
     def _slash_scan(self, arg: str) -> None:
         import sys as _sys
@@ -1588,9 +1753,9 @@ class InkApp(App):
             (loop.on_tool_start, loop.on_tool_end, loop.on_assistant_text, loop.on_status, loop.on_stream_delta) = saved
 
 
-def run_tui(config, api_key: str = "", *, persona_name=None) -> int:
+def run_tui(config, api_key: str = "", *, persona_name=None, preload_messages=None) -> int:
     """Launch the Ink full-screen workbench. Returns the app exit code."""
-    app = InkApp(config, api_key, persona_name=persona_name)
+    app = InkApp(config, api_key, persona_name=persona_name, preload_messages=preload_messages)
     app.run()
     return 0
 

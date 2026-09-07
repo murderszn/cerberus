@@ -344,6 +344,180 @@ class PersonaSlashTest(unittest.TestCase):
         self.assertTrue(any("Usage" in m for _, m in ui.lines))
 
 
+class ForkDeleteTest(unittest.TestCase):
+    def _patched_dir(self):
+        import tempfile
+        from unittest import mock
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        patcher = mock.patch(
+            "servers.session_store.SESSIONS_DIR", Path(tmp.name)
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return Path(tmp.name)
+
+    def test_fork_roundtrip_and_delete(self):
+        from servers.session_store import (
+            delete_session,
+            fork_session,
+            list_sessions,
+            load_session,
+            save_session,
+        )
+
+        self._patched_dir()
+        save_session("orig", [{"role": "user", "content": "hi"}],
+                     model="kimi", workspace="/tmp")
+        path = fork_session("orig", "copy")
+        self.assertTrue(path.is_file())
+        self.assertEqual(
+            [m["content"] for m in load_session("copy")], ["hi"]
+        )
+        self.assertEqual(
+            {s.name for s in list_sessions()}, {"orig", "copy"}
+        )
+        self.assertTrue(delete_session("copy"))
+        self.assertFalse(delete_session("copy"))
+        with self.assertRaises(FileNotFoundError):
+            fork_session("missing", "x")
+
+    @unittest.skipUnless(HAS_AGENT_DEPS, "agent deps not installed")
+    def test_bash_echo_through_registry(self):
+        import tempfile
+
+        from servers.tools.registry import ToolRegistry
+
+        reg = ToolRegistry(
+            workspace=Path(tempfile.mkdtemp()), config=ToolConfig(),
+            confirm_callback=lambda c, r: True,
+        )
+        out = reg.dispatch("execute_bash_command", {"command": "echo hi"})
+        self.assertIn("hi", out)
+
+
+class SessionsSlashTest(unittest.TestCase):
+    def _run(self, line):
+        import tempfile
+        from unittest import mock
+
+        from servers.cli import _handle_slash
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config = AppConfig()
+            config.workspace = Path(tmp)
+
+            class Loop:
+                def __init__(self):
+                    self.registry = None
+                    self.messages: list[Message] = []
+
+            class UI:
+                def __init__(self):
+                    self.lines: list[tuple[str, str]] = []
+                    self.console = self
+
+                def print(self, *a, **k):
+                    self.lines.append(("print", " ".join(str(x) for x in a)))
+
+                def info(self, m):
+                    self.lines.append(("info", str(m)))
+
+                def warn(self, m):
+                    self.lines.append(("warn", str(m)))
+
+                def error(self, m):
+                    self.lines.append(("error", str(m)))
+
+                def confirm_choice(self, command, reason):
+                    self.lines.append(("ask", command))
+                    return "deny"
+
+            loop, ui = Loop(), UI()
+            with mock.patch("servers.session_store.SESSIONS_DIR", Path(tmp) / "sess"):
+                _handle_slash(line, loop, ui, config)
+            return config, loop, ui
+
+    def test_sessions_delete_fork(self):
+        from servers.cli import _handle_slash
+        from servers.session_store import save_session
+
+        import tempfile
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config = AppConfig()
+            config.workspace = Path(tmp)
+
+            class Loop:
+                def __init__(self):
+                    self.registry = None
+                    self.messages: list[Message] = []
+
+            class UI:
+                def __init__(self):
+                    self.lines: list[tuple[str, str]] = []
+
+                def info(self, m):
+                    self.lines.append(("info", str(m)))
+
+                def warn(self, m):
+                    self.lines.append(("warn", str(m)))
+
+                def error(self, m):
+                    self.lines.append(("error", str(m)))
+
+            with mock.patch("servers.session_store.SESSIONS_DIR", Path(tmp) / "sess"):
+                save_session("a", [{"role": "user", "content": "x"}])
+                for line, want in [
+                    ("/sessions fork b a", "Forked"),
+                    ("/sessions delete b", "Deleted"),
+                    ("/sessions delete nope", "not found"),
+                    ("/sessions frobnicate", "Usage"),
+                ]:
+                    ui = UI()
+                    _handle_slash(line, Loop(), ui, config)
+                    self.assertTrue(
+                        any(want in m for _, m in ui.lines), (line, ui.lines)
+                    )
+
+    def test_review_needs_tty(self):
+        _, _, ui = self._run("/review")
+        texts = [m for _, m in ui.lines]
+        # Test runner stdin is not a TTY: expect the interactive hint.
+        self.assertTrue(any("interactive terminal" in m for m in texts))
+
+    def test_undo_clean_repo_message(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config = AppConfig()
+            config.workspace = Path(tmp)
+            from servers.cli import _handle_slash
+
+            class Loop:
+                registry = None
+                messages: list[Message] = []
+
+            class UI:
+                def __init__(self):
+                    self.lines: list[tuple[str, str]] = []
+
+                def info(self, m):
+                    self.lines.append(("info", str(m)))
+
+                def warn(self, m):
+                    self.lines.append(("warn", str(m)))
+
+                def error(self, m):
+                    self.lines.append(("error", str(m)))
+
+            ui = UI()
+            _handle_slash("/undo", Loop(), ui, config)
+            self.assertTrue(any("Not a git repo" in m for _, m in ui.lines))
+
+
 class RealScanReportTest(unittest.TestCase):
     def test_examine_report_loads_and_digests(self):
         import tempfile

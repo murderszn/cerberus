@@ -128,3 +128,19 @@ def delete_session(name: str) -> bool:
         log.info("deleted session %s", name)
         return True
     return False
+
+
+def fork_session(src: str, dst: str) -> Path:
+    """Duplicate saved session src as dst (fresh timestamps)."""
+    transcript = load_session(src)
+    model = ""
+    workspace = ""
+    try:
+        with _session_path(src).open("r", encoding="utf-8") as rf:
+            first = json.loads(rf.readline() or "{}")
+        meta = first.get("_meta", {}) or {}
+        model = str(meta.get("model") or "")
+        workspace = str(meta.get("workspace") or "")
+    except (OSError, ValueError):
+        pass
+    return save_session(dst, transcript, model=model, workspace=workspace)

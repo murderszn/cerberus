@@ -235,7 +235,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("-q", "--quiet", action="store_true")
     p.add_argument("--log-file", type=Path, default=None)
     p.add_argument("command", nargs="?",
-                   help="scan|agent|model|init|config|login|logout|status|logs|<persona>")
+                   help="scan|agent|model|init|config|sessions|login|logout|status|logs|<persona>")
     p.add_argument("rest", nargs=argparse.REMAINDER,
                    help="Goal/task text or scan args")
     return p
@@ -286,6 +286,65 @@ def _run_scan_report(target: str) -> tuple[int, Optional[dict], str]:
             Path(json_path).unlink()
         except OSError:
             pass
+
+
+def _handle_review(arg: str, ui: TerminalUI, config: AppConfig) -> bool:
+    """Hunk review via git's own patch UI (stage, or --discard to drop)."""
+    if not sys.stdin.isatty():
+        ui.error("/review needs an interactive terminal (try --classic on a TTY).")
+        return True
+    parts = arg.split()
+    discard = "--discard" in parts
+    paths = [p for p in parts if p != "--discard"]
+    ws = config.workspace.expanduser().resolve()
+    if not (ws / ".git").exists():
+        ui.error(f"Not a git repo: {ws}")
+        return True
+    cmd = ["git", "-C", str(ws), "checkout", "-p" if discard else "add", "-p"]
+    if paths:
+        cmd += ["--", *paths]
+    ui.info(
+        "Answer y to discard each hunk, n to keep it."
+        if discard else
+        "Accept hunks to stage them for commit, reject to leave them unstaged."
+    )
+    try:
+        proc = subprocess.run(cmd)
+    except FileNotFoundError:
+        ui.error("git is not installed.")
+        return True
+    if proc.returncode != 0:
+        ui.warn(f"git exited {proc.returncode} (quit or nothing to review).")
+    return True
+
+
+def _handle_undo(ui: TerminalUI, config: AppConfig) -> bool:
+    """Restore tracked workspace modifications to HEAD (explicit approval)."""
+    from servers.commands import git_restore_paths, git_working_tree
+
+    modified, untracked, err = git_working_tree(config.workspace)
+    if err:
+        ui.error(err)
+        return True
+    if not modified:
+        ui.info("Nothing to undo — no tracked modifications.")
+        if untracked:
+            ui.info(f"Untracked (left alone): {', '.join(untracked[:10])}")
+        return True
+    ui.console.print("Will restore to HEAD:")
+    for path in modified[:20]:
+        ui.console.print(f"  {path}")
+    if len(modified) > 20:
+        ui.console.print(f"  …and {len(modified) - 20} more")
+    choice = ui.confirm_choice(
+        f"git checkout -- {len(modified)} file(s)",
+        "Discards uncommitted changes to tracked files. Untracked files are kept.",
+    )
+    if choice == "deny":
+        ui.info("Undo cancelled.")
+        return True
+    ui.info(git_restore_paths(config.workspace, modified))
+    return True
 
 
 def _handle_approvals(
@@ -526,6 +585,76 @@ def cmd_config(
     return 1
 
 
+def cmd_sessions(
+    config: AppConfig, ui: TerminalUI, args: argparse.Namespace, rest: list[str]
+) -> int:
+    from servers.session_store import delete_session, fork_session, list_sessions
+
+    parts = list(rest)
+    if not parts or parts[0] == "list":
+        sessions = list_sessions()
+        if not sessions:
+            ui.info("No saved sessions")
+            return 0
+        for s in sessions:
+            ui.console.print(
+                f"  {s.name:20}  {s.message_count:3} msgs  "
+                f"model={s.model or '-'}  "
+                f"updated={time.strftime('%Y-%m-%d %H:%M', time.localtime(s.updated_at))}"
+            )
+        return 0
+    if parts[0] == "delete" and len(parts) == 2:
+        if delete_session(parts[1]):
+            ui.info(f"Deleted session '{parts[1]}'.")
+            return 0
+        ui.error(f"Session not found: {parts[1]!r}")
+        return 1
+    if parts[0] == "fork" and len(parts) == 3:
+        try:
+            path = fork_session(parts[2], parts[1])
+        except FileNotFoundError:
+            ui.error(f"Session not found: {parts[2]!r}")
+            return 1
+        ui.info(f"Forked '{parts[2]}' → '{parts[1]}' ({path})")
+        return 0
+    if parts[0] == "resume" and len(parts) == 2:
+        return cmd_session_resume(config, ui, args, parts[1])
+    ui.error("Usage: cerberus sessions list|resume <name>|fork <new> <src>|delete <name>")
+    return 1
+
+
+def cmd_session_resume(
+    config: AppConfig, ui: TerminalUI, args: argparse.Namespace, name: str
+) -> int:
+    from servers.session_store import load_session
+
+    try:
+        raw = load_session(name)
+    except FileNotFoundError:
+        ui.error(f"Session not found: {name!r}")
+        return 1
+    except Exception as exc:
+        ui.error(f"Failed to load session: {exc}")
+        return 1
+    if not _is_tty():
+        ui.error("resume needs an interactive terminal.")
+        return 2
+    try:
+        api_key = _resolve_key(ui, config)
+    except Exception as exc:
+        ui.error(str(exc))
+        return 1
+    messages = [_restore_message(m) for m in raw]
+    ui.info(f"Resumed '{name}' ({len(messages)} messages).")
+    if args.classic:
+        loop = build_loop(config, ui, api_key, auto_approve=args.yes)
+        loop.messages = messages
+        return repl(loop, ui, config)
+    from servers.ui.tui import run_tui
+
+    return run_tui(config, api_key, preload_messages=messages)
+
+
 def cmd_logs(console: TerminalUI, *, lines: int = 40) -> int:
     from servers.logging_setup import DEFAULT_LOG_FILE
 
@@ -715,7 +844,10 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
   /reset             Clear conversation history
   /save [name]       Save conversation to disk
   /load <name>       Restore saved conversation
-  /sessions          List saved sessions
+  /sessions …        List / delete / fork saved sessions
+  /review [--discard]  Hunk review: stage (or drop) workspace changes
+  /undo              Restore tracked files to HEAD (asks first)
+  @file …            Attach files; !cmd runs one bash command
   /config            Show effective configuration
   /workspace [path]  Show or change workspace
   /clear             Clear the screen
@@ -926,8 +1058,26 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
             ui.error(f"Failed to load session: {exc}")
         return True
     if cmd in {"/sessions", "/list"}:
-        from servers.session_store import list_sessions
+        from servers.session_store import delete_session, fork_session, list_sessions
 
+        parts = arg.split()
+        if parts and parts[0] == "delete" and len(parts) == 2:
+            if delete_session(parts[1]):
+                ui.info(f"Deleted session '{parts[1]}'.")
+            else:
+                ui.error(f"Session not found: {parts[1]!r}")
+            return True
+        if parts and parts[0] == "fork" and len(parts) == 3:
+            try:
+                path = fork_session(parts[2], parts[1])
+            except FileNotFoundError:
+                ui.error(f"Session not found: {parts[2]!r}")
+                return True
+            ui.info(f"Forked '{parts[2]}' → '{parts[1]}' ({path})")
+            return True
+        if parts and cmd == "/sessions":
+            ui.warn("Usage: /sessions [delete <name>|fork <new> <src>]")
+            return True
         sessions = list_sessions()
         if not sessions:
             ui.info("No saved sessions")
@@ -939,6 +1089,10 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
                 f"updated={time.strftime('%Y-%m-%d %H:%M', time.localtime(s.updated_at))}"
             )
         return True
+    if cmd == "/review":
+        return _handle_review(arg, ui, config)
+    if cmd == "/undo":
+        return _handle_undo(ui, config)
     if cmd == "/workspace":
         if not arg:
             ui.info(f"Workspace: {config.workspace}")
@@ -1041,7 +1195,19 @@ def repl(loop: AgentLoop, ui: TerminalUI, config: AppConfig) -> int:
             except SystemExit as e:
                 return int(e.code or 0)
             continue
-        run_once(loop, ui, line)
+        from servers.commands import attach_files, parse_composer_line
+
+        action, spec, payload = parse_composer_line(line)
+        if action == "attach":
+            ui.info(attach_files(loop.messages, config.workspace, spec))
+            continue
+        if action == "bash":
+            out = loop.registry.dispatch("execute_bash_command", {"command": payload})
+            ui.console.print((out or "(no output)")[:4000])
+            continue
+        if spec:
+            ui.info(attach_files(loop.messages, config.workspace, spec))
+        run_once(loop, ui, payload)
 
 
 # ---------------------------------------------------------------------------
@@ -1239,6 +1405,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         return cmd_init(ui)
     if command == "config":
         return cmd_config(config, ui, args.config, rest)
+    if command == "sessions":
+        return cmd_sessions(config, ui, args, rest)
     if command in {"status", "logs"}:
         if command == "status":
             return cmd_status(config, ui)

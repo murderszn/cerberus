@@ -259,6 +259,79 @@ class SuggestTest(unittest.TestCase):
             self.assertIn(f'"/{cmd}"', tui, f"TUI missing /{cmd}")
 
 
+class ComposerParseTest(unittest.TestCase):
+    def test_plain_run(self):
+        from servers.commands import parse_composer_line
+
+        self.assertEqual(parse_composer_line("fix auth"), ("run", "", "fix auth"))
+
+    def test_attach_only_and_with_task(self):
+        from servers.commands import parse_composer_line
+
+        self.assertEqual(parse_composer_line("@a.py"), ("attach", "a.py", ""))
+        self.assertEqual(
+            parse_composer_line("@a.py @b.py explain this"),
+            ("run", "a.py b.py", "explain this"),
+        )
+        self.assertEqual(
+            parse_composer_line("@a.py,@b.py explain"),
+            ("run", "a.py b.py", "explain"),
+        )
+
+    def test_bang(self):
+        from servers.commands import parse_composer_line
+
+        self.assertEqual(parse_composer_line("!pytest -q"), ("bash", "", "pytest -q"))
+        self.assertEqual(parse_composer_line("!"), ("run", "", "!"))
+        self.assertEqual(
+            parse_composer_line("!a\n!b"), ("run", "", "!a\n!b")
+        )
+
+    def test_mid_sentence_at_is_run(self):
+        from servers.commands import parse_composer_line
+
+        action, _, payload = parse_composer_line("look at this file")
+        self.assertEqual(action, "run")
+        self.assertIn("look at", payload)
+
+
+class GitHelpersTest(unittest.TestCase):
+    def test_non_repo(self):
+        import tempfile
+
+        from servers.commands import git_restore_paths, git_working_tree
+
+        with tempfile.TemporaryDirectory() as tmp:
+            mod, unt, err = git_working_tree(Path(tmp))
+            self.assertTrue(err.startswith("Not a git repo"))
+            self.assertEqual((mod, unt), ([], []))
+
+    def test_tracked_vs_untracked(self):
+        import subprocess
+        import tempfile
+
+        from servers.commands import git_working_tree
+
+        with tempfile.TemporaryDirectory() as tmp:
+            r = subprocess.run(["git", "init", tmp], capture_output=True)
+            if r.returncode != 0:
+                self.skipTest("git not available")
+            subprocess.run(["git", "-C", tmp, "config", "user.email", "t@t"], check=False,
+                           capture_output=True)
+            subprocess.run(["git", "-C", tmp, "config", "user.name", "t"], check=False,
+                           capture_output=True)
+            Path(tmp, "a.txt").write_text("v1\n", encoding="utf-8")
+            subprocess.run(["git", "-C", tmp, "add", "."], check=False, capture_output=True)
+            subprocess.run(["git", "-C", tmp, "commit", "-m", "init"], check=False,
+                           capture_output=True)
+            Path(tmp, "a.txt").write_text("v2\n", encoding="utf-8")
+            Path(tmp, "new.txt").write_text("new\n", encoding="utf-8")
+            mod, unt, err = git_working_tree(Path(tmp))
+            self.assertEqual(err, "")
+            self.assertEqual(mod, ["a.txt"])
+            self.assertEqual(unt, ["new.txt"])
+
+
 class ReplCompleterTest(unittest.TestCase):
     def _completions(self, text):
         try:

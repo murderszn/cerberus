@@ -252,6 +252,8 @@ SLASH_COMMANDS: tuple[tuple[str, str, str], ...] = (
     ("init", "", "scaffold CERBERUS.md"),
     ("add", " <files…>", "attach workspace files"),
     ("diff", "", "workspace changes"),
+    ("review", " [--discard]", "hunk review: stage or drop changes"),
+    ("undo", "", "restore tracked files to HEAD"),
     ("compact", "", "trim older history"),
     ("reset", "", "clear conversation history"),
     ("save", " [name]", "save conversation"),
@@ -272,6 +274,95 @@ def suggest_commands(fragment: str, limit: int = 7) -> list[tuple[str, str, str]
     starts = [c for c in SLASH_COMMANDS if c[0].startswith(frag)]
     subs = [c for c in SLASH_COMMANDS if frag in c[0] and c not in starts]
     return (starts + subs)[:limit]
+
+
+def parse_composer_line(text: str) -> tuple[str, str, str]:
+    """Classify composer input: (action, attach_spec, payload).
+
+    - ("attach", "path …", "") — input is only @file mentions.
+    - ("run", "path …", "task") — leading @files plus a task.
+    - ("bash", "", "cmd") — single-line !command.
+    - ("run", "", text) — anything else (plain task or multiline).
+    """
+    stripped = text.strip()
+    if stripped.startswith("!") and "\n" not in stripped and len(stripped) > 1:
+        return ("bash", "", stripped[1:].strip())
+    if "@" not in stripped:
+        return ("run", "", text)
+    import shlex
+
+    try:
+        tokens = shlex.split(stripped, posix=True)
+    except ValueError:
+        tokens = stripped.split()
+    attached: list[str] = []
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok.startswith("@") and len(tok) > 1:
+            for part in tok[1:].split(","):
+                part = part.strip()
+                if part.startswith("@"):
+                    part = part[1:]
+                if part and part not in attached:
+                    attached.append(part)
+            i += 1
+        else:
+            break
+    if not attached:
+        return ("run", "", text)
+    task = " ".join(tokens[i:]).strip()
+    if not task:
+        return ("attach", " ".join(attached), "")
+    return ("run", " ".join(attached), task)
+
+
+def git_working_tree(workspace: Path) -> tuple[list[str], list[str], str]:
+    """Porcelain scan: (tracked_modified, untracked, error)."""
+    ws = workspace.expanduser().resolve()
+    if not (ws / ".git").exists():
+        return [], [], f"Not a git repo: {ws}"
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(ws), "status", "--porcelain"],
+            capture_output=True, text=True, timeout=15,
+        )
+    except FileNotFoundError:
+        return [], [], "git is not installed."
+    except subprocess.TimeoutExpired:
+        return [], [], "git timed out."
+    if proc.returncode != 0:
+        return [], [], f"git status failed: {(proc.stderr or proc.stdout).strip()[:200]}"
+    modified: list[str] = []
+    untracked: list[str] = []
+    for line in proc.stdout.splitlines():
+        if len(line) < 4:
+            continue
+        xy, path = line[:2], line[3:].strip().strip('"')
+        if " -> " in path:  # renames: operate on the new path
+            path = path.split(" -> ")[-1].strip()
+        if xy.strip() == "??":
+            untracked.append(path)
+        else:
+            modified.append(path)
+    return modified, untracked, ""
+
+
+def git_restore_paths(workspace: Path, paths: list[str]) -> str:
+    """Restore tracked paths to HEAD (undo). Untracked files never touched."""
+    ws = workspace.expanduser().resolve()
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(ws), "checkout", "--", *paths],
+            capture_output=True, text=True, timeout=60,
+        )
+    except FileNotFoundError:
+        return "git is not installed."
+    except subprocess.TimeoutExpired:
+        return "git timed out."
+    if proc.returncode != 0:
+        return f"Restore failed: {(proc.stderr or proc.stdout).strip()[:300]}"
+    return f"Restored {len(paths)} file(s) to HEAD."
 
 
 def persona_lines(valid: list[str]) -> list[str]:

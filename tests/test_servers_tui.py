@@ -273,6 +273,83 @@ class InkTuiTest(unittest.IsolatedAsyncioTestCase):
             await pilot.pause()
             self.assertIn("Usage", self.work_text(app))
 
+    async def test_composer_attach_and_bang_routing(self):
+        from servers.ui.tui import SubmitArea
+
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            # @file attaches without starting a run.
+            app.submit_text("@a.py")
+            await pilot.pause()
+            self.assertFalse(app.running)
+            self.assertIn("Attached 1 file", self.work_text(app))
+            self.assertEqual(len(app.loop.messages), 1)
+            # !cmd without registry dispatch reports failure, no run.
+            app.submit_text("!echo hi")
+            done = await self.wait_for(lambda: not app.running, timeout=10.0)
+            self.assertTrue(done)
+            await pilot.pause()
+            body = self.work_text(app)
+            self.assertIn("❯ !echo hi", body)
+
+    async def test_ctrl_c_cancels_run(self):
+        import threading
+
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            app.loop.block = threading.Event()
+            app.submit_text("long task")
+            self.assertTrue(await self.wait_for(lambda: app.running, timeout=5.0))
+            await pilot.press("ctrl+c")
+            self.assertTrue(app.loop.cancelled)
+            app.loop.block.set()
+            self.assertTrue(await self.wait_for(lambda: not app.running, timeout=10.0))
+
+    async def test_question_opens_palette(self):
+        from textual.command import CommandPalette
+
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            await pilot.press("?")
+            await pilot.pause()
+            self.assertIsInstance(app.screen, CommandPalette)
+            await pilot.press("escape")
+            await pilot.pause()
+
+    async def test_question_types_when_composer_busy(self):
+        from servers.ui.tui import SubmitArea
+
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            area = app.query_one("#prompt", SubmitArea)
+            area.load_text("what?")
+            area.action_cursor_line_end()
+            await pilot.press("?")
+            await pilot.pause()
+            self.assertEqual(area.text, "what??")
+
+    async def test_undo_and_review_hints(self):
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            app.submit_text("/undo")
+            await pilot.pause()
+            body = self.work_text(app)
+            self.assertTrue("Not a git repo" in body or "Nothing to undo" in body)
+            app.submit_text("/review")
+            await pilot.pause()
+            self.assertIn("--classic", self.work_text(app))
+
+    async def test_preload_resumes_history(self):
+        from servers.models import Message
+
+        msgs = [Message(role="user", content="earlier")]
+        app = self.make_app(preload_messages=msgs)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            self.assertIn("Resumed session (1 messages)", self.work_text(app))
+            self.assertTrue(any(m.content == "earlier" for m in app.loop.messages))
+
     async def test_inline_autocomplete(self):
         from servers.ui.tui import SubmitArea
 
