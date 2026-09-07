@@ -208,6 +208,8 @@ Applicability is evaluated before availability: OSV-Scanner requires a supported
 
 ## Architecture
 
+> **Master Architecture & Pitch Strategy**: For a comprehensive investor pitch and technology breakdown detailing the Cerberus Labs business model, Cerberus Agent runtime, GitHub App integration, and market strategy, see [**docs/architecture-map.md**](docs/architecture-map.md).
+
 ```text
                        checks.json
                   native source of truth
