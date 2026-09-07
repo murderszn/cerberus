@@ -579,25 +579,62 @@ def cmd_model(
     config_path: Optional[Path] = None,
     arg: str = "",
 ) -> int:
-    """List models or switch the persisted default (no API key needed)."""
-    from servers.commands import catalog_lines, pick_model
+    """List models or switch the persisted default (keys never persisted)."""
+    from servers.commands import apply_model_meta, catalog_lines, pick_model
     from servers.config import save_model
 
-    if not arg.strip():
+    tokens = arg.split()
+    check = "--check" in tokens
+    query = " ".join(t for t in tokens if t != "--check")
+    if query.lower().startswith("use ") or query.lower() == "use":
+        query = query[3:].strip()
+        if not query:
+            console.error("Usage: cerberus model use <number|name>")
+            return 2
+    if not query:
         for line in catalog_lines(config):
             console.console.print(line)
+        if check:
+            return _check_latencies(config, console)
         return 0
-    picked, message = pick_model(config, arg)
+    picked, message = pick_model(config, query)
     if picked is None:
         console.warn(message)
         return 1
     config.provider.model = picked
+    note = apply_model_meta(config, picked)
     try:
         saved = save_model(picked, config_path)
     except OSError as exc:
         console.error(f"Model switched for this run only — cannot save config: {exc}")
         return 1
+    if note:
+        message += f" · {note}"
     console.info(f"{message} (saved → {saved})")
+    return 0
+
+
+def _check_latencies(config: AppConfig, console: TerminalUI) -> int:
+    """Time one tiny completion per configured model (opt-in, uses key)."""
+    try:
+        api_key = _resolve_key(console, config)
+    except Exception as exc:
+        console.error(str(exc))
+        return 1
+    try:
+        from servers.models import Message
+        from servers.provider.client import OpenAICompatibleClient
+    except ImportError:
+        _need_agent_deps("latency check")
+    client = OpenAICompatibleClient(config.provider, api_key=api_key)
+    console.info("Probing configured models (one tiny completion each)…")
+    for name in config.provider.models[:6]:
+        try:
+            t0 = time.monotonic()
+            client.chat([Message(role="user", content="ping")], model=name)
+            console.console.print(f"  {name:16} {1000 * (time.monotonic() - t0):.0f} ms")
+        except Exception as exc:
+            console.console.print(f"  {name:16} n/a ({str(exc)[:80]})")
     return 0
 
 
@@ -1268,7 +1305,7 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
             ui.info(f"Session tokens · {u.format_detail()}")
         return True
     if cmd == "/model":
-        from servers.commands import pick_model
+        from servers.commands import apply_model_meta, pick_model
 
         picked, message = pick_model(config, arg)
         if picked is None:
@@ -1278,7 +1315,8 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
                 ui.info(message)
             return True
         config.provider.model = picked
-        ui.info(message)
+        note = apply_model_meta(config, picked)
+        ui.info(message + (f" · {note}" if note else ""))
         return True
     if cmd == "/models":
         from servers.models_catalog import build_catalog

@@ -223,6 +223,98 @@ class TeamParseTest(unittest.TestCase):
         self.assertTrue(any("sentinel" in ln for ln in lines))
 
 
+class ModelMetaTest(unittest.TestCase):
+    def test_apply_meta(self):
+        import os
+
+        from servers.commands import apply_model_meta
+        from servers.config import AppConfig
+
+        config = AppConfig()
+        config.provider.provider_models = {
+            "far": {"base_url": "https://far.example/v1",
+                    "api_key_env": "CERBERUS_TEST_FAR_KEY",
+                    "temperature": 0.7},
+        }
+        os.environ["CERBERUS_TEST_FAR_KEY"] = "sekret"
+        try:
+            note = apply_model_meta(config, "far")
+        finally:
+            del os.environ["CERBERUS_TEST_FAR_KEY"]
+        self.assertIn("endpoint → https://far.example/v1", note)
+        self.assertIn("key from CERBERUS_TEST_FAR_KEY", note)
+        self.assertIn("temperature → 0.7", note)
+        self.assertEqual(config.provider.base_url, "https://far.example/v1")
+        self.assertEqual(config.provider.api_key, "sekret")
+        self.assertEqual(config.provider.temperature, 0.7)
+
+    def test_missing_env_warns(self):
+        from servers.commands import apply_model_meta
+        from servers.config import AppConfig
+
+        config = AppConfig()
+        config.provider.provider_models = {"far": {"api_key_env": "CERBERUS_TEST_MISSING_KEY"}}
+        note = apply_model_meta(config, "far")
+        self.assertIn("not set", note)
+        self.assertEqual(config.provider.api_key, "")
+
+    def test_no_meta_noop(self):
+        from servers.commands import apply_model_meta
+        from servers.config import AppConfig
+
+        config = AppConfig()
+        before = config.provider.base_url
+        self.assertEqual(apply_model_meta(config, "kimi"), "")
+        self.assertEqual(config.provider.base_url, before)
+
+    def test_model_use_persists_only_model(self):
+        import tempfile
+
+        from servers.cli import cmd_model
+        from servers.config import AppConfig
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "c.json"
+            path.write_text(
+                '{"provider": {"model": "kimi", "base_url": "https://x/v1",'
+                ' "models": [{"id": "deepseek", "base_url": "https://y/v1"}]}}',
+                encoding="utf-8",
+            )
+            from servers.config import load_config
+
+            config = load_config(path)
+
+            class UI:
+                def __init__(self):
+                    self.lines: list[tuple[str, str]] = []
+                    self.console = self
+
+                def print(self, *a, **k):
+                    self.lines.append(("print", " ".join(str(x) for x in a)))
+
+                def info(self, m):
+                    self.lines.append(("info", str(m)))
+
+                def warn(self, m):
+                    self.lines.append(("warn", str(m)))
+
+                def error(self, m):
+                    self.lines.append(("error", str(m)))
+
+            ui = UI()
+            rc = cmd_model(config, ui, path, "use deepseek")
+            self.assertEqual(rc, 0)
+            self.assertEqual(config.provider.model, "deepseek")
+            self.assertEqual(config.provider.base_url, "https://y/v1")  # in-memory
+            import json
+
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(raw["provider"]["model"], "deepseek")
+            self.assertEqual(raw["provider"]["base_url"], "https://x/v1")  # untouched
+            rc = cmd_model(config, ui, path, "use")
+            self.assertEqual(rc, 2)
+
+
 class SuggestTest(unittest.TestCase):
     def test_prefix_first(self):
         from servers.commands import suggest_commands

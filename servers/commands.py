@@ -7,6 +7,7 @@ and unit tests never need Textual, rich, or network access.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -42,6 +43,37 @@ def pick_model(config: Any, arg: str) -> tuple[str | None, str]:
     if picked is None:
         picked = find_by_name(catalog, arg) or arg.strip()
     return picked, f"Switched model → {picked}"
+
+
+def apply_model_meta(config: Any, name: str) -> str:
+    """Apply a catalog model's endpoint metadata in memory (never persisted).
+
+    Honors base_url / api_key_env / temperature from provider.models maps.
+    Returns a human note (empty when the model has no metadata).
+    """
+    meta = (getattr(config.provider, "provider_models", None) or {}).get(name, {})
+    if not meta:
+        return ""
+    notes: list[str] = []
+    base_url = meta.get("base_url")
+    if base_url:
+        config.provider.base_url = str(base_url).rstrip("/")
+        notes.append(f"endpoint → {config.provider.base_url}")
+    env_name = meta.get("api_key_env")
+    if env_name:
+        secret = os.environ.get(str(env_name), "")
+        if secret:
+            config.provider.api_key = secret
+            notes.append(f"key from {env_name}")
+        else:
+            notes.append(f"warning: {env_name} is not set")
+    if meta.get("temperature") is not None:
+        try:
+            config.provider.temperature = float(meta["temperature"])
+            notes.append(f"temperature → {config.provider.temperature}")
+        except (TypeError, ValueError):
+            pass
+    return "; ".join(notes)
 
 
 def catalog_lines(config: Any) -> list[str]:

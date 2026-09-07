@@ -1250,11 +1250,14 @@ class InkApp(App):
             self._append_msg("Usage: /mode plan|yolo")
 
     def _slash_model(self, arg: str) -> None:
-        from servers.commands import pick_model
+        from servers.commands import apply_model_meta, pick_model
 
         picked, message = pick_model(self.config, arg)
         if picked is not None:
             self.config.provider.model = picked
+            note = apply_model_meta(self.config, picked)
+            if note:
+                message += f" · {note}"
             self._refresh_env()
         self._append_msg(message)
 
