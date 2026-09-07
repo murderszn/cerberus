@@ -713,6 +713,26 @@ class RunHeadlessTest(unittest.TestCase):
                 self.assertIn(cmd, out)
         self.assertEqual(cmd_completions("powershell"), 2)
 
+    @unittest.skipUnless(HAS_AGENT_DEPS, "agent deps not installed")
+    def test_quiet_loop_silent(self):
+        import contextlib
+        import io
+
+        from servers.cli import build_loop
+        from servers.config import AppConfig
+
+        class UI:
+            def confirm_choice(self, command, reason):
+                raise AssertionError("should not prompt")
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            loop = build_loop(AppConfig(), UI(), "k", quiet=True)
+            loop.on_assistant_text("hello")
+            loop.on_tool_start(None, {})
+            loop.on_stream_delta("x")
+        self.assertEqual(buf.getvalue(), "")
+
     def test_run_flags_parse(self):
         from servers.cli import _normalize_argv, build_parser
 

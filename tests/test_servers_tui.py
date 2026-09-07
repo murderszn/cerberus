@@ -329,6 +329,17 @@ class InkTuiTest(unittest.IsolatedAsyncioTestCase):
             await pilot.pause()
             self.assertEqual(area.text, "what??")
 
+    async def test_shift_tab_toggles_mode(self):
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            self.assertEqual(app.config.agent_mode, "plan")
+            await pilot.press("shift+tab")
+            await pilot.pause()
+            self.assertEqual(app.config.agent_mode, "build")
+            await pilot.press("shift+tab")
+            await pilot.pause()
+            self.assertEqual(app.config.agent_mode, "plan")
+
     async def test_approvals_tier_display(self):
         app = self.make_app()
         async with app.run_test() as pilot:

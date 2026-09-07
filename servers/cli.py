@@ -787,7 +787,8 @@ def cmd_run(
         ui.error(str(exc))
         return 1
     loop = build_loop(config, ui, api_key, auto_approve=args.yes,
-                      force_deny=not args.yes)
+                      force_deny=not args.yes,
+                      quiet=(args.format == "json"))
     try:
         from servers.provider.client import ProviderError
     except ImportError:
@@ -997,6 +998,7 @@ def build_loop(
     persona_name: Optional[str] = None,
     auto_approve: bool = False,
     force_deny: bool = False,
+    quiet: bool = False,
 ) -> AgentLoop:
     try:
         from servers.agent.loop import AgentLoop
@@ -1027,6 +1029,9 @@ def build_loop(
         confirm_callback=confirm,
     )
 
+    def _noop(*args: Any, **kwargs: Any) -> None:
+        return None
+
     def on_status(msg: str) -> None:
         ui.spinner_stop()
         ui.spinner_start(msg)
@@ -1047,6 +1052,13 @@ def build_loop(
     def on_stream_delta(chunk: str) -> None:
         ui.spinner_stop()
         ui.console.print(chunk, end="", highlight=False, soft_wrap=True)
+
+    if quiet:
+        on_status = _noop
+        on_tool_start = _noop
+        on_tool_end = _noop
+        on_assistant_text = _noop
+        on_stream_delta = _noop
 
     return AgentLoop(
         config=config,

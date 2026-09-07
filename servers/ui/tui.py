@@ -295,6 +295,12 @@ class SubmitArea(TextArea):
             event.stop()
             self.app.action_cycle_theme()
             return
+        if event.key == "shift+tab":
+            # TextArea would otherwise consume this (focus navigation).
+            event.prevent_default()
+            event.stop()
+            self.app.action_toggle_mode()
+            return
         if getattr(event, "character", "") == "?" and not self.text.strip():
             # Empty composer + ? opens the palette (Claude-style).
             event.prevent_default()
