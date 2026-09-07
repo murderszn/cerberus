@@ -5,8 +5,13 @@ Cerberus agent CLI entrypoint.
     cerberus agent [GOAL…]             orchestrator session (all 9 personas)
     cerberus <persona> [TASK…]         one named agent, Grokbot-style
     cerberus model [name]              list models / switch persisted default
+    cerberus models                    grouped model table
+    cerberus run "goal" [--format json]  headless one-shot (stdin ok)
     cerberus init                      scaffold project config + CERBERUS.md
     cerberus config show|get|set       inspect layered config
+    cerberus sessions …                list/resume/fork/delete sessions
+    cerberus permissions …             allow|ask|deny tiers per tool
+    cerberus completions bash|zsh|fish shell completion script
     cerberus login|logout|status|logs  auth + diagnostics
 
 `scan` shells out to the untouched examine.py so --native-only scans never
@@ -202,6 +207,17 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog=_prog_name(),
         description="Cerberus — deterministic scanner + Pollinations agent swarm",
+        epilog=(
+            "examples:\n"
+            "  cerberus scan .                                  stdlib-only scan, no login\n"
+            "  cerberus \"audit auth for injection\"                chat with the orchestrator\n"
+            "  cerberus sentinel \"fix the login bug\" --yolo      one named specialist\n"
+            "  echo \"list changed files\" | cerberus run --format json\n"
+            "  cerberus sessions list                           saved conversations\n"
+            "  cerberus model use deepseek                      switch persisted model\n"
+            "  cerberus init                                    scaffold project config"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     p.add_argument("-c", "--config", type=Path, default=None,
@@ -219,6 +235,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Use the classic scrollback REPL instead of the Ink workbench")
     p.add_argument("--max-rounds", type=int, default=None,
                    help="Override per-run tool budget")
+    p.add_argument("--format", choices=["text", "json"], default="text",
+                   help="Output format for `run` (default: text)")
+    p.add_argument("--print-logs", action="store_true",
+                   help="Print the session log tail to stderr after `run`")
     p.add_argument("--pr", action="store_true",
                    help="Open a GitHub PR from workspace changes after the run")
     p.add_argument("--base", default="main", help="PR base branch (default: main)")
@@ -235,7 +255,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("-q", "--quiet", action="store_true")
     p.add_argument("--log-file", type=Path, default=None)
     p.add_argument("command", nargs="?",
-                   help="scan|agent|model|init|config|sessions|permissions|login|logout|status|logs|<persona>")
+                   help="scan|agent|run|model|models|init|config|sessions|permissions|completions|login|logout|status|logs|<persona>")
     p.add_argument("rest", nargs=argparse.REMAINDER,
                    help="Goal/task text or scan args")
     return p
@@ -676,6 +696,165 @@ def cmd_config(
     return 1
 
 
+def result_payload(result: Any) -> dict[str, Any]:
+    """JSON-serializable headless result: {text, tool_rounds, usage, stopped_reason}."""
+    usage = getattr(result, "usage", None)
+    return {
+        "text": getattr(result, "final_text", "") or "",
+        "tool_rounds": getattr(result, "tool_rounds", 0) or 0,
+        "usage": {
+            "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
+            "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
+            "total_tokens": getattr(usage, "total_tokens", 0) or 0,
+        },
+        "stopped_reason": getattr(result, "stopped_reason", "") or "",
+    }
+
+
+def _print_log_tail(log_file: Any, lines: int = 30) -> None:
+    try:
+        text = Path(log_file).read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError as exc:
+        print(f"(logs unavailable: {exc})", file=sys.stderr)
+        return
+    for line in text[-lines:]:
+        print(line, file=sys.stderr)
+
+
+def cmd_run(
+    config: AppConfig,
+    ui: TerminalUI,
+    args: argparse.Namespace,
+    rest: list[str],
+    log_file: Any,
+) -> int:
+    """Headless one-shot: goal from argv or piped stdin, result to stdout."""
+    import json
+
+    goal = " ".join(rest).strip()
+    if not goal and not sys.stdin.isatty():
+        goal = sys.stdin.read().strip()
+    if not goal:
+        print('Usage: cerberus run "goal" [--format json|text] [--print-logs]',
+              file=sys.stderr)
+        print("   or: echo goal | cerberus run --format json", file=sys.stderr)
+        return 2
+    try:
+        api_key = _resolve_key(ui, config)
+    except Exception as exc:
+        ui.error(str(exc))
+        return 1
+    loop = build_loop(config, ui, api_key, auto_approve=args.yes,
+                      force_deny=not args.yes)
+    try:
+        from servers.provider.client import ProviderError
+    except ImportError:
+        _need_agent_deps("agent sessions")
+    try:
+        result = loop.run(goal)
+    except ProviderError as exc:
+        if args.format == "json":
+            print(json.dumps({"error": str(exc)}))
+        else:
+            print(f"Provider error: {exc}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        print("Interrupted.", file=sys.stderr)
+        return 130
+    payload = result_payload(result)
+    if args.format == "json":
+        print(json.dumps(payload))
+    else:
+        print(payload["text"])
+    if args.print_logs:
+        _print_log_tail(log_file)
+    return 2 if payload["stopped_reason"] == "circuit_breaker" else 0
+
+
+_COMPLETION_COMMANDS = (
+    "scan agent run model models init config sessions permissions "
+    "completions login logout status logs sentinel vault gatekeeper "
+    "librarian conduit watchtower shield auditor architect"
+)
+_COMPLETION_FLAGS = (
+    "-m --model -w --workspace --base-url --api-key --max-rounds "
+    "--plan --yolo --accept-edits --classic --pr --swarm --dry-run "
+    "--base --title --log-file --format --print-logs -y --yes "
+    "--init -v --verbose -q --quiet -c --config"
+)
+
+
+def _completions_bash() -> str:
+    return f"""# cerberus bash completion — install: cerberus completions bash >> ~/.bashrc
+_cerberus() {{
+    local cur prev cmds flags
+    cmds="{_COMPLETION_COMMANDS}"
+    flags="{_COMPLETION_FLAGS}"
+    cur="${{COMP_WORDS[COMP_CWORD]}}"
+    prev="${{COMP_WORDS[COMP_CWORD-1]}}"
+    case "$prev" in
+        sessions) COMPREPLY=($(compgen -W "list resume fork delete" -- "$cur")); return ;;
+        permissions) COMPREPLY=($(compgen -W "show allow ask deny reset" -- "$cur")); return ;;
+        config) COMPREPLY=($(compgen -W "show get set" -- "$cur")); return ;;
+        completions) COMPREPLY=($(compgen -W "bash zsh fish" -- "$cur")); return ;;
+        model) COMPREPLY=($(compgen -W "use" -- "$cur")); return ;;
+    esac
+    COMPREPLY=($(compgen -W "$cmds $flags" -- "$cur"))
+}}
+complete -F _cerberus cerberus
+"""
+
+
+def _completions_zsh() -> str:
+    return f"""# cerberus zsh completion — install: cerberus completions zsh >> ~/.zshrc
+_cerberus() {{
+    local -a cmds
+    cmds=({' '.join(_COMPLETION_COMMANDS.split())})
+    if (( CURRENT == 3 )); then
+        case "${{words[2]}}" in
+            sessions) _describe 'subcommand' '(list resume fork delete)' ;;
+            permissions) _describe 'subcommand' '(show allow ask deny reset)' ;;
+            config) _describe 'subcommand' '(show get set)' ;;
+            completions) _describe 'shell' '(bash zsh fish)' ;;
+            model) _describe 'subcommand' '(use)' ;;
+            *) _describe 'command' cmds ;;
+        esac
+    else
+        _describe 'command' cmds
+    fi
+}}
+compdef _cerberus cerberus
+"""
+
+
+def _completions_fish() -> str:
+    cmds = "\n".join(
+        f"complete -c cerberus -f -n '__fish_use_subcommand' -a {c}"
+        for c in _COMPLETION_COMMANDS.split()
+    )
+    subs = """complete -c cerberus -f -n '__fish_seen_subcommand_from sessions' -a 'list resume fork delete'
+complete -c cerberus -f -n '__fish_seen_subcommand_from permissions' -a 'show allow ask deny reset'
+complete -c cerberus -f -n '__fish_seen_subcommand_from config' -a 'show get set'
+complete -c cerberus -f -n '__fish_seen_subcommand_from completions' -a 'bash zsh fish'
+complete -c cerberus -f -n '__fish_seen_subcommand_from model' -a 'use'
+"""
+    return f"# cerberus fish completion — install: cerberus completions fish > ~/.config/fish/completions/cerberus.fish\n{cmds}\n{subs}"
+
+
+def cmd_completions(shell: str) -> int:
+    shell = (shell or "").strip().lower()
+    if shell == "bash":
+        print(_completions_bash(), end="")
+    elif shell == "zsh":
+        print(_completions_zsh(), end="")
+    elif shell == "fish":
+        print(_completions_fish(), end="")
+    else:
+        print("Usage: cerberus completions bash|zsh|fish", file=sys.stderr)
+        return 2
+    return 0
+
+
 def cmd_sessions(
     config: AppConfig, ui: TerminalUI, args: argparse.Namespace, rest: list[str]
 ) -> int:
@@ -775,6 +954,7 @@ def build_loop(
     *,
     persona_name: Optional[str] = None,
     auto_approve: bool = False,
+    force_deny: bool = False,
 ) -> AgentLoop:
     try:
         from servers.agent.loop import AgentLoop
@@ -787,6 +967,9 @@ def build_loop(
     def confirm(command: str, reason: str) -> Any:
         if auto_approve:
             return True
+        if force_deny:
+            ui.error(f"Denied (non-interactive): {command}")
+            return False
         # Tri-state: "once" | "session" (registry remembers the kind) | "deny".
         return ui.confirm_choice(command, reason)
 
@@ -1409,12 +1592,12 @@ def _run_swarm_goal(
 GLOBAL_BOOL_FLAGS = {
     "--plan", "--swarm", "--dry-run", "-y", "--yes",
     "--init", "-v", "--verbose", "-q", "--quiet",
-    "--yolo", "--accept-edits", "--classic",
+    "--yolo", "--accept-edits", "--classic", "--print-logs",
 }
 GLOBAL_VALUE_FLAGS = {
     "-c", "--config", "-m", "--model", "-w", "--workspace",
     "--base-url", "--api-key", "--max-rounds", "--base",
-    "--title", "--log-file",
+    "--title", "--log-file", "--format",
 }
 
 
@@ -1500,6 +1683,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         return cmd_sessions(config, ui, args, rest)
     if command == "permissions":
         return cmd_permissions(config, ui, args.config, rest)
+    if command == "models":
+        return cmd_model(config, ui, args.config, "")
+    if command == "completions":
+        return cmd_completions(" ".join(rest))
+    if command == "run":
+        return cmd_run(config, ui, args, rest, log_file)
     if command in {"status", "logs"}:
         if command == "status":
             return cmd_status(config, ui)

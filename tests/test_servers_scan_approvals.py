@@ -665,6 +665,67 @@ class SessionsSlashTest(unittest.TestCase):
             self.assertTrue(any("Not a git repo" in m for _, m in ui.lines))
 
 
+class RunHeadlessTest(unittest.TestCase):
+    def test_result_payload(self):
+        from servers.cli import result_payload
+
+        class Usage:
+            prompt_tokens = 10
+            completion_tokens = 20
+            total_tokens = 30
+
+        class Result:
+            final_text = "done"
+            tool_rounds = 3
+            usage = Usage()
+            stopped_reason = "completed"
+
+        payload = result_payload(Result())
+        self.assertEqual(payload, {
+            "text": "done",
+            "tool_rounds": 3,
+            "usage": {"prompt_tokens": 10, "completion_tokens": 20,
+                      "total_tokens": 30},
+            "stopped_reason": "completed",
+        })
+
+    def test_result_payload_missing(self):
+        from servers.cli import result_payload
+
+        self.assertEqual(result_payload(object())["usage"]["total_tokens"], 0)
+
+    def test_completions(self):
+        import contextlib
+        import io
+
+        from servers.cli import cmd_completions
+
+        for shell, marker in [("bash", "complete -F _cerberus"),
+                              ("zsh", "compdef _cerberus"),
+                              ("fish", "complete -c cerberus")]:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = cmd_completions(shell)
+            self.assertEqual(rc, 0)
+            out = buf.getvalue()
+            self.assertIn(marker, out)
+            for cmd in ["scan", "agent", "run", "sessions", "permissions"]:
+                self.assertIn(cmd, out)
+        self.assertEqual(cmd_completions("powershell"), 2)
+
+    def test_run_flags_parse(self):
+        from servers.cli import _normalize_argv, build_parser
+
+        args = build_parser().parse_args(
+            _normalize_argv(["run", "--format", "json", "do it"]))
+        self.assertEqual(args.command, "run")
+        self.assertEqual(args.format, "json")
+        self.assertEqual(args.rest, ["do it"])
+        args = build_parser().parse_args(
+            _normalize_argv(["run", "--print-logs", "--", "x"]))
+        self.assertTrue(args.print_logs)
+
+
 class RealScanReportTest(unittest.TestCase):
     def test_examine_report_loads_and_digests(self):
         import tempfile
