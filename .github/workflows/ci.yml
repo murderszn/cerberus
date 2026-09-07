@@ -23,6 +23,17 @@ jobs:
       - name: Fail if generated catalog is stale
         run: git diff --exit-code assets/checks.js
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Verify npm package syntax and packaging dry-run
+      - name: Verify npm launcher package
+        run: |
+          cd npm/cerberus-agent
+          npm test
+          npm run pack:check
+
       # Offline engine tests: report schema, counts invariants, and targeted check
       # outcomes against synthetic directories (no network).
       - name: Run unit tests
