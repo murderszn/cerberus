@@ -40,39 +40,108 @@
       <h1>Releases</h1>
     </div>
 
-    <article class="release" aria-labelledby="release-title">
-      <div class="release-head">
-        <p class="eyebrow">Latest</p>
-        <h2 id="release-title">Cerberus Agent CLI</h2>
-        <p class="release-version">1.0.0-beta</p>
-        <p><span class="release-badge">Beta</span></p>
-      </div>
-      <div class="release-body">
-        <p>Our terminal workbench for security research: nine specialist agents, an evidence-led review loop, and a full-screen Ink interface — direct from your shell, no browser required.</p>
-        <ul class="release-includes">
-          <li>Ink TUI workbench plus a classic REPL</li>
-          <li>Specialist personas and team fan-out</li>
-          <li>Plan mode and accept-edits mode with ask-first approvals</li>
-          <li>Saved sessions, model picker, and token usage</li>
-        </ul>
-        <h3>Requirements</h3>
-        <p>Python 3, plus the agent runtime dependencies in <code>servers/requirements-agent.txt</code>. The deterministic scanner (<code>examine.py</code>) stays stdlib-only and needs nothing extra.</p>
-        <h3>Install</h3>
-        <pre class="release-install"><code>npx cerberus-agent scan .
+    <div class="release-list" role="list">
+
+      <!-- ── Release 01 ─────────────────────────────────────────────── -->
+      <article class="release" role="listitem" aria-labelledby="release-01-title">
+        <div class="release-head">
+          <div class="release-meta">
+            <p class="eyebrow">Latest</p>
+            <time class="release-date" datetime="2026-09-01">Sep 1, 2026</time>
+          </div>
+          <h2 id="release-01-title">Cerberus Agent CLI
+            <span class="release-version">1.0.0-beta</span>
+            <span class="release-badge">Beta</span>
+          </h2>
+        </div>
+        <div class="release-body">
+          <p class="release-summary">Terminal workbench for security research — nine specialist agents, evidence-led review loop, and full-screen Ink interface from your shell.</p>
+          <details class="release-details">
+            <summary>Install &amp; Requirements</summary>
+            <div class="release-details-inner">
+              <p>Requires Node.js 18+ and Python 3.10+. Agent deps in <code>servers/requirements-agent.txt</code>; the scanner (<code>examine.py</code>) is stdlib-only.</p>
+              <pre class="release-install"><code>npx cerberus-agent scan .
 npx cerberus-agent agent "audit this repository"</code></pre>
-        <p>The npm launcher installs the Cerberus Python runtime into your active Python environment, then forwards commands to the CLI. It requires Node.js 18+ and Python 3.10+.</p>
-        <p>Direct Python install: <code>pipx install "cerberus[agent] @ git+https://github.com/murderszn/cerberus.git"</code>. Scanner-only install: <code>pipx install git+https://github.com/murderszn/cerberus.git</code>.</p>
-        <p class="release-links">
-          <a class="note-link" href="https://www.npmjs.com/package/cerberus-agent" target="_blank" rel="noopener noreferrer">Get it on npm <span aria-hidden="true">↗</span></a>
-          <a class="note-link" href="https://github.com/murderszn/cerberus" target="_blank" rel="noopener noreferrer">Get it on GitHub <span aria-hidden="true">↗</span></a>
-          <a class="note-link" href="https://github.com/murderszn/cerberus/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Changelog <span aria-hidden="true">→</span></a>
-          <a class="note-link" href="documentation/index.html">Read the docs <span aria-hidden="true">→</span></a>
-        </p>
-      </div>
-      <aside class="note-index" aria-label="Release 1">
-        <span class="note-number">01</span><span>BETA</span><span>Agent CLI</span>
-      </aside>
-    </article>
+              <p>Direct: <code>pipx install "cerberus[agent] @ git+https://github.com/murderszn/cerberus.git"</code></p>
+            </div>
+          </details>
+          <nav class="release-links" aria-label="Release 01 links">
+            <a class="note-link" href="https://www.npmjs.com/package/cerberus-agent" target="_blank" rel="noopener noreferrer">npm <span aria-hidden="true">↗</span></a>
+            <a class="note-link" href="https://github.com/murderszn/cerberus" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+            <a class="note-link" href="https://github.com/murderszn/cerberus/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Changelog <span aria-hidden="true">→</span></a>
+            <a class="note-link" href="documentation/index.html">Docs <span aria-hidden="true">→</span></a>
+          </nav>
+        </div>
+        <aside class="note-index" aria-label="Release number 01">
+          <span class="note-number">01</span><span>BETA</span><span>Agent CLI</span>
+        </aside>
+      </article>
+
+      <!-- ── Release 02 ─────────────────────────────────────────────── -->
+      <article class="release" role="listitem" aria-labelledby="release-02-title">
+        <div class="release-head">
+          <div class="release-meta">
+            <p class="eyebrow">Previous</p>
+            <time class="release-date" datetime="2026-07-15">Jul 15, 2026</time>
+          </div>
+          <h2 id="release-02-title">Cerberus Scanner
+            <span class="release-version">0.9.0-alpha</span>
+            <span class="release-badge">Stable</span>
+          </h2>
+        </div>
+        <div class="release-body">
+          <p class="release-summary">Deterministic vulnerability scanner — stdlib-only Python, zero dependencies, runs anywhere Python 3.10+ is installed.</p>
+          <details class="release-details">
+            <summary>Install &amp; Requirements</summary>
+            <div class="release-details-inner">
+              <p>Python 3.10+ required. No additional dependencies.</p>
+              <pre class="release-install"><code>pipx install git+https://github.com/murderszn/cerberus.git
+cerberus scan .</code></pre>
+            </div>
+          </details>
+          <nav class="release-links" aria-label="Release 02 links">
+            <a class="note-link" href="https://github.com/murderszn/cerberus" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+            <a class="note-link" href="https://github.com/murderszn/cerberus/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Changelog <span aria-hidden="true">→</span></a>
+            <a class="note-link" href="documentation/index.html">Docs <span aria-hidden="true">→</span></a>
+          </nav>
+        </div>
+        <aside class="note-index" aria-label="Release number 02">
+          <span class="note-number">02</span><span>STABLE</span><span>Scanner</span>
+        </aside>
+      </article>
+
+      <!-- ── Release 03 ─────────────────────────────────────────────── -->
+      <article class="release" role="listitem" aria-labelledby="release-03-title">
+        <div class="release-head">
+          <div class="release-meta">
+            <p class="eyebrow">Archive</p>
+            <time class="release-date" datetime="2026-05-20">May 20, 2026</time>
+          </div>
+          <h2 id="release-03-title">Examine (Proof of Concept)
+            <span class="release-version">0.8.0-alpha</span>
+            <span class="release-badge release-badge--deprecated">Superseded</span>
+          </h2>
+        </div>
+        <div class="release-body">
+          <p class="release-summary">Original static-analysis prototype — single-file scanner that seeded the Cerberus project. Now superseded by the full Scanner release.</p>
+          <details class="release-details">
+            <summary>Install &amp; Requirements</summary>
+            <div class="release-details-inner">
+              <p>Python 3.8+. Copy <code>examine.py</code> into your project and run directly.</p>
+              <pre class="release-install"><code>python examine.py --target ./src</code></pre>
+            </div>
+          </details>
+          <nav class="release-links" aria-label="Release 03 links">
+            <a class="note-link" href="https://github.com/murderszn/cerberus" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+            <a class="note-link" href="https://github.com/murderszn/cerberus/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Changelog <span aria-hidden="true">→</span></a>
+          </nav>
+        </div>
+        <aside class="note-index" aria-label="Release number 03">
+          <span class="note-number">03</span><span>SUPERSEDED</span><span>Examine</span>
+        </aside>
+      </article>
+
+    </div><!-- /.release-list -->
   </main>
   <footer class="site-footer">
     <a href="index.html">Cerberus Labs</a>

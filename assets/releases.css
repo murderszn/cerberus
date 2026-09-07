@@ -1,74 +1,229 @@
-/* Releases page: one card per shipped release, in the site idiom. */
+/* Releases — compact, stackable release list in the Cerberus Labs idiom. */
+
+/* ── Release list wrapper ─────────────────────────────────────────────── */
+.release-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Individual release card ──────────────────────────────────────────── */
 .release {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 112px;
   gap: 0 50px;
-  padding: 38px 0 54px;
+  padding: 30px 0 34px;
   border-top: 2px solid var(--ink);
 }
-.release-head { grid-column: 1; grid-row: 1; }
-.release-body { grid-column: 1; grid-row: 2; min-width: 0; }
-.release > .note-index { grid-column: 2; grid-row: 1 / span 2; }
+
+/* ── Head: eyebrow · date · title · version · badge ───────────────────── */
+.release-head {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.release-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 8px;
+}
+
+.release-meta .eyebrow {
+  margin: 0;
+}
+
+.release-date {
+  margin: 0;
+  font: 400 10.5px/1.6 var(--font-mono);
+  color: var(--muted);
+  letter-spacing: .03em;
+}
+
 .release-head h2 {
-  margin: 0 0 6px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 14px;
+  margin: 0 0 4px;
   font: 400 11.5px/1.9 var(--font-pixel);
   text-transform: uppercase;
 }
+
 .release-version {
-  margin: 0 0 14px;
-  font: 600 13.5px/1.6 var(--font-mono);
+  margin: 0;
+  font: 600 13px/1.6 var(--font-mono);
   color: var(--muted);
 }
+
 .release-badge {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 2px 9px;
   border: 2px solid var(--ink);
   background: var(--ink);
   color: #fff;
-  font: 700 10.5px/1.6 var(--font-mono);
+  font: 700 9.5px/1.6 var(--font-mono);
   letter-spacing: .06em;
   text-transform: uppercase;
+  vertical-align: middle;
+  margin-left: 6px;
 }
-.release-body p {
-  margin: 0 0 14px;
+
+.release-badge--stable {
+  background: transparent;
+  color: var(--ink);
+}
+
+.release-badge--deprecated {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--muted);
+}
+
+/* ── Body: summary + collapsible install + links ──────────────────────── */
+.release-body {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+}
+
+.release-summary {
+  margin: 8px 0 0;
   max-width: 62ch;
-  font: 400 13.5px/1.85 var(--font-mono);
+  font: 400 13px/1.85 var(--font-mono);
   color: var(--muted);
 }
-.release-body h3 {
-  margin: 26px 0 10px;
-  font: 400 11px/1.9 var(--font-pixel);
+
+/* Collapsible install / requirements block */
+.release-details {
+  margin: 14px 0 0;
+}
+
+.release-details summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font: 600 10px/1.6 var(--font-mono);
+  letter-spacing: .06em;
   text-transform: uppercase;
+  color: var(--ink);
+  padding: 4px 0;
+  list-style: none;
 }
-.release-includes { margin: 0 0 6px; padding-left: 20px; }
-.release-includes li {
-  margin-bottom: 6px;
-  font: 400 13px/1.8 var(--font-mono);
+
+.release-details summary::-webkit-details-marker { display: none; }
+
+.release-details summary::before {
+  content: '▸';
+  display: inline-block;
+  transition: transform .15s;
+  font-size: 10px;
+}
+
+.release-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.release-details-inner {
+  padding: 12px 0 0;
+}
+
+.release-details-inner p {
+  margin: 0 0 8px;
+  max-width: 62ch;
+  font: 400 12.5px/1.8 var(--font-mono);
   color: var(--muted);
 }
-.release-body code {
+
+.release-details-inner code {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 11.5px;
   background: #f1f1f4;
-  padding: 1px 6px;
+  padding: 1px 5px;
 }
+
 .release-install {
-  margin: 0 0 6px;
-  padding: 16px 18px;
+  margin: 6px 0 8px;
+  padding: 14px 16px;
   border: 2px solid var(--ink);
   background: #0a0a0c;
   box-shadow: 5.5px 5.5px 0 var(--ink);
   overflow-x: auto;
 }
+
 .release-install code {
   background: transparent;
   padding: 0;
   color: #f2f2f4;
-  font-size: 12.5px;
-  line-height: 1.9;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.85;
 }
-.release-links { display: flex; flex-wrap: wrap; gap: 0 34px; }
+
+/* ── Link bar ─────────────────────────────────────────────────────────── */
+.release-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 28px;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.release-links .note-link {
+  margin-top: 0;
+  font-size: 10px;
+  padding: 4px 0;
+}
+
+/* ── Note index column ────────────────────────────────────────────────── */
+.release > .note-index {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+/* ── Responsive: ≤680px ───────────────────────────────────────────────── */
 @media (max-width: 680px) {
-  .release { grid-template-columns: 1fr 63px; gap: 19px 14.5px; padding: 27px 0 37px; }
-  .release-body p { font-size: 12.5px; }
+  .release {
+    grid-template-columns: 1fr 63px;
+    gap: 12px 14.5px;
+    padding: 22px 0 28px;
+  }
+
+  .release-head h2 {
+    font-size: 10.5px;
+  }
+
+  .release-meta {
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .release-summary {
+    font-size: 12px;
+  }
+
+  .release-details summary {
+    font-size: 9px;
+  }
+
+  .release-details-inner p {
+    font-size: 11.5px;
+  }
+
+  .release-install {
+    padding: 12px 14px;
+  }
+
+  .release-install code {
+    font-size: 11px;
+  }
+
+  .release-links {
+    gap: 0 18px;
+  }
+
+  .release-links .note-link {
+    font-size: 9px;
+  }
 }

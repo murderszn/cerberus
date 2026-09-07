@@ -24,6 +24,17 @@ All notable changes to Cerberus are recorded here. Format follows
 - CI self-scan gate is now `--fail-under 95 --fail-on high` (was
   `--fail-under 80`, which passed with critical findings present).
 
+### Changed
+- Releases: redesigned `releases.html` from a single free-form article into a
+  compact, stackable release list. Each `<article class="release">` now has an
+  eyebrow + date row, inline title/version/status badge, 1–2 line summary,
+  collapsible `<details>` for install & requirements, and a single row of
+  links (npm / GitHub / Changelog / Docs). Cards stack with 2 px `--ink` top
+  borders and numbered `note-index` (01, 02, …). Badge variants: filled
+  (Beta), outline (Stable), muted (Superseded). Install block keeps the
+  `5.5px 5.5px 0 var(--ink)` shadow. 680 px breakpoint collapses cleanly.
+  Adding a new release = copy one `<article>` block.
+
 ### Added
 - `examine.py --fail-on critical|high|medium|low`: exit non-zero on
   failed-check severity even at a passing score.

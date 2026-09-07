@@ -345,6 +345,8 @@ The test suite covers registry behavior, applicability, unavailable tools, timeo
 
 * [index.html](index.html) — The research homepage with three framed, full-bleed details from the Cerberus engraving and titles overlaid on the images.
 * [agent.html](agent.html) — The browser scanner, progress view, and interactive report.
+* [releases.html](releases.html) — Compact, stackable release list with collapsible install blocks and status badges.
+* [shop.html](shop.html) — Pre-order reservation page (email only, $0 due today).
 * [cerberus-classic.html](cerberus-classic.html) — The legacy static HTML scanner page.
 * [examine.py](examine.py) — The Python CLI, native report builder, orchestration entry point, and JSON/HTML/SARIF renderer.
 * [alignment.py](alignment.py) — Native repository and coding-agent alignment analyzer.
