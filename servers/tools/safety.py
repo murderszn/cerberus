@@ -100,6 +100,17 @@ def is_build_command(command: str) -> bool:
     return bool(command and _BUILD_PATTERN.search(command))
 
 
+#: Tools that leave the workspace (network/API) — gated when the
+#: external permission tier is ask/deny.
+EXTERNAL_APPROVAL_TOOLS = frozenset({
+    "browse_web_content",
+    "http_request",
+    "create_pull_request",
+})
+
+PERMISSION_TIERS = ("allow", "ask", "deny")
+
+
 # ---------------------------------------------------------------------------
 # Secret Redaction (mirrors feeders/normalize.py)
 # ---------------------------------------------------------------------------

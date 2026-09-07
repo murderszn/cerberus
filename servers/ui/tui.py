@@ -1326,6 +1326,8 @@ class InkApp(App):
         self._append_msg("Workspace → {} (history reset)".format(new_ws))
 
     def _slash_approvals(self, arg: str) -> None:
+        from servers.config import effective_tier, set_permission_tier
+
         tools = self.config.tools
         try:
             session = self.loop.registry.session_approvals()
@@ -1333,16 +1335,18 @@ class InkApp(App):
             session = []
         parts = arg.strip().lower().split()
         if not parts or parts[0] in {"status", "show"}:
+            lines = [
+                "Approvals — external (web/search/PR): {}".format(effective_tier(tools, "external")),
+                "Approvals — builds (pytest/npm/make): {}".format(effective_tier(tools, "builds")),
+            ]
+            for key in sorted(tools.permissions):
+                if key not in {"external", "builds"}:
+                    lines.append("Approvals — {}: {}".format(key, tools.permissions[key]))
+            lines.append("Always-allowed this run: {}".format(
+                ", ".join(session) if session else "(none)"))
+            self._append_msg("\n".join(lines))
             self._append_msg(
-                "Approvals — external (web/search/PR): {}\n"
-                "Approvals — builds (pytest/npm/make): {}\n"
-                "Always-allowed this run: {}".format(
-                    "ask" if tools.approve_external else "allow",
-                    "ask" if tools.approve_builds else "allow",
-                    ", ".join(session) if session else "(none)",
-                )
-            )
-            self._append_msg("Usage: /approvals <external|builds> <on|off> · /approvals reset")
+                "Usage: /approvals <external|builds> <on|off|ask|allow|deny> · /approvals reset")
             return
         if parts[0] == "reset":
             try:
@@ -1352,21 +1356,19 @@ class InkApp(App):
             self._append_msg("Session approvals cleared — will ask again.")
             return
         if len(parts) == 2 and parts[0] in {"external", "builds"}:
-            if parts[1] not in {"on", "off", "ask", "allow"}:
-                self._append_msg("Usage: /approvals <external|builds> <on|off>")
-                return
-            value = parts[1] in {"on", "ask"}
-            if parts[0] == "external":
-                tools.approve_external = value
+            if parts[1] in {"on", "ask"}:
+                tier = "ask"
+            elif parts[1] in {"off", "allow"}:
+                tier = "allow"
+            elif parts[1] == "deny":
+                tier = "deny"
             else:
-                tools.approve_builds = value
-            self._append_msg(
-                "Approvals → {}: {}".format(
-                    parts[0], "ask first" if value else "allowed without asking"
-                )
-            )
+                self._append_msg("Usage: /approvals <external|builds> <on|off|ask|allow|deny>")
+                return
+            set_permission_tier(tools, parts[0], tier)
+            self._append_msg("Approvals → {}: {}".format(parts[0], tier))
             return
-        self._append_msg("Usage: /approvals [external|builds] [on|off] · /approvals reset")
+        self._append_msg("Usage: /approvals [external|builds] [on|off|ask|allow|deny] · /approvals reset")
 
     def _slash_team(self, arg: str) -> None:
         from servers.agent.prompts import list_personas

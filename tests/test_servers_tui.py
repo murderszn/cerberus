@@ -329,6 +329,14 @@ class InkTuiTest(unittest.IsolatedAsyncioTestCase):
             await pilot.pause()
             self.assertEqual(area.text, "what??")
 
+    async def test_approvals_tier_display(self):
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            app.submit_text("/approvals external deny")
+            await pilot.pause()
+            self.assertIn("external: deny", self.work_text(app))
+            self.assertTrue(app.config.tools.approve_external)
+
     async def test_undo_and_review_hints(self):
         app = self.make_app()
         async with app.run_test() as pilot:

@@ -57,6 +57,7 @@ class ToolConfig:
     extra_destructive_patterns: list[str] = field(default_factory=list)
     approve_external: bool = True
     approve_builds: bool = True
+    permissions: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -255,6 +256,15 @@ def _from_dict(data: dict[str, Any]) -> AppConfig:
     ui = data.get("ui") or {}
     agents_raw = data.get("agents") or {}
     model_ids, model_meta = _normalize_models(prov.get("models"))
+    raw_permissions: dict[str, Any] = {}
+    for section in (tools.get("permissions"), data.get("permissions")):
+        if isinstance(section, dict):
+            raw_permissions.update(section)
+    permissions = {
+        str(k): str(v).lower()
+        for k, v in raw_permissions.items()
+        if str(v).lower() in {"allow", "ask", "deny"}
+    }
 
     provider = ProviderConfig(
         base_url=str(prov.get("base_url", DEFAULT_BASE_URL)).rstrip("/"),
@@ -277,6 +287,7 @@ def _from_dict(data: dict[str, Any]) -> AppConfig:
         extra_destructive_patterns=list(tools.get("extra_destructive_patterns") or []),
         approve_external=bool(tools.get("approve_external", True)),
         approve_builds=bool(tools.get("approve_builds", True)),
+        permissions=permissions,
     )
 
     ui_cfg = UIConfig(
@@ -393,6 +404,36 @@ def load_config(
     return cfg
 
 
+PERMISSION_TARGETS = ("external", "builds")
+
+
+def effective_tier(tools: ToolConfig, kind: str) -> str:
+    """Persisted allow|ask|deny for a gate kind (no session state).
+
+    Kinds: "external", "builds", or "external:<tool>".
+    Precedence: per-tool map > category map > legacy booleans.
+    """
+    override = tools.permissions.get(kind, "")
+    if override in {"allow", "ask", "deny"}:
+        return override
+    category = "external" if kind.startswith("external") else "builds"
+    cat = tools.permissions.get(category, "")
+    if cat in {"allow", "ask", "deny"}:
+        return cat
+    if category == "external":
+        return "allow" if not tools.approve_external else "ask"
+    return "allow" if not tools.approve_builds else "ask"
+
+
+def set_permission_tier(tools: ToolConfig, target: str, tier: str) -> None:
+    """Set a tier in memory, keeping legacy booleans in sync."""
+    tools.permissions[target] = tier
+    if target == "external":
+        tools.approve_external = tier != "allow"
+    elif target == "builds":
+        tools.approve_builds = tier != "allow"
+
+
 SECRET_KEY_PARTS = ("api_key", "apikey", "token", "secret", "password")
 
 
@@ -450,6 +491,27 @@ def config_set(config_path: Optional[Path], dotted: str, value: str) -> Path:
             node[part] = child
         node = child
     node[parts[-1]] = _coerce_value(value)
+    return _write_raw(path, raw)
+
+
+def config_unset(config_path: Optional[Path], dotted: str) -> Path:
+    """Remove a dotted key from a config file (no-op when absent)."""
+    parts = [p for p in dotted.split(".") if p]
+    if not parts:
+        raise ValueError("Empty key.")
+    path = Path(config_path) if config_path else DEFAULT_CONFIG_PATH
+    raw: dict[str, Any] = {}
+    if path.exists():
+        raw = _load_raw(path)
+        if not isinstance(raw, dict):
+            raw = {}
+    node = raw
+    for part in parts[:-1]:
+        child = node.get(part)
+        if not isinstance(child, dict):
+            return path
+        node = child
+    node.pop(parts[-1], None)
     return _write_raw(path, raw)
 
 

@@ -111,6 +111,149 @@ class BuildDetectTest(unittest.TestCase):
             self.assertFalse(is_build_command(cmd), cmd)
 
 
+class TierResolutionTest(unittest.TestCase):
+    def test_defaults_ask(self):
+        from servers.config import ToolConfig, effective_tier
+
+        tools = ToolConfig()
+        self.assertEqual(effective_tier(tools, "external"), "ask")
+        self.assertEqual(effective_tier(tools, "builds"), "ask")
+        self.assertEqual(effective_tier(tools, "external:browse_web_content"), "ask")
+
+    def test_legacy_bools(self):
+        from servers.config import ToolConfig, effective_tier
+
+        tools = ToolConfig(approve_external=False, approve_builds=False)
+        self.assertEqual(effective_tier(tools, "external"), "allow")
+        self.assertEqual(effective_tier(tools, "build"), "allow")
+
+    def test_category_and_tool_override(self):
+        from servers.config import ToolConfig, effective_tier, set_permission_tier
+
+        tools = ToolConfig()
+        set_permission_tier(tools, "external", "deny")
+        self.assertEqual(effective_tier(tools, "external"), "deny")
+        # deny keeps the legacy gate switched on (deny is stricter than ask)
+        self.assertTrue(tools.approve_external)
+        self.assertTrue(tools.approve_builds)  # untouched category stays synced
+        tools.permissions["external:browse_web_content"] = "allow"
+        self.assertEqual(effective_tier(tools, "external:browse_web_content"), "allow")
+        self.assertEqual(effective_tier(tools, "external:http_request"), "deny")
+
+    def test_invalid_values_ignored(self):
+        from servers.config import ToolConfig, effective_tier
+
+        tools = ToolConfig()
+        tools.permissions = {"external": "maybe"}
+        self.assertEqual(effective_tier(tools, "external"), "ask")
+
+
+@unittest.skipUnless(HAS_AGENT_DEPS, "agent deps not installed")
+class TierGateTest(unittest.TestCase):
+    def _registry(self, **kw):
+        import tempfile
+
+        from servers.tools.registry import ToolRegistry
+
+        cfg = ToolConfig()
+        for k, v in kw.items():
+            if k == "decision":
+                continue
+            setattr(cfg, k, v)
+        calls: list = []
+
+        def confirm(command, reason):
+            calls.append((command, reason))
+            return kw.get("decision", False)
+
+        reg = ToolRegistry(workspace=Path(tempfile.mkdtemp()), config=cfg,
+                           confirm_callback=confirm)
+        return reg, calls
+
+    def test_deny_blocks_without_prompt(self):
+        reg, calls = self._registry(
+            permissions={"external": "deny"}, decision=True)
+        out = reg.dispatch("browse_web_content", {"url": "https://example.com"})
+        self.assertIn("BLOCKED", out)
+        self.assertIn("denied by permission tier", out)
+        self.assertEqual(calls, [])
+
+    def test_allow_skips_prompt(self):
+        reg, calls = self._registry(
+            permissions={"builds": "allow"}, decision=False)
+        self.assertIsNone(reg._approval_gate(
+            "execute_bash_command", {"command": "pytest -q"}))
+        self.assertEqual(calls, [])
+
+    def test_per_tool_override_beats_category(self):
+        reg, calls = self._registry(
+            permissions={"external": "deny",
+                         "external:browse_web_content": "allow"},
+            decision=False)
+        self.assertIsNone(reg._approval_gate("browse_web_content", {}))
+        self.assertEqual(calls, [])
+
+
+class PermissionsCliTest(unittest.TestCase):
+    def _run(self, rest, config_path):
+        from servers.cli import cmd_permissions
+        from servers.config import AppConfig
+
+        config = AppConfig()
+
+        class UI:
+            def __init__(self):
+                self.lines: list[tuple[str, str]] = []
+                self.console = self
+
+            def print(self, *a, **k):
+                self.lines.append(("print", " ".join(str(x) for x in a)))
+
+            def info(self, m):
+                self.lines.append(("info", str(m)))
+
+            def warn(self, m):
+                self.lines.append(("warn", str(m)))
+
+            def error(self, m):
+                self.lines.append(("error", str(m)))
+
+        ui = UI()
+        rc = cmd_permissions(config, ui, config_path, rest)
+        return rc, config, ui
+
+    def test_show_set_reset_global(self):
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "c.json"
+            rc, _, ui = self._run(["show"], path)
+            self.assertEqual(rc, 0)
+            self.assertTrue(any("external" in m for _, m in ui.lines))
+            rc, config, ui = self._run(["deny", "builds"], path)
+            self.assertEqual(rc, 0)
+            self.assertEqual(config.tools.permissions.get("builds"), "deny")
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(raw["permissions"]["builds"], "deny")
+            self.assertIs(raw["tools"]["approve_builds"], True)
+            rc, _, ui = self._run(["allow", "external:browse_web_content"], path)
+            self.assertEqual(rc, 0)
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(raw["permissions"]["external:browse_web_content"], "allow")
+            rc, config, _ = self._run(["reset"], path)
+            self.assertEqual(rc, 0)
+            self.assertEqual(config.tools.permissions, {})
+
+    def test_invalid(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, _, ui = self._run(["allow", "frobnicate"], Path(tmp) / "c.json")
+            self.assertEqual(rc, 1)
+            self.assertTrue(any("Usage" in m for _, m in ui.lines))
+
+
 @unittest.skipUnless(HAS_AGENT_DEPS, "agent deps not installed")
 class ApprovalGateTest(unittest.TestCase):
     def _registry(self, **kw):
@@ -238,7 +381,11 @@ class ApprovalsSlashTest(unittest.TestCase):
         self.assertTrue(any("external" in m for _, m in ui.lines))
         config, _, ui = self._run("/approvals builds off")
         self.assertFalse(config.tools.approve_builds)
-        self.assertTrue(any("allowed without asking" in m for _, m in ui.lines))
+        self.assertEqual(config.tools.permissions.get("builds"), "allow")
+        self.assertTrue(any("builds: allow" in m for _, m in ui.lines))
+        config, _, ui = self._run("/approvals external deny")
+        self.assertEqual(config.tools.permissions.get("external"), "deny")
+        self.assertTrue(config.tools.approve_external)
         _, _, ui = self._run("/approvals external frobnicate")
         self.assertTrue(any("Usage" in m for _, m in ui.lines))
 

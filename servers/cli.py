@@ -235,7 +235,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("-q", "--quiet", action="store_true")
     p.add_argument("--log-file", type=Path, default=None)
     p.add_argument("command", nargs="?",
-                   help="scan|agent|model|init|config|sessions|login|logout|status|logs|<persona>")
+                   help="scan|agent|model|init|config|sessions|permissions|login|logout|status|logs|<persona>")
     p.add_argument("rest", nargs=argparse.REMAINDER,
                    help="Goal/task text or scan args")
     return p
@@ -347,10 +347,29 @@ def _handle_undo(ui: TerminalUI, config: AppConfig) -> bool:
     return True
 
 
+def _approvals_text(config: AppConfig, session: list[str]) -> str:
+    """Tier table for /approvals and `cerberus permissions show`."""
+    from servers.config import effective_tier
+
+    tools = config.tools
+    lines = [
+        f"  external (web/search/PR):  {effective_tier(tools, 'external')}",
+        f"  builds (pytest/npm/make):  {effective_tier(tools, 'builds')}",
+    ]
+    for key in sorted(tools.permissions):
+        if key in {"external", "builds"}:
+            continue
+        lines.append(f"  {key}: {tools.permissions[key]}")
+    lines.append(f"  always-allowed this run:   {', '.join(session) if session else '(none)'}")
+    return "\n".join(lines)
+
+
 def _handle_approvals(
     arg: str, loop: Any, ui: TerminalUI, config: AppConfig
 ) -> bool:
-    """Show or toggle the ask-first policy for external tools and builds."""
+    """Show or set permission tiers for external tools and builds."""
+    from servers.config import set_permission_tier
+
     tools = config.tools
     registry = getattr(loop, "registry", None)
     try:
@@ -358,17 +377,10 @@ def _handle_approvals(
     except Exception:
         session = []
 
-    def show() -> None:
-        ui.console.print(
-            f"  external (web/search/PR):  {'ask' if tools.approve_external else 'allow'}\n"
-            f"  builds (pytest/npm/make):  {'ask' if tools.approve_builds else 'allow'}\n"
-            f"  always-allowed this run:   {', '.join(session) if session else '(none)'}"
-        )
-
     parts = arg.strip().lower().split()
     if not parts or parts[0] in {"status", "show"}:
-        show()
-        ui.info("Usage: /approvals <external|builds> <on|off> · /approvals reset")
+        ui.console.print(_approvals_text(config, session))
+        ui.info("Usage: /approvals <external|builds> <on|off|ask|allow|deny> · /approvals reset")
         return True
     if parts[0] == "reset":
         try:
@@ -379,20 +391,87 @@ def _handle_approvals(
         ui.info("Session approvals cleared — will ask again.")
         return True
     if len(parts) == 2 and parts[0] in {"external", "builds"}:
-        if parts[1] not in {"on", "off", "ask", "allow"}:
-            ui.warn("Usage: /approvals <external|builds> <on|off>")
-            return True
-        value = parts[1] in {"on", "ask"}
-        if parts[0] == "external":
-            tools.approve_external = value
+        if parts[1] in {"on", "ask"}:
+            tier = "ask"
+        elif parts[1] in {"off", "allow"}:
+            tier = "allow"
+        elif parts[1] == "deny":
+            tier = "deny"
         else:
-            tools.approve_builds = value
-        ui.info(
-            f"Approvals → {parts[0]}: {'ask first' if value else 'allowed without asking'}"
-        )
+            ui.warn("Usage: /approvals <external|builds> <on|off|ask|allow|deny>")
+            return True
+        set_permission_tier(tools, parts[0], tier)
+        ui.info(f"Approvals → {parts[0]}: {tier}")
         return True
-    ui.warn("Usage: /approvals [external|builds] [on|off] · /approvals reset")
+    ui.warn("Usage: /approvals [external|builds] [on|off|ask|allow|deny] · /approvals reset")
     return True
+
+
+def _permission_targets() -> set[str]:
+    from servers.tools.safety import EXTERNAL_APPROVAL_TOOLS
+
+    return {"external", "builds", *EXTERNAL_APPROVAL_TOOLS}
+
+
+def cmd_permissions(
+    config: AppConfig,
+    ui: TerminalUI,
+    config_path: Optional[Path],
+    rest: list[str],
+) -> int:
+    from servers.config import config_set, config_unset, set_permission_tier
+
+    scope, args = _split_scope(rest)
+    if scope not in {"global", "project"}:
+        ui.error("Usage: cerberus permissions ... --scope global|project")
+        return 1
+    valid = _permission_targets()
+    if not args or args[0] == "show":
+        ui.console.print(_approvals_text(config, []))
+        return 0
+    if args[0] == "reset":
+        target = _scope_path(config, config_path, scope)
+        try:
+            config_unset(target, "permissions")
+            config_set(target, "tools.approve_external", "true")
+            config_set(target, "tools.approve_builds", "true")
+        except (ValueError, RuntimeError, OSError) as exc:
+            ui.error(str(exc))
+            return 1
+        config.tools.permissions = {}
+        config.tools.approve_external = True
+        config.tools.approve_builds = True
+        ui.info(f"Permissions reset to ask-first ({scope}).")
+        return 0
+    if len(args) == 2 and args[0] in {"allow", "ask", "deny"}:
+        from servers.tools.safety import EXTERNAL_APPROVAL_TOOLS
+
+        tier, target = args
+        if target in EXTERNAL_APPROVAL_TOOLS:
+            target = f"external:{target}"
+        if target not in valid and target not in {f"external:{t}" for t in EXTERNAL_APPROVAL_TOOLS}:
+            ui.error(
+                "Usage: cerberus permissions show|allow|ask|deny <external|builds|tool>|reset "
+                "[--scope global|project]"
+            )
+            return 1
+        mapping = {"external": "tools.approve_external", "builds": "tools.approve_builds"}
+        target_path = _scope_path(config, config_path, scope)
+        try:
+            config_set(target_path, f"permissions.{target}", tier)
+            if target in mapping:
+                config_set(target_path, mapping[target], "true" if tier != "allow" else "false")
+        except (ValueError, RuntimeError, OSError) as exc:
+            ui.error(str(exc))
+            return 1
+        set_permission_tier(config.tools, target, tier)
+        ui.info(f"Permissions → {target}: {tier} ({scope})")
+        return 0
+    ui.error(
+        "Usage: cerberus permissions show|allow|ask|deny <external|builds|tool>|reset "
+        "[--scope global|project]"
+    )
+    return 1
 
 
 # ---------------------------------------------------------------------------
@@ -517,6 +596,25 @@ def cmd_init(console: TerminalUI) -> int:
     return 0
 
 
+def _split_scope(rest: list[str]) -> tuple[str, list[str]]:
+    """Pull --scope global|project out of a command tail."""
+    args = list(rest)
+    scope = "global"
+    if "--scope" in args:
+        i = args.index("--scope")
+        scope = (args[i + 1] if i + 1 < len(args) else "").strip().lower()
+        del args[i:i + 2]
+    return scope, args
+
+
+def _scope_path(config: AppConfig, config_path: Optional[Path], scope: str) -> Path:
+    from servers.config import DEFAULT_CONFIG_PATH, project_config_path
+
+    if scope == "project":
+        return project_config_path(Path.cwd())
+    return Path(config_path) if config_path else DEFAULT_CONFIG_PATH
+
+
 def cmd_config(
     config: AppConfig,
     console: TerminalUI,
@@ -530,12 +628,7 @@ def cmd_config(
         project_config_path,
     )
 
-    args = list(rest)
-    scope = "global"
-    if "--scope" in args:
-        i = args.index("--scope")
-        scope = (args[i + 1] if i + 1 < len(args) else "").strip().lower()
-        del args[i:i + 2]
+    scope, args = _split_scope(rest)
     if scope not in {"global", "project"}:
         console.error("Usage: cerberus config set <key> <value> --scope global|project")
         return 1
@@ -571,9 +664,7 @@ def cmd_config(
         console.console.print(str(value))
         return 0
     if args[0] == "set" and len(args) == 3:
-        target = project_config_path(Path.cwd()) if scope == "project" else (
-            Path(config_path) if config_path else DEFAULT_CONFIG_PATH
-        )
+        target = _scope_path(config, config_path, scope)
         try:
             saved = config_set(target, args[1], args[2])
         except (ValueError, RuntimeError, OSError) as exc:
@@ -1407,6 +1498,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         return cmd_config(config, ui, args.config, rest)
     if command == "sessions":
         return cmd_sessions(config, ui, args, rest)
+    if command == "permissions":
+        return cmd_permissions(config, ui, args.config, rest)
     if command in {"status", "logs"}:
         if command == "status":
             return cmd_status(config, ui)

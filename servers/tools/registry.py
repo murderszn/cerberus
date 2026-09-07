@@ -23,7 +23,7 @@ from servers.tools.git import git_branch, git_diff, git_log, git_status
 from servers.tools.inspect import file_tree, http_request, python_eval
 from servers.tools.multiedit import multi_edit_file
 from servers.tools.pr import create_pull_request
-from servers.tools.safety import is_build_command
+from servers.tools.safety import EXTERNAL_APPROVAL_TOOLS, is_build_command
 from servers.tools.search import grep_search, search_workspace
 from servers.tools.symbols import list_symbols
 from servers.tools.web import browse_web_content
@@ -46,14 +46,6 @@ READ_ONLY_TOOLS = {
     "git_log",
     "git_branch",
     "browse_web_content",
-}
-
-#: Tools that leave the workspace (network/API) — gated when
-#: ToolConfig.approve_external is on, in any mode.
-EXTERNAL_APPROVAL_TOOLS = {
-    "browse_web_content",
-    "http_request",
-    "create_pull_request",
 }
 
 
@@ -85,10 +77,26 @@ class ToolRegistry:
         """Kinds currently always-allowed for this session."""
         return sorted(self._session_allowed)
 
-    def _ask_approval(self, kind: str, command: str, reason: str) -> bool:
-        """Tri-state approval: True/'once' runs once, 'session' remembers kind."""
+    def permission_tier(self, kind: str) -> str:
+        """Effective allow|ask|deny for a gate kind.
+
+        Precedence: session allow (from `a`) > persisted tiers.
+        Kinds: "external:<tool>" or "build".
+        """
         if kind in self._session_allowed:
+            return "allow"
+        from servers.config import effective_tier
+
+        return effective_tier(self.config, kind)
+
+    def _ask_approval(self, kind: str, command: str, reason: str) -> bool:
+        """Tiered approval: allow runs, deny blocks, ask prompts (tri-state)."""
+        tier = self.permission_tier(kind)
+        if tier == "allow":
             return True
+        if tier == "deny":
+            log.warning("denied by permission tier: %s", command[:120])
+            return False
         callback = self.confirm_callback
         if callback is None:
             log.warning("approval needed but no confirm callback: %s", command[:120])
@@ -104,16 +112,21 @@ class ToolRegistry:
         return bool(decision) and decision != "deny"
 
     def _approval_gate(self, name: str, args: dict[str, Any]) -> Optional[Tuple[str, str, str]]:
-        """Return (kind, command, reason) when this call needs approval."""
-        if name in EXTERNAL_APPROVAL_TOOLS and self.config.approve_external:
+        """Return (kind, command, reason) unless the tier allows outright."""
+        if name in EXTERNAL_APPROVAL_TOOLS:
+            kind = f"external:{name}"
+            if self.permission_tier(kind) == "allow":
+                return None
             return (
-                f"external:{name}",
+                kind,
                 name,
                 f"External action `{name}` leaves the workspace (network/API call).",
             )
-        if name == "execute_bash_command" and self.config.approve_builds:
+        if name == "execute_bash_command":
             command = str((args or {}).get("command", ""))
             if is_build_command(command):
+                if self.permission_tier("build") == "allow":
+                    return None
                 return (
                     "build",
                     command,
@@ -162,8 +175,13 @@ class ToolRegistry:
         if gate is not None:
             kind, command, reason = gate
             if not self._ask_approval(kind, command, reason):
+                why = (
+                    "denied by permission tier"
+                    if self.permission_tier(kind) == "deny"
+                    else "needs user approval and was not approved"
+                )
                 return (
-                    f"BLOCKED: `{command}` needs user approval and was not approved.\n"
+                    f"BLOCKED: `{command}` {why}.\n"
                     f"{reason}\n"
                     "Tell the user what you wanted to do and why, then wait — "
                     "they can approve it or relax the policy with /approvals."
