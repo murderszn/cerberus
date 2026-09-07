@@ -271,10 +271,13 @@
     }
   }
 
-  // Pre-order reservations. No payment provider is wired up yet, so the
-  // cart collects a reservation (items + one email) stored in localStorage.
-  // Nothing leaves the browser and no charge is ever made.
+  // Pre-order reservations. No payment is taken — the cart collects a
+  // reservation (items + one email) that is POSTed to Web3Forms
+  // (cerberus-shop-order) and mirrored in localStorage. Due today is $0.
+  // The Web3Forms access key is public by design (safe in client-side code).
   const PREORDER_KEY = 'cerberus_preorders_v1';
+  const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
+  const WEB3FORMS_ACCESS_KEY = '0313e788-beda-4ad2-9d9c-2dc71ad3405c';
 
   function loadPreorders() {
     try {
@@ -427,8 +430,9 @@
     }
   }
 
-  // Pre-order reservation (no payment). Records items + email locally and
-  // shows a reservation code. Due today is always $0.00.
+  // Pre-order reservation (no payment). POSTs items + email to Web3Forms,
+  // mirrors the reservation locally, and shows a reservation code.
+  // Due today is always $0.00.
   function openCheckout() {
     if (cart.length === 0) return;
     closeCart();
@@ -464,7 +468,24 @@
     }
   }
 
-  function handleCheckoutSubmit(e) {
+  function showCheckoutError(msg) {
+    clearCheckoutError();
+    const fields = document.getElementById('checkout-fields');
+    if (!fields) return;
+    const p = document.createElement('p');
+    p.id = 'checkout-error';
+    p.setAttribute('role', 'alert');
+    p.style.cssText = 'margin:12px 0 0; padding:10px 12px; border:1px solid #C0392B; color:#7B241C; background:#FDEDEC; font:400 12px/1.6 var(--font-mono);';
+    p.textContent = msg;
+    fields.appendChild(p);
+  }
+
+  function clearCheckoutError() {
+    const prev = document.getElementById('checkout-error');
+    if (prev) prev.remove();
+  }
+
+  async function handleCheckoutSubmit(e) {
     e.preventDefault();
     const emailInput = document.getElementById('checkout-email');
     const email = (emailInput?.value || '').trim();
@@ -472,10 +493,53 @@
       if (emailInput) emailInput.focus();
       return;
     }
+    const submitBtn = checkoutForm ? checkoutForm.querySelector('button[type="submit"]') : null;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Reserving…';
+    }
+    clearCheckoutError();
+
     const code = 'CRB-PRE-' + Math.floor(100000 + Math.random() * 900000);
     const items = cart.map(i => ({ id: i.id, title: i.title, size: i.size, qty: i.qty, price: i.price }));
     const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
-    savePreorder({ code, email, items, subtotal, createdAt: new Date().toISOString() });
+    const itemCount = cart.reduce((a, c) => a + c.qty, 0);
+    const itemLines = items.map(i => `${i.qty}x ${i.title} (${i.size}) — $${(i.price * i.qty).toFixed(2)}`);
+
+    let sent = false;
+    try {
+      const res = await fetch(WEB3FORMS_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          access_key: WEB3FORMS_ACCESS_KEY,
+          subject: `Cerberus pre-order ${code} — $${subtotal.toFixed(2)} est.`,
+          from_name: 'Cerberus Supply Pre-Order',
+          email,
+          message: `Reservation ${code}\n${itemLines.join('\n')}\nEstimated total at fulfillment: $${subtotal.toFixed(2)}\nDue today: $0.00`,
+          reservation_code: code,
+          items: itemLines.join('; '),
+          estimated_total: `$${subtotal.toFixed(2)}`,
+          due_today: '$0.00',
+          botcheck: ''
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      sent = res.ok && data.success === true;
+    } catch (err) {
+      sent = false;
+    }
+
+    if (!sent) {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Reserve Pre-Order — $0 Due Today ↗';
+      }
+      showCheckoutError('Reservation could not be sent (network error). Your cart is intact — check your connection and try again.');
+      return;
+    }
+
+    savePreorder({ code, email, items, subtotal, createdAt: new Date().toISOString(), sent: true });
 
     if (checkoutSummaryBox) {
       const escEmail = email.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -485,9 +549,9 @@
           <h3 style="font: 400 16px var(--font-pixel); text-transform:uppercase; margin-bottom:8px;">RESERVED</h3>
           <p style="font:700 13px var(--font-mono); margin-bottom:12px;">${code}</p>
           <p style="font:400 12px/1.7 var(--font-mono); color:var(--shop-muted);">
-            ${cart.reduce((a,c)=>a+c.qty,0)} item(s) held for <strong>${escEmail}</strong>.<br>
+            ${itemCount} item(s) held for <strong>${escEmail}</strong>.<br>
             No charge today — we email you a checkout link when production opens.<br>
-            Reservation kept in this browser; nothing was sent anywhere yet.
+            Reservation sent to our supply team and kept in this browser.
           </p>
         </div>
       `;
