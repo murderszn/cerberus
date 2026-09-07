@@ -38,6 +38,7 @@ class ProviderConfig:
     api_key: str = ""
     model: str = DEFAULT_MODEL
     models: list[str] = field(default_factory=lambda: ["kimi", "deepseek", "hermes", "openai"])
+    provider_models: dict[str, dict[str, Any]] = field(default_factory=dict)
     timeout: float = DEFAULT_TIMEOUT
     temperature: float = 0.2
     max_tokens: Optional[int] = None
@@ -221,17 +222,46 @@ def _load_raw(path: Path) -> dict[str, Any]:
     return data
 
 
+def _normalize_models(raw: Any) -> tuple[list[str], dict[str, dict[str, Any]]]:
+    """Accept models as [id…], [{id, base_url?, api_key_env?, temperature?}], or {id: {...}}."""
+    ids: list[str] = []
+    meta: dict[str, dict[str, Any]] = {}
+
+    def _meta_for(mid: str, raw_meta: Any) -> None:
+        if isinstance(raw_meta, dict):
+            kept = {k: raw_meta[k] for k in ("base_url", "api_key_env", "temperature") if k in raw_meta}
+            if kept:
+                meta[mid] = kept
+
+    if isinstance(raw, dict):
+        for mid, raw_meta in raw.items():
+            ids.append(str(mid))
+            _meta_for(str(mid), raw_meta)
+    elif isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, dict) and item.get("id"):
+                ids.append(str(item["id"]))
+                _meta_for(str(item["id"]), item)
+            elif isinstance(item, str) and item.strip():
+                ids.append(item.strip())
+    if not ids:
+        ids = ["kimi", "deepseek", "hermes", "openai"]
+    return ids, meta
+
+
 def _from_dict(data: dict[str, Any]) -> AppConfig:
     prov = data.get("provider") or {}
     tools = data.get("tools") or {}
     ui = data.get("ui") or {}
     agents_raw = data.get("agents") or {}
+    model_ids, model_meta = _normalize_models(prov.get("models"))
 
     provider = ProviderConfig(
         base_url=str(prov.get("base_url", DEFAULT_BASE_URL)).rstrip("/"),
         api_key=str(prov.get("api_key", "") or ""),
         model=str(prov.get("model", DEFAULT_MODEL)),
-        models=list(prov.get("models") or ["kimi", "deepseek", "hermes", "openai"]),
+        models=model_ids,
+        provider_models=model_meta,
         timeout=float(prov.get("timeout", DEFAULT_TIMEOUT)),
         temperature=float(prov.get("temperature", 0.2)),
         max_tokens=prov.get("max_tokens"),
@@ -286,6 +316,21 @@ def _from_dict(data: dict[str, Any]) -> AppConfig:
     )
 
 
+PROJECT_CONFIG_NAME = "cerberus.yaml"
+PROJECT_CONFIG_DIRNAME = ".cerberus"
+PROJECT_MEMORY_NAME = "CERBERUS.md"
+
+
+def project_config_path(directory: Optional[Path] = None) -> Path:
+    """Project config location: <dir>/.cerberus/cerberus.yaml (or .json)."""
+    base = Path(directory).expanduser() if directory else Path.cwd()
+    yaml_path = base / PROJECT_CONFIG_DIRNAME / PROJECT_CONFIG_NAME
+    json_path = yaml_path.with_suffix(".json")
+    if not yaml_path.exists() and json_path.exists():
+        return json_path
+    return yaml_path
+
+
 def load_config(
     config_path: Optional[Path] = None,
     *,
@@ -294,17 +339,38 @@ def load_config(
     base_url_override: Optional[str] = None,
     api_key_override: Optional[str] = None,
     mode_override: Optional[str] = None,
+    project_dir: Optional[Path] = None,
 ) -> AppConfig:
     """
     Load AppConfig with full cascade:
       1. Hardcoded defaults
-      2. File values (config_path or ~/.cerberus/config.yaml / json)
-      3. Environment variable overrides (CERBERUS_API_KEY, POLLINATIONS_API_KEY, OPENAI_API_KEY)
-      4. Explicit runtime CLI argument overrides
+      2. Global file (config_path or ~/.cerberus/config.yaml / json)
+      3. Project file (./.cerberus/cerberus.yaml — deep-merged over global)
+      4. ./CERBERUS.md project memory (appended to system instructions)
+      5. Environment variable overrides (CERBERUS_API_KEY, POLLINATIONS_API_KEY, OPENAI_API_KEY)
+      6. Explicit runtime CLI argument overrides
     """
     path = Path(config_path) if config_path else DEFAULT_CONFIG_PATH
     raw = _load_raw(path) if path.exists() else {}
+    project_path = project_config_path(project_dir)
+    project_raw = _load_raw(project_path) if project_path.exists() else {}
+    if project_raw:
+        raw = _deep_merge(dict(raw), project_raw)
     cfg = _from_dict(raw)
+
+    # CLI workspace wins for project-memory discovery; else CWD project dir.
+    if workspace_override:
+        cfg.workspace = Path(workspace_override).expanduser().resolve()
+    memory_dir = cfg.workspace if workspace_override else (Path(project_dir) if project_dir else Path.cwd())
+    memory_file = memory_dir / PROJECT_MEMORY_NAME
+    if memory_file.is_file():
+        try:
+            extra = memory_file.read_text(encoding="utf-8").strip()
+        except OSError:
+            extra = ""
+        if extra:
+            joined = (cfg.system_prompt_extra + "\n\n" + extra).strip()
+            cfg.system_prompt_extra = joined
 
     # Env overlays
     env_base = os.environ.get("CERBERUS_BASE_URL") or os.environ.get("OPENCODE_HARNESS_BASE_URL")
@@ -315,8 +381,6 @@ def load_config(
         cfg.provider.model = env_model
 
     # CLI overrides
-    if workspace_override:
-        cfg.workspace = Path(workspace_override).expanduser().resolve()
     if model_override:
         cfg.provider.model = model_override
     if base_url_override:
@@ -327,6 +391,109 @@ def load_config(
         cfg.agent_mode = mode_override.lower()
 
     return cfg
+
+
+SECRET_KEY_PARTS = ("api_key", "apikey", "token", "secret", "password")
+
+
+def _coerce_value(text: str) -> Any:
+    low = text.strip().lower()
+    if low in {"true", "yes", "on"}:
+        return True
+    if low in {"false", "no", "off"}:
+        return False
+    if low in {"null", "none", "~", ""}:
+        return None
+    try:
+        return int(text)
+    except ValueError:
+        pass
+    try:
+        return float(text)
+    except ValueError:
+        pass
+    text = text.strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {"'", '"'}:
+        return text[1:-1]
+    return text
+
+
+def _write_raw(path: Path, raw: dict[str, Any]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.suffix.lower() == ".json":
+        path.write_text(json.dumps(raw, indent=2) + "\n", encoding="utf-8")
+    elif yaml is not None:
+        path.write_text(yaml.safe_dump(raw, default_flow_style=False), encoding="utf-8")
+    else:
+        raise RuntimeError("PyYAML is required to write .yaml configs (or use a .json path).")
+    return path
+
+
+def config_set(config_path: Optional[Path], dotted: str, value: str) -> Path:
+    """Set a dotted key (e.g. provider.model) in a config file. Secrets refused."""
+    parts = [p for p in dotted.split(".") if p]
+    if not parts:
+        raise ValueError("Empty key.")
+    if any(secret in p.lower() for p in parts for secret in SECRET_KEY_PARTS):
+        raise ValueError(f"Refusing to persist a secret via config ({dotted}).")
+    path = Path(config_path) if config_path else DEFAULT_CONFIG_PATH
+    raw: dict[str, Any] = {}
+    if path.exists():
+        raw = _load_raw(path)
+        if not isinstance(raw, dict):
+            raw = {}
+    node = raw
+    for part in parts[:-1]:
+        child = node.get(part)
+        if not isinstance(child, dict):
+            child = {}
+            node[part] = child
+        node = child
+    node[parts[-1]] = _coerce_value(value)
+    return _write_raw(path, raw)
+
+
+def config_get(cfg: AppConfig, dotted: str) -> Any:
+    """Read a dotted key from an AppConfig (dataclasses, dicts, Paths)."""
+    node: Any = cfg
+    for part in dotted.split("."):
+        if isinstance(node, dict):
+            node = node.get(part)
+        else:
+            node = getattr(node, part, None)
+        if node is None:
+            raise KeyError(dotted)
+    if isinstance(node, Path):
+        return str(node)
+    return node
+
+
+def scaffold_project(directory: Optional[Path] = None) -> tuple[Path, Path, bool, bool]:
+    """Write ./.cerberus/cerberus.yaml + ./CERBERUS.md (never overwrite).
+
+    Returns (config_path, memory_path, config_created, memory_created).
+    """
+    from servers.commands import init_project_file  # lazy: keep config stdlib-light
+
+    base = Path(directory).expanduser().resolve() if directory else Path.cwd()
+    cfg_path = base / PROJECT_CONFIG_DIRNAME / PROJECT_CONFIG_NAME
+    mem_path = base / PROJECT_MEMORY_NAME
+    cfg_created = False
+    if not cfg_path.exists() and not cfg_path.with_suffix(".json").exists():
+        cfg_path.parent.mkdir(parents=True, exist_ok=True)
+        cfg_path.write_text(
+            '# Cerberus project config — merged over ~/.cerberus/config.yaml\n'
+            'agent_mode: "plan"\n'
+            'provider:\n'
+            '  model: "kimi"\n'
+            'tools:\n'
+            '  approve_external: true\n'
+            '  approve_builds: true\n',
+            encoding="utf-8",
+        )
+        cfg_created = True
+    mem_msg = init_project_file(base)
+    return cfg_path, mem_path, cfg_created, "Wrote project memory" in mem_msg
 
 
 def save_model(model: str, config_path: Optional[Path] = None) -> Path:

@@ -5,6 +5,8 @@ Cerberus agent CLI entrypoint.
     cerberus agent [GOAL…]             orchestrator session (all 9 personas)
     cerberus <persona> [TASK…]         one named agent, Grokbot-style
     cerberus model [name]              list models / switch persisted default
+    cerberus init                      scaffold project config + CERBERUS.md
+    cerberus config show|get|set       inspect layered config
     cerberus login|logout|status|logs  auth + diagnostics
 
 `scan` shells out to the untouched examine.py so --native-only scans never
@@ -233,7 +235,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("-q", "--quiet", action="store_true")
     p.add_argument("--log-file", type=Path, default=None)
     p.add_argument("command", nargs="?",
-                   help="scan|agent|model|login|logout|status|logs|<persona>")
+                   help="scan|agent|model|init|config|login|logout|status|logs|<persona>")
     p.add_argument("rest", nargs=argparse.REMAINDER,
                    help="Goal/task text or scan args")
     return p
@@ -439,6 +441,89 @@ def cmd_model(
         return 1
     console.info(f"{message} (saved → {saved})")
     return 0
+
+
+def cmd_init(console: TerminalUI) -> int:
+    from servers.config import scaffold_project
+
+    cfg_path, mem_path, cfg_created, mem_created = scaffold_project(Path.cwd())
+    console.info(
+        f"Project config → {cfg_path} "
+        f"{'(created)' if cfg_created else '(exists, kept)'}"
+    )
+    console.info(
+        f"Project memory → {mem_path} "
+        f"{'(created)' if mem_created else '(exists, kept)'}"
+    )
+    return 0
+
+
+def cmd_config(
+    config: AppConfig,
+    console: TerminalUI,
+    config_path: Optional[Path],
+    rest: list[str],
+) -> int:
+    from servers.config import (
+        DEFAULT_CONFIG_PATH,
+        config_get,
+        config_set,
+        project_config_path,
+    )
+
+    args = list(rest)
+    scope = "global"
+    if "--scope" in args:
+        i = args.index("--scope")
+        scope = (args[i + 1] if i + 1 < len(args) else "").strip().lower()
+        del args[i:i + 2]
+    if scope not in {"global", "project"}:
+        console.error("Usage: cerberus config set <key> <value> --scope global|project")
+        return 1
+    if not args or args[0] in {"show", "status"}:
+        global_path = Path(config_path) if config_path else DEFAULT_CONFIG_PATH
+        project_path = project_config_path(Path.cwd())
+        console.console.print(f"  global:    {global_path}  {'(exists)' if global_path.exists() else '(missing)'}")
+        console.console.print(f"  project:   {project_path}  {'(exists)' if project_path.exists() else '(missing)'}")
+        console.console.print(f"  model:     {config.provider.model}")
+        console.console.print(f"  base_url:  {config.provider.base_url}")
+        console.console.print(f"  models:    {', '.join(config.provider.models)}")
+        console.console.print(f"  mode:      {config.agent_mode}")
+        console.console.print(f"  workspace: {config.workspace}")
+        console.console.print(
+            f"  external:  {'ask' if config.tools.approve_external else 'allow'}   "
+            f"builds: {'ask' if config.tools.approve_builds else 'allow'}"
+        )
+        console.console.print(f"  theme:     {config.ui.theme}")
+        console.console.print(f"  api key:   {_auth_label(config)}")
+        console.console.print(
+            f"  instructions: {len(config.system_prompt_extra)} chars"
+            + ("  (CERBERUS.md loaded)" if (Path.cwd() / 'CERBERUS.md').is_file() else "")
+        )
+        return 0
+    if args[0] == "get" and len(args) == 2:
+        try:
+            value = config_get(config, args[1])
+        except KeyError:
+            console.error(f"Unknown key: {args[1]}")
+            return 1
+        if any(s in args[1].lower() for s in ("api_key", "token", "secret", "password")) and value:
+            value = mask_key(str(value))
+        console.console.print(str(value))
+        return 0
+    if args[0] == "set" and len(args) == 3:
+        target = project_config_path(Path.cwd()) if scope == "project" else (
+            Path(config_path) if config_path else DEFAULT_CONFIG_PATH
+        )
+        try:
+            saved = config_set(target, args[1], args[2])
+        except (ValueError, RuntimeError, OSError) as exc:
+            console.error(str(exc))
+            return 1
+        console.info(f"Set {args[1]} → {saved} ({scope})")
+        return 0
+    console.error("Usage: cerberus config show|get <key>|set <key> <value> [--scope global|project]")
+    return 1
 
 
 def cmd_logs(console: TerminalUI, *, lines: int = 40) -> int:
@@ -1150,6 +1235,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         return cmd_logout(ui)
     if command == "model":
         return cmd_model(config, ui, args.config, " ".join(rest))
+    if command == "init":
+        return cmd_init(ui)
+    if command == "config":
+        return cmd_config(config, ui, args.config, rest)
     if command in {"status", "logs"}:
         if command == "status":
             return cmd_status(config, ui)
