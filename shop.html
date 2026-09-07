@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Supply Archive — Cerberus Labs</title>
-  <meta name="description" content="Cerberus Supply Archive: Heavyweight streetwear, hoodies, t-shirts, crewnecks, and dad caps crafted for security researchers and guardian architects.">
+  <meta name="description" content="Cerberus Supply Archive: Crewnecks, boxy tees, sweat sets, and dad caps for security researchers and guardian architects.">
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="assets/shop.css">
   <script src="assets/shop.js" defer></script>
   <meta property="og:title" content="Supply Archive — Cerberus Labs">
-  <meta property="og:description" content="Heavyweight streetwear, hoodies, t-shirts, and headwear featuring the Cerberus guardian branding. Made in the USA.">
+  <meta property="og:description" content="Crewnecks, boxy tees, sweat sets, and headwear featuring the Cerberus guardian branding.">
   <meta property="og:image" content="https://murderszn.github.io/cerberus/assets/cerberus-social.png">
   <meta name="twitter:card" content="summary_large_image">
 </head>
@@ -30,10 +30,10 @@
       <a href="shop.html" aria-current="page">Shop</a>
       <a href="documentation/index.html">Docs</a>
       <a href="https://github.com/murderszn/cerberus" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
-      <button type="button" class="cart-nav-btn" id="cart-nav-btn" aria-label="Open shopping cart">
-        Cart <span class="cart-nav-badge" id="cart-nav-badge">0</span>
-      </button>
     </nav>
+    <button type="button" class="cart-nav-btn cart-floating-btn" id="cart-nav-btn" aria-label="Open shopping cart">
+      Cart <span class="cart-nav-badge" id="cart-nav-badge">0</span>
+    </button>
   </header>
 
   <main id="main-content" class="shop-main">
@@ -42,6 +42,7 @@
       <div class="shop-masthead-copy">
         <p class="shop-masthead-joke">Compute for agents isn't cheap, so we pay for it with hoodies. Thanks for your support.</p>
         <p>Heavyweight staples in dense USA cotton and French terry. Garment-dyed in Los Angeles.</p>
+        <p><strong>Pre-orders are open:</strong> reserve your kit with an email — no charge today. We cut production once reservations fill, then email you a checkout link.</p>
       </div>
     </section>
 
@@ -95,7 +96,7 @@
         <div class="modal-detail-col">
           <div class="modal-header">
             <span class="eyebrow" id="modal-type">OUTERWEAR</span>
-            <h2 id="modal-title">CERBERUS HOODIE</h2>
+            <h2 id="modal-title">CERBERUS SWEAT SET</h2>
             <div class="modal-price-tag">
               <span id="modal-price">$82.00</span>
               <span class="product-compare-price" id="modal-compare-price">$95.00</span>
@@ -155,84 +156,38 @@
           <span>Subtotal</span>
           <span id="cart-subtotal">$0.00</span>
         </div>
-        <button type="button" class="cart-checkout-btn" id="cart-checkout-btn">Proceed to Checkout ↗</button>
+        <button type="button" class="cart-checkout-btn" id="cart-checkout-btn">Reserve Pre-Order ↗</button>
         <div class="cart-note">Taxes and shipping calculated at checkout · Ships worldwide</div>
       </div>
     </div>
   </div>
 
-  <!-- Simulated Checkout Modal -->
+  <!-- Pre-Order Modal: reservations only. No payment, no shipping details.
+       We collect one email address so we can notify you when production opens. -->
   <div class="modal-backdrop" id="checkout-modal" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal-window checkout-modal-window">
-      <button type="button" class="modal-close-btn" id="checkout-close-btn" aria-label="Close checkout">✕</button>
+      <button type="button" class="modal-close-btn" id="checkout-close-btn" aria-label="Close pre-order">✕</button>
       <div class="checkout-grid">
         <div class="modal-header">
-          <span class="eyebrow">CERBERUS DISPATCH // CHECKOUT</span>
-          <h2>ORDER SPECIFICATION</h2>
+          <span class="eyebrow">CERBERUS SUPPLY // PRE-ORDER</span>
+          <h2>RESERVE YOUR KIT</h2>
         </div>
+        <p class="cart-note" style="margin:0 0 12px;">No charge today. When production opens we email you a checkout link — ignore it and the reservation simply lapses.</p>
         <div class="checkout-summary-box" id="checkout-summary-box">
           <!-- Populated dynamically with current items and prices -->
         </div>
         <form id="checkout-form" class="checkout-form">
           <div id="checkout-fields">
             <div class="checkout-form-group">
-              <label for="checkout-email">Contact Email</label>
-              <input type="email" id="checkout-email" required placeholder="researcher@domain.com">
-            </div>
-            <div class="checkout-row-2">
-              <div class="checkout-form-group">
-                <label for="checkout-fname">First Name</label>
-                <input type="text" id="checkout-fname" required placeholder="Jane">
-              </div>
-              <div class="checkout-form-group">
-                <label for="checkout-lname">Last Name</label>
-                <input type="text" id="checkout-lname" required placeholder="Doe">
-              </div>
-            </div>
-            <div class="checkout-form-group">
-              <label for="checkout-addr">Shipping Address</label>
-              <input type="text" id="checkout-addr" required placeholder="123 Guardian Way">
-            </div>
-            <div class="checkout-row-2">
-              <div class="checkout-form-group">
-                <label for="checkout-city">City</label>
-                <input type="text" id="checkout-city" required placeholder="San Francisco">
-              </div>
-              <div class="checkout-form-group">
-                <label for="checkout-postal">Postal Code</label>
-                <input type="text" id="checkout-postal" required placeholder="94107">
-              </div>
-            </div>
-            <div class="checkout-form-group" style="margin-top:12px;">
-              <label for="checkout-country">Country / Region</label>
-              <select id="checkout-country">
-                <option value="US">United States (USD $)</option>
-                <option value="CA">Canada (CAD)</option>
-                <option value="GB">United Kingdom (GBP)</option>
-                <option value="EU">European Union (EUR)</option>
-                <option value="JP">Japan (JPY)</option>
-                <option value="AU">Australia (AUD)</option>
-                <option value="OTHER">Other International (Worldwide)</option>
-              </select>
+              <label for="checkout-email">Email for drop notification</label>
+              <input type="email" id="checkout-email" required placeholder="researcher@domain.com" autocomplete="email">
             </div>
             <button type="submit" class="cart-checkout-btn" style="margin-top:20px; width:100%;">
-              Place Order // Authorize Dispatch ↗
+              Reserve Pre-Order — $0 Due Today ↗
             </button>
+            <p class="cart-note" style="margin-top:10px;">Demo storefront: your reservation is stored only in this browser. We never see it until real fulfillment is wired up.</p>
           </div>
         </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Orders Paused Notice -->
-  <div class="modal-backdrop" id="order-paused-modal" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal-window order-paused-window">
-      <button type="button" class="modal-close-btn" id="order-paused-close-btn" aria-label="Close notice">✕</button>
-      <div class="order-paused-body">
-        <span class="eyebrow">Cerberus Supply</span>
-        <h2>Not taking orders yet</h2>
-        <p>Compute for agents isn't cheap — but the shop isn't open just yet. Check back soon.</p>
-        <button type="button" class="btn-buy-direct" onclick="window.cerberusShop.closeOrderPaused()">Got it</button>
       </div>
     </div>
   </div>

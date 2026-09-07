@@ -430,7 +430,11 @@ class Evaluator:
         if not applies_if:
             return True, None
         any_path = applies_if.get("any_path", [])
-        if any_path and any_glob_match_any(self.all_files, any_path):
+        # Applicability is decided on the non-excluded tree: vendored dirs
+        # (.venv, node_modules, …) must not make their repo look like a
+        # project of that stack (e.g. a nested package.json in .venv
+        # triggering lockfile checks for the whole repo).
+        if any_path and any_glob_match_any(self.non_globally_excluded, any_path):
             return True, None
         patterns_str = ", ".join(any_path)
         return False, f"No matching files found for this check (looked for: {patterns_str})."
@@ -483,7 +487,7 @@ class Evaluator:
         if paths == ["**/*"]:
             files = self.scannable
         else:
-            files = [f for f in self.all_files if any_glob_match(f, paths)]
+            files = [f for f in self.non_globally_excluded if any_glob_match(f, paths)]
         found = False
         for rel in files:
             text = self.cache.get_text(rel)
@@ -506,7 +510,10 @@ class Evaluator:
 
     def eval_path_forbidden(self, check):
         det = check["detector"]
-        matches = files_matching(self.all_files, det["paths"])
+        # Forbidden-file checks run on the non-excluded tree so that
+        # global_exclude + .cerberusignore actually suppress (e.g. bundled
+        # certificates inside .venv must not fail the scanned repo).
+        matches = files_matching(self.non_globally_excluded, det["paths"])
         exclude = det.get("exclude", [])
         if exclude:
             matches = [f for f in matches if not any_glob_match(f, exclude)]
@@ -1562,6 +1569,10 @@ def main():
                          help="Exit non-zero when a requested feeder fails to execute")
     parser.add_argument("--fail-under", type=float, default=None,
                          help="Exit non-zero if the score is below N (for CI)")
+    parser.add_argument("--fail-on", default=None,
+                         choices=["critical", "high", "medium", "low"],
+                         help="Exit non-zero if any failed check is at or above "
+                              "N severity (for CI; independent of score)")
     parser.add_argument("--only", help="Comma-separated list of agent ids to include")
     parser.add_argument("--severity", default="low",
                          choices=["critical", "high", "medium", "low"],
@@ -1716,6 +1727,12 @@ def main():
 
     if args.fail_under is not None and report["score"] < args.fail_under:
         sys.exit(1)
+    if args.fail_on is not None:
+        threshold = SEVERITY_ORDER[args.fail_on]
+        sev_counts = report.get("counts", {}) or {}
+        if any(sev_counts.get(sev, 0) > 0 and SEVERITY_ORDER[sev] >= threshold
+               for sev in SEVERITY_ORDER):
+            sys.exit(1)
     if args.strict_feeders and any(
         tool.get("status") in ("failed", "unavailable")
         for tool in report.get("feeders", {}).get("tools", [])

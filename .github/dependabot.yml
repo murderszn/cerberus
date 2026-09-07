@@ -1,0 +1,13 @@
+# Automated dependency updates (see L-04: this file is the control).
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # requirements.lock is generated from pyproject.toml (`agent` extra);
+    # regenerate with: uv pip compile pyproject.toml --extra agent -o requirements.lock
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

@@ -17,8 +17,6 @@
       <span>Cerberus Labs</span>
     </a>
     <a class="nav-link" href="../agent.html">Cerberus Agent</a>
-    <a class="nav-link" href="../terminal.html">Terminal</a>
-    <a class="nav-link" href="../shop.html">Shop</a>
   </nav>
   <nav class="right">
     <form class="search-form" onsubmit="return false">
@@ -120,6 +118,9 @@
 
     <h3>Is a report private?</h3>
     <p>Web-app reports are cached only in your own browser's <code>localStorage</code>. CLI reports are written to whatever local path you specify.</p>
+
+    <h3>Can the web app use a local AI model (Ollama)?</h3>
+    <p>Yes. Point the AI base URL at your own Ollama instance (default <code>http://127.0.0.1:11434</code>) and report text stays between your browser and that instance — it is never routed through our servers, because there are none. The page's content-security policy only allows loopback AI endpoints. To use Ollama on another machine on your LAN, serve your own copy of the page with that host added to <code>connect-src</code>, bind Ollama to your LAN interface, and set <code>OLLAMA_ORIGINS</code> to allow your page origin.</p>
 
     <h2>Support</h2>
 

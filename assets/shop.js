@@ -30,50 +30,19 @@
       }
     },
     {
-      id: 'cerberus-crewneck',
-      title: 'CERBERUS REBEL FRENCH TERRY CREWNECK',
-      type: 'OUTERWEAR',
-      price: 58.00,
-      comparePrice: 70.00,
-      image: 'assets/shop/cerberus-crewneck.jpg',
-      subtitle: '11 oz. French Terry Pullover / Heather Chalk White',
-      description: 'Versatile mid-weight pullover engineered for transitional weather and continuous workstation wear. Crafted from breathable 100% California-grown cotton loopback French Terry. Features an antique heather chalk white base accented by bold contrast black Cerberus typography and the iconic Cerberus tri-head hound crest.',
-      specs: [
-        '100% California Cotton French Terry (11 oz. / 350 GSM)',
-        'Garment-dyed chalk heather white, shrink-free finish',
-        'V-notch neck insert with wide ribbed hem and cuffs',
-        'High-density screenprint emblem on chest',
-        'Tailored athletic taper with comfortable shoulder articulation',
-        'Sewn in Los Angeles, CA'
-      ],
-      sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-      sizeGuide: {
-        columns: ['Size', 'Chest Width (in)', 'Body Length (in)', 'Sleeve (in)'],
-        rows: [
-          ['S', '20.5"', '27.0"', '25.0"'],
-          ['M', '22.0"', '28.0"', '25.5"'],
-          ['L', '24.0"', '29.0"', '26.0"'],
-          ['XL', '26.0"', '30.0"', '26.5"'],
-          ['XXL', '28.0"', '31.0"', '27.0"']
-        ]
-      }
-    },
-    {
       id: 'cerberus-tshirt',
-      title: 'CERBERUS GUARDIAN T-SHIRT',
+      title: 'CERBERUS BOXY TEE',
       type: 'TOPS',
       price: 36.00,
       comparePrice: 45.00,
-      image: 'assets/shop/cerberus-tshirt.jpg',
-      subtitle: '7.5 oz. Heavyweight Combed Cotton / Vintage Pigment Wash',
-      description: 'The definitive Cerberus developer tee. Constructed from a beefy 7.5 oz. vintage dye-washed cotton jersey reminiscent of 90s heavyweight lifting shirts. Boasts a thick 1-inch bound ribbed collar, relaxed boxy cut, and crisp chest graphic of the Cerberus hound triumvirate with clean CERBERUS LABS branding.',
+      image: 'assets/shop/cerberus-boxy-tee.png',
+      subtitle: "Relaxed Boxy Tee / Cream",
+      description: "A cream boxy tee with a detailed three-headed hound illustration and CERBERUS LABS lettering at the left chest. The relaxed shape pairs dropped shoulders with wide short sleeves and a ribbed crew neckline.",
       specs: [
-        '100% Ring-Spun Cotton (7.5 oz. Heavyweight Jersey)',
-        'Vintage garment dye-washed in charcoal black',
-        '1" thick tight collar binding that will never bacon',
-        'Center chest screenprint with micro-halftone detail',
-        'Reinforced twin needle stitching at hem and sleeves',
-        'Made in USA'
+        "Cream colorway",
+        "Relaxed boxy silhouette with dropped shoulders",
+        "Three-headed hound illustration at the left chest",
+        "Ribbed crew neckline and wide short sleeves"
       ],
       sizes: ['S', 'M', 'L', 'XL', 'XXL'],
       sizeGuide: {
@@ -88,33 +57,50 @@
       }
     },
     {
-      id: 'cerberus-hoodie',
-      title: 'CERBERUS HEAVY FLEECE HOODIE',
+      id: 'cerberus-crewneck',
+      title: 'CERBERUS CREW',
       type: 'OUTERWEAR',
-      price: 82.00,
-      comparePrice: 95.00,
-      image: 'assets/shop/cerberus-hoodie.jpg',
-      subtitle: '14 oz. Heavyweight USA Combed Cotton / Oversized Boxy Cut',
-      description: 'Engineered for late-night research sessions and cold server corridors. Cut from ultra-dense 14 oz. (450 GSM) combed cotton fleece, preshrunk with a wide boxy drape, drop shoulders, double-lined hood without drawstrings, and seamless heavy ribbed cuffs. The back features a screenprinted rendering of the three-headed Cerberus guardian hounds in high-density archival ink.',
+      price: 58.00,
+      comparePrice: 70.00,
+      image: 'assets/shop/cerberus-crew.png',
+      subtitle: "Classic Crewneck / Heather White",
+      description: "A heather white crewneck with a black three-headed Cerberus emblem and CERBERUS LABS lettering at the left chest. A clean everyday layer with a relaxed silhouette and ribbed neckline, cuffs, and hem.",
       specs: [
-        '100% Combed USA Cotton (14 oz. / 450 GSM)',
-        'Oversized boxy streetwear silhouette with drop shoulders',
-        'Large Cerberus three-headed canine screenprint on back',
-        'Cerberus Armored Division woven label inside collar',
-        'Pre-washed and shrink-free; garment dyed in Los Angeles, CA',
-        'Model is 6\'1" wearing size L'
+        "Heather white colorway",
+        "Black Cerberus emblem at the left chest",
+        "Ribbed crew neckline, cuffs, and hem",
+        "Long sleeves with a relaxed silhouette"
       ],
       sizes: ['S', 'M', 'L', 'XL', 'XXL'],
       sizeGuide: {
-        columns: ['Size', 'Chest Width (in)', 'Body Length (in)', 'Sleeve Length (in)'],
+        columns: ['Size', 'Chest Width (in)', 'Body Length (in)', 'Sleeve (in)'],
         rows: [
-          ['S', '21.5"', '26.5"', '24.0"'],
-          ['M', '23.5"', '27.5"', '24.5"'],
-          ['L', '25.5"', '28.5"', '25.0"'],
-          ['XL', '27.5"', '29.5"', '25.5"'],
-          ['XXL', '29.5"', '30.5"', '26.0"']
+          ['S', '20.5"', '27.0"', '25.0"'],
+          ['M', '22.0"', '28.0"', '25.5"'],
+          ['L', '24.0"', '29.0"', '26.0"'],
+          ['XL', '26.0"', '30.0"', '26.5"'],
+          ['XXL', '28.0"', '31.0"', '27.0"']
         ]
       }
+    },
+    {
+      id: 'cerberus-sweat-set',
+      title: 'CERBERUS SWEAT SET',
+      type: 'OUTERWEAR',
+      price: 82.00,
+      comparePrice: 95.00,
+      image: 'assets/shop/cerberus-sweat-set.png',
+      subtitle: "Zip Hoodie + Matching Sweatpants / Cream",
+      description: "A coordinated cream sweat set featuring a full-zip hoodie and matching sweatpants. Detailed black Cerberus hounds and landscape artwork span the hoodie and one pant leg, with subtle CERBERUS LABS lettering at the chest.",
+      specs: [
+        "Two-piece set: zip hoodie and matching sweatpants",
+        "Cream colorway with black hound and landscape artwork",
+        "Full-length front zipper and hood",
+        "Ribbed hoodie cuffs and hem",
+        "Drawstring waistband and elastic pant cuffs"
+      ],
+      sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+      sizeGuide: null
     }
   ];
 
@@ -232,7 +218,7 @@
     // Size Guide Box
     const sgBox = document.getElementById('size-guide-box');
     sgBox.classList.remove('visible');
-    sgBox.innerHTML = `
+    sgBox.innerHTML = p.sizeGuide ? `
       <h4>${p.title} — Garment Measurements</h4>
       <table class="size-table">
         <thead>
@@ -242,7 +228,7 @@
           ${p.sizeGuide.rows.map(r => `<tr>${r.map(d => `<td>${d}</td>`).join('')}</tr>`).join('')}
         </tbody>
       </table>
-    `;
+    ` : '<p>Measurements for the sweat set will be available soon.</p>';
 
     document.getElementById('modal-qty-val').textContent = selectedQty;
     
@@ -285,31 +271,30 @@
     }
   }
 
-  // Orders are paused — every purchase attempt shows the notice instead.
-  const ORDERS_PAUSED = true;
+  // Pre-order reservations. No payment provider is wired up yet, so the
+  // cart collects a reservation (items + one email) stored in localStorage.
+  // Nothing leaves the browser and no charge is ever made.
+  const PREORDER_KEY = 'cerberus_preorders_v1';
 
-  function showOrderPaused() {
-    const pausedModal = document.getElementById('order-paused-modal');
-    if (pausedModal) {
-      pausedModal.classList.add('open');
-      document.body.style.overflow = 'hidden';
+  function loadPreorders() {
+    try {
+      const saved = localStorage.getItem(PREORDER_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
     }
   }
 
-  function closeOrderPaused() {
-    const pausedModal = document.getElementById('order-paused-modal');
-    if (pausedModal) {
-      pausedModal.classList.remove('open');
-      document.body.style.overflow = '';
-    }
+  function savePreorder(entry) {
+    const all = loadPreorders();
+    all.push(entry);
+    try {
+      localStorage.setItem(PREORDER_KEY, JSON.stringify(all));
+    } catch (e) {}
   }
 
   // Cart Logic
   function addToCart(productId, size, qty = 1) {
-    if (ORDERS_PAUSED) {
-      showOrderPaused();
-      return;
-    }
     const p = PRODUCTS.find(x => x.id === productId);
     if (!p) return;
 
@@ -332,10 +317,6 @@
   }
 
   function quickAdd(productId) {
-    if (ORDERS_PAUSED) {
-      showOrderPaused();
-      return;
-    }
     const p = PRODUCTS.find(x => x.id === productId);
     if (!p) return;
     const defaultSize = p.sizes.includes('M') ? 'M' : p.sizes[0];
@@ -343,10 +324,6 @@
   }
 
   function modalAddToCart() {
-    if (ORDERS_PAUSED) {
-      showOrderPaused();
-      return;
-    }
     if (!currentModalProduct) return;
     addToCart(currentModalProduct.id, selectedSize, selectedQty);
 
@@ -450,35 +427,29 @@
     }
   }
 
-  // Simulated Checkout
+  // Pre-order reservation (no payment). Records items + email locally and
+  // shows a reservation code. Due today is always $0.00.
   function openCheckout() {
-    if (ORDERS_PAUSED) {
-      closeCart();
-      showOrderPaused();
-      return;
-    }
     if (cart.length === 0) return;
     closeCart();
 
     const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
-    const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0.00 : 12.00;
-    const total = subtotal + shipping;
 
     if (checkoutSummaryBox) {
       checkoutSummaryBox.innerHTML = `
-        <div style="font-weight:700; margin-bottom:8px; border-bottom:1px dashed #CCC; padding-bottom:6px;">ORDER SUMMARY (${cart.reduce((a,c)=>a+c.qty,0)} ITEMS)</div>
+        <div style="font-weight:700; margin-bottom:8px; border-bottom:1px dashed #CCC; padding-bottom:6px;">PRE-ORDER RESERVATION (${cart.reduce((a,c)=>a+c.qty,0)} ITEMS)</div>
         ${cart.map(i => `<div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>${i.qty}× ${i.title} (${i.size})</span><span>$${(i.price * i.qty).toFixed(2)}</span></div>`).join('')}
         <div style="display:flex; justify-content:space-between; margin-top:8px; border-top:1px dashed #CCC; padding-top:6px;">
-          <span>Subtotal:</span><strong>$${subtotal.toFixed(2)}</strong>
-        </div>
-        <div style="display:flex; justify-content:space-between;">
-          <span>Shipping:</span><strong>${shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}`}</strong>
+          <span>Estimated total at fulfillment:</span><strong>$${subtotal.toFixed(2)}</strong>
         </div>
         <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:700; margin-top:6px; color:var(--shop-ink);">
-          <span>Estimated Total:</span><span>$${total.toFixed(2)} USD</span>
+          <span>Due today:</span><span>$0.00</span>
         </div>
       `;
     }
+
+    const formFields = document.getElementById('checkout-fields');
+    if (formFields) formFields.style.display = '';
 
     if (checkoutModal) {
       checkoutModal.classList.add('open');
@@ -495,24 +466,28 @@
 
   function handleCheckoutSubmit(e) {
     e.preventDefault();
-    if (ORDERS_PAUSED) {
-      closeCheckout();
-      showOrderPaused();
+    const emailInput = document.getElementById('checkout-email');
+    const email = (emailInput?.value || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (emailInput) emailInput.focus();
       return;
     }
-    const orderNumber = 'CRB-' + Math.floor(100000 + Math.random() * 900000);
-    const email = document.getElementById('checkout-email')?.value || 'security@cerberus.internal';
+    const code = 'CRB-PRE-' + Math.floor(100000 + Math.random() * 900000);
+    const items = cart.map(i => ({ id: i.id, title: i.title, size: i.size, qty: i.qty, price: i.price }));
+    const subtotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+    savePreorder({ code, email, items, subtotal, createdAt: new Date().toISOString() });
 
     if (checkoutSummaryBox) {
+      const escEmail = email.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       checkoutSummaryBox.innerHTML = `
         <div style="text-align:center; padding: 24px 12px;">
           <div style="font-size:32px; margin-bottom:12px;">✓</div>
-          <h3 style="font: 400 16px var(--font-pixel); text-transform:uppercase; margin-bottom:8px;">ORDER CONFIRMED</h3>
-          <p style="font:700 13px var(--font-mono); margin-bottom:12px;">ORDER #${orderNumber}</p>
+          <h3 style="font: 400 16px var(--font-pixel); text-transform:uppercase; margin-bottom:8px;">RESERVED</h3>
+          <p style="font:700 13px var(--font-mono); margin-bottom:12px;">${code}</p>
           <p style="font:400 12px/1.7 var(--font-mono); color:var(--shop-muted);">
-            Receipt sent to <strong>${email}</strong>.<br>
-            Estimated production & dispatch lead time: 3-5 weeks.<br>
-            Tracking will be provided once dispatched from Los Angeles, CA.
+            ${cart.reduce((a,c)=>a+c.qty,0)} item(s) held for <strong>${escEmail}</strong>.<br>
+            No charge today — we email you a checkout link when production opens.<br>
+            Reservation kept in this browser; nothing was sent anywhere yet.
           </p>
         </div>
       `;
@@ -521,7 +496,7 @@
     const formFields = document.getElementById('checkout-fields');
     if (formFields) formFields.style.display = 'none';
 
-    // Clear cart
+    // Clear cart — items now live on the reservation.
     cart = [];
     saveCart();
   }
@@ -571,22 +546,12 @@
       checkoutForm.addEventListener('submit', handleCheckoutSubmit);
     }
 
-    const pausedModal = document.getElementById('order-paused-modal');
-    const pausedCloseBtn = document.getElementById('order-paused-close-btn');
-    if (pausedCloseBtn) pausedCloseBtn.addEventListener('click', closeOrderPaused);
-    if (pausedModal) {
-      pausedModal.addEventListener('click', (e) => {
-        if (e.target === pausedModal) closeOrderPaused();
-      });
-    }
-
     // Keyboard ESC to close any open modal
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeModal();
         closeCart();
         closeCheckout();
-        closeOrderPaused();
       }
     });
   });
@@ -607,8 +572,7 @@
     removeCartItem,
     openCheckout,
     closeCheckout,
-    showOrderPaused,
-    closeOrderPaused
+    loadPreorders
   };
 
 })();

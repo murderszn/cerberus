@@ -35,6 +35,8 @@ EXAMINE_PY = REPO_ROOT / "examine.py"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from rich.markup import escape as _escape  # noqa: E402
+
 from servers import __version__  # noqa: E402
 from servers.agent.prompts import CERBERUS_AGENTS, list_personas  # noqa: E402
 from servers.auth.store import (  # noqa: E402
@@ -353,9 +355,9 @@ def _handle_undo(ui: TerminalUI, config: AppConfig) -> bool:
         return True
     ui.console.print("Will restore to HEAD:")
     for path in modified[:20]:
-        ui.console.print(f"  {path}")
+        ui.console.print(f"  {path}", markup=False)
     if len(modified) > 20:
-        ui.console.print(f"  …and {len(modified) - 20} more")
+        ui.console.print(f"  …and {len(modified) - 20} more", markup=False)
     choice = ui.confirm_choice(
         f"git checkout -- {len(modified)} file(s)",
         "Discards uncommitted changes to tracked files. Untracked files are kept.",
@@ -399,7 +401,7 @@ def _handle_approvals(
 
     parts = arg.strip().lower().split()
     if not parts or parts[0] in {"status", "show"}:
-        ui.console.print(_approvals_text(config, session))
+        ui.console.print(_approvals_text(config, session), markup=False)
         ui.info("Usage: /approvals <external|builds> <on|off|ask|allow|deny> · /approvals reset")
         return True
     if parts[0] == "reset":
@@ -447,7 +449,7 @@ def cmd_permissions(
         return 1
     valid = _permission_targets()
     if not args or args[0] == "show":
-        ui.console.print(_approvals_text(config, []))
+        ui.console.print(_approvals_text(config, []), markup=False)
         return 0
     if args[0] == "reset":
         target = _scope_path(config, config_path, scope)
@@ -556,17 +558,17 @@ def cmd_status(config: AppConfig, console: TerminalUI) -> int:
 
     resolved = resolve_api_key(config_file_key=config.provider.api_key)
     console.console.print("[bold #FFFFFF]CERBERUS[/] v" + __version__)
-    console.console.print(f"  endpoint:    {config.provider.base_url}")
-    console.console.print(f"  model:       {config.provider.model}")
-    console.console.print(f"  workspace:   {config.workspace}")
-    console.console.print(f"  mode:        {config.agent_mode}")
-    console.console.print(f"  personas:    {', '.join(list_personas())}")
-    console.console.print(f"  credentials: {credentials_path()}")
-    console.console.print(f"  log file:    {log_path()}")
+    console.console.print(f"  endpoint:    {config.provider.base_url}", markup=False)
+    console.console.print(f"  model:       {config.provider.model}", markup=False)
+    console.console.print(f"  workspace:   {config.workspace}", markup=False)
+    console.console.print(f"  mode:        {config.agent_mode}", markup=False)
+    console.console.print(f"  personas:    {', '.join(list_personas())}", markup=False)
+    console.console.print(f"  credentials: {credentials_path()}", markup=False)
+    console.console.print(f"  log file:    {log_path()}", markup=False)
     if resolved:
         console.console.print(
-            f"  api key:     {mask_key(resolved.key)}  "
-            f"[dim]({resolved.source}/{resolved.kind})[/]"
+            f"  api key:     {_escape(mask_key(resolved.key))}  "
+            f"[dim]({_escape(resolved.source)}/{_escape(resolved.kind)})[/]"
         )
     else:
         console.console.print("  api key:     [bold #FFFFFF]not set[/]  → run `cerberus login`")
@@ -593,7 +595,7 @@ def cmd_model(
             return 2
     if not query:
         for line in catalog_lines(config):
-            console.console.print(line)
+            console.console.print(line, markup=False)
         if check:
             return _check_latencies(config, console)
         return 0
@@ -632,9 +634,9 @@ def _check_latencies(config: AppConfig, console: TerminalUI) -> int:
         try:
             t0 = time.monotonic()
             client.chat([Message(role="user", content="ping")], model=name)
-            console.console.print(f"  {name:16} {1000 * (time.monotonic() - t0):.0f} ms")
+            console.console.print(f"  {name:16} {1000 * (time.monotonic() - t0):.0f} ms", markup=False)
         except Exception as exc:
-            console.console.print(f"  {name:16} n/a ({str(exc)[:80]})")
+            console.console.print(f"  {name:16} n/a ({str(exc)[:80]})", markup=False)
     return 0
 
 
@@ -692,24 +694,25 @@ def cmd_config(
     if not args or args[0] in {"show", "status"}:
         global_path = Path(config_path) if config_path else DEFAULT_CONFIG_PATH
         project_path = project_config_path(Path.cwd())
-        console.console.print(f"  global:    {global_path}  {'(exists)' if global_path.exists() else '(missing)'}")
-        console.console.print(f"  project:   {project_path}  {'(exists)' if project_path.exists() else '(missing)'}")
-        console.console.print(f"  model:     {config.provider.model}")
-        console.console.print(f"  base_url:  {config.provider.base_url}")
-        console.console.print(f"  models:    {', '.join(config.provider.models)}")
-        console.console.print(f"  mode:      {config.agent_mode}")
-        console.console.print(f"  workspace: {config.workspace}")
+        console.console.print(f"  global:    {global_path}  {'(exists)' if global_path.exists() else '(missing)'}", markup=False)
+        console.console.print(f"  project:   {project_path}  {'(exists)' if project_path.exists() else '(missing)'}", markup=False)
+        console.console.print(f"  model:     {config.provider.model}", markup=False)
+        console.console.print(f"  base_url:  {config.provider.base_url}", markup=False)
+        console.console.print(f"  models:    {', '.join(config.provider.models)}", markup=False)
+        console.console.print(f"  mode:      {config.agent_mode}", markup=False)
+        console.console.print(f"  workspace: {config.workspace}", markup=False)
         console.console.print(
             f"  external:  {'ask' if config.tools.approve_external else 'allow'}   "
             f"builds: {'ask' if config.tools.approve_builds else 'allow'}"
         )
-        console.console.print(f"  theme:     {config.ui.theme}")
+        console.console.print(f"  theme:     {config.ui.theme}", markup=False)
         console.console.print(
             f"  mcp:       {len(config.tools.mcp_servers)} server(s)"
             + (" (" + ", ".join(s.get("name", "?") for s in config.tools.mcp_servers) + ")"
-               if config.tools.mcp_servers else "")
+               if config.tools.mcp_servers else ""),
+            markup=False,
         )
-        console.console.print(f"  api key:   {_auth_label(config)}")
+        console.console.print(f"  api key:   {_auth_label(config)}", markup=False)
         console.console.print(
             f"  instructions: {len(config.system_prompt_extra)} chars"
             + ("  (CERBERUS.md loaded)" if (Path.cwd() / 'CERBERUS.md').is_file() else "")
@@ -723,7 +726,7 @@ def cmd_config(
             return 1
         if any(s in args[1].lower() for s in ("api_key", "token", "secret", "password")) and value:
             value = mask_key(str(value))
-        console.console.print(str(value))
+        console.console.print(str(value), markup=False)
         return 0
     if args[0] == "set" and len(args) == 3:
         target = _scope_path(config, config_path, scope)
@@ -913,7 +916,8 @@ def cmd_sessions(
             ui.console.print(
                 f"  {s.name:20}  {s.message_count:3} msgs  "
                 f"model={s.model or '-'}  "
-                f"updated={time.strftime('%Y-%m-%d %H:%M', time.localtime(s.updated_at))}"
+                f"updated={time.strftime('%Y-%m-%d %H:%M', time.localtime(s.updated_at))}",
+                markup=False,
             )
         return 0
     if parts[0] == "delete" and len(parts) == 2:
@@ -972,7 +976,7 @@ def cmd_logs(console: TerminalUI, *, lines: int = 40) -> int:
     from servers.logging_setup import DEFAULT_LOG_FILE
 
     path = DEFAULT_LOG_FILE
-    console.console.print(f"[bold]Activity log[/]  {path}")
+    console.console.print(f"[bold]Activity log[/]  {_escape(str(path))}")
     if not path.exists():
         console.info("No log file yet — run the agent once to create it.")
         return 0
@@ -982,7 +986,7 @@ def cmd_logs(console: TerminalUI, *, lines: int = 40) -> int:
         console.error(f"Cannot read log: {exc}")
         return 1
     for line in tail:
-        console.console.print(line)
+        console.console.print(line, markup=False)
     return 0
 
 
@@ -1051,7 +1055,7 @@ def build_loop(
 
     def on_stream_delta(chunk: str) -> None:
         ui.spinner_stop()
-        ui.console.print(chunk, end="", highlight=False, soft_wrap=True)
+        ui.console.print(chunk, end="", highlight=False, markup=False, soft_wrap=True)
 
     if quiet:
         on_status = _noop
@@ -1219,7 +1223,7 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
         from servers.commands import persona_lines
 
         for line in persona_lines(list_personas()):
-            ui.console.print(line)
+            ui.console.print(line, markup=False)
         return True
     if cmd == "/persona":
         from servers.agent.prompts import list_personas
@@ -1280,7 +1284,7 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
     if cmd == "/diff":
         from servers.commands import workspace_diff_summary
 
-        ui.console.print(workspace_diff_summary(config.workspace))
+        ui.console.print(workspace_diff_summary(config.workspace), markup=False)
         return True
     if cmd == "/clear":
         print("\033[2J\033[H", end="")
@@ -1345,7 +1349,7 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
             spec = loop.registry.get(name)
             desc = spec.description if spec else ""
             desc = (desc[:80] + "…") if len(desc) > 80 else desc
-            ui.console.print(f"  [bold]{name}[/]  [dim]{desc}[/]")
+            ui.console.print(f"  [bold]{_escape(name)}[/]  [dim]{_escape(desc)}[/]")
         return True
     if cmd == "/reset":
         loop.reset()
@@ -1358,7 +1362,8 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
             f"  workspace:  {config.workspace}\n"
             f"  mode:       {config.agent_mode}\n"
             f"  max_rounds: {config.tools.max_tool_rounds}\n"
-            f"  auth:       {_auth_label(config)}"
+            f"  auth:       {_auth_label(config)}",
+            markup=False,
         )
         return True
     if cmd == "/save":
@@ -1415,7 +1420,8 @@ def _handle_slash(line: str, loop: AgentLoop, ui: TerminalUI, config: AppConfig)
             ui.console.print(
                 f"  {s.name:20}  {s.message_count:3} msgs  "
                 f"model={s.model or '-'}  "
-                f"updated={time.strftime('%Y-%m-%d %H:%M', time.localtime(s.updated_at))}"
+                f"updated={time.strftime('%Y-%m-%d %H:%M', time.localtime(s.updated_at))}",
+                markup=False,
             )
         return True
     if cmd == "/review":
@@ -1532,7 +1538,7 @@ def repl(loop: AgentLoop, ui: TerminalUI, config: AppConfig) -> int:
             continue
         if action == "bash":
             out = loop.registry.dispatch("execute_bash_command", {"command": payload})
-            ui.console.print((out or "(no output)")[:4000])
+            ui.console.print((out or "(no output)")[:4000], markup=False)
             continue
         if spec:
             ui.info(attach_files(loop.messages, config.workspace, spec))
@@ -1583,7 +1589,7 @@ def _maybe_open_pr(
         dry_run=args.dry_run,
     )
     ui.console.print()
-    ui.console.print(result)
+    ui.console.print(result, markup=False)
     if result.startswith("ERROR") or "failed" in result:
         return 1
     return 0
@@ -1622,10 +1628,10 @@ def _run_swarm_goal(
     for rep in reports:
         ui.console.print()
         ui.console.print(
-            f"[bold]{rep.agent}[/] · {rep.status} · "
+            f"[bold]{_escape(rep.agent)}[/] · {_escape(rep.status)} · "
             f"{rep.tool_rounds} rounds · {rep.duration_seconds:.1f}s"
         )
-        ui.console.print(rep.summary or "(no summary)")
+        ui.console.print(rep.summary or "(no summary)", markup=False)
         combined.append(f"### {rep.agent}\n{(rep.summary or '')[:1500]}")
     if loop is not None:
         history = getattr(loop, "messages", None)

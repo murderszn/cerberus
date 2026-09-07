@@ -28,5 +28,8 @@ jobs:
       - name: Run unit tests
         run: python3 -m unittest discover -s tests -v
 
+      # The project ships a security scanner, so it holds itself to a gate
+      # with teeth: any high-or-worse finding fails the build even at a
+      # passing score, and the score floor sits at 95, not 80.
       - name: Self-scan
-        run: python3 examine.py . --fail-under 80
+        run: python3 examine.py . --fail-under 95 --fail-on high

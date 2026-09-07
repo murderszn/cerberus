@@ -16,7 +16,7 @@ docs/scanner-checks.md
 docs/examination-spec.md
 
 # Superseded prototype kept for reference, not served as the app.
-ceberus-classic.html
+cerberus-classic.html
 
 # Prose documentation that quotes the checks (describing "verify=False" is not doing it).
 documentation/agents.html
@@ -30,9 +30,15 @@ assets/sample-*.json
 # Static shop data — PRODUCTS array is hardcoded, not user input
 assets/shop.js
 
-# Agent HTML — innerHTML usages are all preceded by escapeHtml() sanitization
-# The OLLAMA_HOST=0.0.0.0 references are documentation text, not actual binding
+# Agent web app — the page script now lives in assets/agent.js (extracted
+# byte-for-byte from agent.html for a strict CSP: no unsafe-inline). Every
+# innerHTML sink in it was audited 2026-09-07 and is sanitized at the source:
+# mdHtml via escapeHtml(), formatDiffHtml() via escapeHtml() per line,
+# CerberusReview.html() via its own escape(), renderSimpleMarkdown() via a
+# leading escapeHtml(). The OLLAMA_HOST=0.0.0.0 strings are user help text,
+# not bindings. agent.html itself is now a ~360-line shell with no findings.
 agent.html
+assets/agent.js
 
 # Persona generator directives contain quoted security advice strings
 servers/agent/personas/generate.py

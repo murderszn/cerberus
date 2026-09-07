@@ -518,5 +518,183 @@ class InkTuiTest(unittest.IsolatedAsyncioTestCase):
             await pilot.pause()
 
 
+class _WbRegistry:
+    def __init__(self):
+        self.mode = "plan"
+
+    def list_names(self):
+        return ["read_file", "edit_file"]
+
+    def session_approvals(self):
+        return []
+
+
+class _WbLoop(StubLoop):
+    """StubLoop plus the registry/session_usage surface the rail reads."""
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.registry = _WbRegistry()
+        self.registry.workspace = config.workspace
+        from servers.models import TokenUsage
+
+        self.session_usage = TokenUsage()
+
+
+def _wb_tool_message(name, content="done"):
+    from servers.models import Message, ToolCall, ToolCallFunction
+
+    return Message(
+        role="assistant",
+        content=content,
+        tool_calls=[
+            ToolCall(
+                id="t1",
+                type="function",
+                function=ToolCallFunction(name=name, arguments="{}"),
+            )
+        ],
+    )
+
+
+@unittest.skipUnless(HAS_TUI, "textual not installed")
+class WorkbenchRailTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        Path(self.tmp.name, "a.py").write_text("print(1)\n", encoding="utf-8")
+        self.cfg = make_config(self.tmp.name)
+        store_patch = mock.patch("servers.session_store.list_sessions", return_value=[])
+        self.addCleanup(store_patch.stop)
+        store_patch.start()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def make_app(self, **kw):
+        kw.setdefault("loop_factory", _WbLoop)
+        return InkApp(self.cfg, "dummy-key", **kw)
+
+    def zone(self, app, zid):
+        return str(app.query_one(zid).render())
+
+    async def test_sidebar_renders_five_zones(self):
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            zones = {
+                "#wb-session": "SESSION",
+                "#wb-flow": "FLOW",
+                "#wb-agents": "AGENTS",
+                "#wb-guards": "GUARDS",
+                "#wb-next": "NEXT",
+            }
+            for zid, head in zones.items():
+                body = self.zone(app, zid)
+                self.assertIn(head, body, zid)
+            session = self.zone(app, "#wb-session")
+            self.assertIn("plan", session)
+            self.assertIn("idle", session)
+            flow = self.zone(app, "#wb-flow")
+            self.assertIn("● 1 goal", flow)
+            agents = self.zone(app, "#wb-agents")
+            self.assertIn("● agent", agents)
+            self.assertIn("sentinel", agents)
+            nxt = self.zone(app, "#wb-next")
+            self.assertIn("Describe goal", nxt)
+            self.assertTrue(nxt.strip())
+
+    async def test_flow_idle_investigate_propose_verify(self):
+        from servers.models import Message
+
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            self.assertIn("● 1 goal", self.zone(app, "#wb-flow"))
+            app.loop.messages.append(_wb_tool_message("read_file"))
+            app._render_workbench()
+            await pilot.pause()
+            self.assertIn("● 2 investigate", self.zone(app, "#wb-flow"))
+            app.loop.messages.append(_wb_tool_message("edit_file"))
+            app._render_workbench()
+            await pilot.pause()
+            self.assertIn("● 3 propose", self.zone(app, "#wb-flow"))
+            app.loop.messages.append(
+                Message(
+                    role="user",
+                    content="[scan-context] Scan findings for `x` (reference).\nScore: 82/100 (grade B). Passed: 1, failed: 2 of 3 checks.",
+                )
+            )
+            app._render_workbench()
+            await pilot.pause()
+            self.assertIn("● 4 verify", self.zone(app, "#wb-flow"))
+            self.assertIn("82/B", self.zone(app, "#wb-guards"))
+
+    async def test_next_hint_rules(self):
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            self.assertIn("Describe goal", self.zone(app, "#wb-next"))
+            app._wb_run_state = "tool:1"
+            app._render_workbench()
+            await pilot.pause()
+            self.assertIn("esc stops after this tool", self.zone(app, "#wb-next"))
+            app._wb_run_state = "idle"
+            app._approval_pending = True
+            app._render_workbench()
+            await pilot.pause()
+            self.assertIn("y=once", self.zone(app, "#wb-next"))
+            app._approval_pending = False
+            app._proposal_ready = True
+            app._render_workbench()
+            await pilot.pause()
+            self.assertIn("/review", self.zone(app, "#wb-next"))
+            app._proposal_ready = False
+            app._wb_run_state = "budget-hit"
+            app._render_workbench()
+            await pilot.pause()
+            self.assertIn("budget hit", self.zone(app, "#wb-next"))
+
+    async def test_shift_tab_flips_session_flow_next(self):
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            self.assertIn("plan", self.zone(app, "#wb-session"))
+            app.action_toggle_mode()
+            await pilot.pause()
+            session = self.zone(app, "#wb-session")
+            self.assertIn("YOLO", session)
+            flow = self.zone(app, "#wb-flow")
+            self.assertIn("edit", flow)
+            self.assertIn("verify", flow)
+            nxt = self.zone(app, "#wb-next")
+            self.assertIn("YOLO", nxt)
+            app.action_toggle_mode()
+            await pilot.pause()
+            self.assertIn("plan", self.zone(app, "#wb-session"))
+            self.assertIn("1 goal", self.zone(app, "#wb-flow"))
+
+    async def test_approvals_change_reflects_in_guards(self):
+        app = self.make_app()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            self.assertIn("ext:ask", self.zone(app, "#wb-guards"))
+            app.submit_text("/approvals external off")
+            await pilot.pause()
+            self.assertIn("ext:allow", self.zone(app, "#wb-guards"))
+            work = "\n".join(
+                str(w.render()) for w in app.query_one("#work").query("Static"))
+            self.assertIn("Approvals → external: allow", work)
+
+    async def test_narrow_collapses_to_one_line(self):
+        app = self.make_app()
+        async with app.run_test(size=(70, 22)) as pilot:
+            await pilot.pause()
+            self.assertTrue(app.screen.has_class("narrow"))
+            narrow = self.zone(app, "#foot-narrow")
+            self.assertIn("idle", narrow)
+            self.assertIn("f1", narrow)
+            self.assertLessEqual(len(narrow.strip().splitlines()[0]), 70)
+
+
 if __name__ == "__main__":
     unittest.main()

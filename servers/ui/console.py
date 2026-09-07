@@ -13,6 +13,7 @@ import time
 from typing import Any, Optional
 
 from rich.console import Console
+from rich.markup import escape
 from rich.panel import Panel
 from rich.rule import Rule
 
@@ -102,7 +103,7 @@ class TerminalUI:
             auth=auth,
             log_file=str(log_path()),
         ):
-            grid.add_row(label, value)
+            grid.add_row(label, escape(str(value)))
         self.console.print(grid)
         self.console.print(
             Text.from_markup(
@@ -119,13 +120,13 @@ class TerminalUI:
         self.console.print(Rule(style=_C_DIM))
 
     def info(self, msg: str) -> None:
-        self.console.print(f"[{_C_GRAY}]○[/] [{_C_SOFT}]{msg}[/]")
+        self.console.print(f"[{_C_GRAY}]○[/] [{_C_SOFT}]{escape(msg)}[/]")
 
     def warn(self, msg: str) -> None:
-        self.console.print(f"[bold {_C_WHITE}]△[/] [bold {_C_WHITE}]{msg}[/]")
+        self.console.print(f"[bold {_C_WHITE}]△[/] [bold {_C_WHITE}]{escape(msg)}[/]")
 
     def error(self, msg: str) -> None:
-        self.console.print(f"[bold {_C_WHITE} on {_C_DIM}] ✖ [/] [bold {_C_WHITE}]{msg}[/]")
+        self.console.print(f"[bold {_C_WHITE} on {_C_DIM}] ✖ [/] [bold {_C_WHITE}]{escape(msg)}[/]")
 
     # -- narrated activity -------------------------------------------
     def tool_start(self, tc: Any, args: dict[str, Any]) -> None:
@@ -134,12 +135,12 @@ class TerminalUI:
         self._step += 1
         self._t0 = time.monotonic()
         self.console.print(
-            f"[{_C_DIM}]Step {self._step}[/]  [bold {_C_WHITE}]{headline}[/]"
+            f"[{_C_DIM}]Step {self._step}[/]  [bold {_C_WHITE}]{escape(headline)}[/]"
         )
-        self.console.print(f"[{_C_DIM}]  ↳ {reason}[/]")
+        self.console.print(f"[{_C_DIM}]  ↳ {escape(reason)}[/]")
         if self.show_tool_args and args:
             self.console.print(
-                f"[{_C_DIM}]  · {name}({_short(_fmt_args(args), 120)})[/]"
+                f"[{_C_DIM}]  · {escape(name)}({escape(_short(_fmt_args(args), 120))})[/]"
             )
 
     def tool_end(self, tc: Any, result: str) -> None:
@@ -149,11 +150,11 @@ class TerminalUI:
             self._t0 = None
         text = (result or "").strip()
         outcome = _short(text.splitlines()[0] if text else "(no output)", 140)
-        self.console.print(f"[{_C_GRAY}]  ✓ {outcome}{elapsed}[/]")
+        self.console.print(f"[{_C_GRAY}]  ✓ {escape(outcome)}{elapsed}[/]")
 
     def plan_update(self, msg: str) -> None:
         """What the agent will do next — keeps the viewer oriented."""
-        self.console.print(f"[{_C_DIM}]  → next:[/] [{_C_SOFT}]{msg}[/]")
+        self.console.print(f"[{_C_DIM}]  → next:[/] [{_C_SOFT}]{escape(msg)}[/]")
 
     def next_hint(self, mode: str) -> None:
         if mode == "plan":
@@ -170,7 +171,7 @@ class TerminalUI:
     # -- agent plumbing ----------------------------------------------
     def spinner_start(self, msg: str) -> None:
         self.spinner_stop()
-        self._spinner = self.console.status(f"[{_C_GRAY}]{msg}[/]", spinner="dots")
+        self._spinner = self.console.status(f"[{_C_GRAY}]{escape(msg)}[/]", spinner="dots")
         self._spinner.start()
 
     def spinner_stop(self) -> None:
@@ -182,9 +183,11 @@ class TerminalUI:
             self._spinner = None
 
     def assistant_final(self, text: str) -> None:
+        from rich.text import Text
+
         self.console.print(
             Panel(
-                (text or "(no response)").strip(),
+                Text((text or "(no response)").strip()),
                 title=f"[bold {_C_WHITE}]Cerberus[/]",
                 title_align="left",
                 border_style=_C_DIM,
@@ -203,7 +206,7 @@ class TerminalUI:
         table.add_column("section", style=_C_DIM)
         for index, model, section, is_current in rows:
             mark = "● " if is_current else "  "
-            table.add_row(str(index), f"{mark}{model}", section)
+            table.add_row(str(index), f"{mark}{escape(model)}", escape(section))
         self.console.print(table)
         self.console.print(
             f"[{_C_DIM}]Switch with /model <number|name>[/]"
@@ -217,7 +220,7 @@ class TerminalUI:
         try:
             answer = self.console.input(
                 f"[bold {_C_WHITE}]Allow this?[/]\n"
-                f"  [bold]{command}[/]\n  [{_C_GRAY}]{reason}[/]\n"
+                f"  [bold]{escape(command)}[/]\n  [{_C_GRAY}]{escape(reason)}[/]\n"
                 f"  [{_C_DIM}]y = once · a = always allow this kind · N = deny[/]\n"
                 f"  [y/a/N] "
             ).strip().lower()

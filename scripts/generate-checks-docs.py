@@ -77,8 +77,6 @@ def page_header(active="checks", agent_order=None):
       <span>Cerberus Labs</span>
     </a>
     <a class="nav-link" href="../agent.html">Cerberus Agent</a>
-    <a class="nav-link" href="../terminal.html">Terminal</a>
-    <a class="nav-link" href="../shop.html">Shop</a>
   </nav>
   <nav class="right">
     <form class="search-form" onsubmit="return false">

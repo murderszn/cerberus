@@ -530,11 +530,19 @@
         if (skipReasons.fetch_error) notes.push(skipReasons.fetch_error + ' file(s) could not be fetched due to a network error.');
         if (base.treeTruncated) notes.push('The repository tree response was truncated by the GitHub API; some files may be missing from this scan.');
 
+        // Full tree minus globalExclude/.cerberusignore: applicability and
+        // forbidden-file checks run on this so vendored dirs (.venv,
+        // node_modules, …) can't trigger stack checks or findings.
+        var nonExcludedPaths = base.allPaths.filter(function (p) {
+          return !matchesAny(p, globalExclude);
+        });
+
         return {
           repoMeta: base.repoMeta,
           ref: base.ref,
           sha: base.sha,
           allPaths: base.allPaths,
+          nonExcludedPaths: nonExcludedPaths,
           eligiblePaths: eligible.map(function (b) { return b.path; }),
           files: files,
           coverage: {
@@ -694,13 +702,13 @@
     // lockfile when they had no dependency manifest at all.
     var appliesIf = check.applies_if || det.applies_if;
     if (appliesIf && appliesIf.any_path) {
-      if (!pathsExistInTree(ctx.allPaths, appliesIf.any_path)) {
+      if (!pathsExistInTree(ctx.nonExcludedPaths, appliesIf.any_path)) {
         return { status: 'not_applicable', reason: appliesIfReason(check.id, appliesIf.any_path), findings: [], totalFindings: 0, deduction: 0 };
       }
     }
 
     if (det.kind === 'path_forbidden') {
-      var forbidden = ctx.allPaths.filter(function (p) {
+      var forbidden = ctx.nonExcludedPaths.filter(function (p) {
         var isMatch = matchesAny(p, det.paths) && !(det.exclude && matchesAny(p, det.exclude));
         if (isMatch && det.exclude_tests) {
           return !matchesAny(p, catalog.test_paths || []);
@@ -826,6 +834,7 @@
     var ctx = {
       catalog: catalog,
       allPaths: acquired.allPaths,
+      nonExcludedPaths: acquired.nonExcludedPaths || acquired.allPaths,
       eligiblePaths: acquired.eligiblePaths,
       files: acquired.files,
       fileCache: Object.create(null),

@@ -87,7 +87,14 @@ Then visit `http://localhost:8000/agent.html` and paste any public GitHub reposi
 
 ### 💻 CLI (`examine.py`) — Local Directories, Private Repos, and CI
 
-Run the scanner directly from your terminal. Since it is a raw Python 3 script, there is no installation step:
+Install the CLI (Python 3.10+) with the `cerberus` entry point:
+
+```bash
+pipx install "cerberus[agent] @ git+https://github.com/murderszn/cerberus.git"
+cerberus scan <path-to-local-directory-or-github-url>
+```
+
+Scanner only, without the agent runtime: `pipx install git+https://github.com/murderszn/cerberus.git` — `cerberus scan` stays stdlib-only. From a checkout you can also run it with no installation step:
 
 ```bash
 python3 examine.py <path-to-local-directory-or-github-url>
@@ -103,6 +110,7 @@ The default invocation runs the unchanged native checks plus ALIGNMENT, with ext
 | `--html` | `path` | Output a standalone, interactive HTML report. |
 | `--sarif` | `path` | Generate SARIF format output to upload directly to GitHub Code Scanning. |
 | `--fail-under` | `score` | Exit non-zero if the native Cerberus score is below the threshold (e.g. `80`). |
+| `--fail-on` | `critical`, `high`, `medium`, or `low` | Exit non-zero if any failed check is at or above the severity (e.g. `--fail-on high` fails on high or critical, even at a passing score). |
 | `--only` | `agents` | Restrict evaluation to a comma-separated list of agent IDs (e.g. `sentinel,vault`). |
 | `--severity` | `level` | Filter terminal output to show only findings at or above `critical`, `high`, `medium`, or `low`. |
 | `--quiet` | *None* | Suppress file listings and print only the final score and grade. |
@@ -113,7 +121,7 @@ The default invocation runs the unchanged native checks plus ALIGNMENT, with ext
 | `--feeder-json` | `path` | Preserve feeder results, including bounded raw output where it is safe to retain it. |
 | `--strict-feeders` | *None* | Treat unavailable, failed, timed-out, or malformed explicitly requested feeders as policy blockers. |
 
-`--fail-under` continues to evaluate only the native Cerberus score. Feeder and ALIGNMENT findings never change that score. When orchestration is enabled, the report also includes a combined policy result: any critical finding or at least two high findings fails policy; missing optional tools are warnings; and tool failures become blockers only with `--strict-feeders`. In this release the policy result is report data, not a new implicit CLI exit condition, preserving existing automation behavior.
+`--fail-under` continues to evaluate only the native Cerberus score. Feeder and ALIGNMENT findings never change that score. `--fail-on` is the severity companion: it fails on failed-check severity even when the score passes (e.g. CI uses `--fail-under 95 --fail-on high`). When orchestration is enabled, the report also includes a combined policy result: any critical finding or at least two high findings fails policy; missing optional tools are warnings; and tool failures become blockers only with `--strict-feeders`. In this release the policy result is report data, not a new implicit CLI exit condition, preserving existing automation behavior.
 
 Examples:
 
@@ -326,7 +334,7 @@ The test suite covers registry behavior, applicability, unavailable tools, timeo
 
 * [index.html](index.html) — The research homepage with three framed, full-bleed details from the Cerberus engraving and titles overlaid on the images.
 * [agent.html](agent.html) — The browser scanner, progress view, and interactive report.
-* [ceberus-classic.html](ceberus-classic.html) — The legacy static HTML scanner page.
+* [cerberus-classic.html](cerberus-classic.html) — The legacy static HTML scanner page.
 * [examine.py](examine.py) — The Python CLI, native report builder, orchestration entry point, and JSON/HTML/SARIF renderer.
 * [alignment.py](alignment.py) — Native repository and coding-agent alignment analyzer.
 * [feeders/](feeders/) — Phase 1 external-tool adapters, registry, runner, and normalization contract.

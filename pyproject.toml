@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cerberus"
+dynamic = ["version"]
+description = "Cerberus — deterministic repo security scanner plus an agent-swarm CLI workbench"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Cerberus Labs" }]
+keywords = ["security", "scanner", "cli", "agents"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Security",
+]
+dependencies = []
+
+[project.optional-dependencies]
+# LLM agent runtime (`cerberus agent`, TUI workbench, login). The
+# deterministic scanner (`cerberus scan` / examine.py) stays stdlib-only
+# and never needs these.
+agent = [
+  "httpx>=0.27",
+  "rich>=13.7",
+  "pyyaml>=6.0",
+  "prompt_toolkit>=3.0",
+  "beautifulsoup4>=4.12",
+  "textual>=0.80",
+]
+
+[project.scripts]
+cerberus = "servers.cli:main"
+
+[project.urls]
+Homepage = "https://murderszn.github.io/cerberus/"
+Repository = "https://github.com/murderszn/cerberus"
+Documentation = "https://murderszn.github.io/cerberus/documentation/"
+Issues = "https://github.com/murderszn/cerberus/issues"
+
+[tool.setuptools.packages.find]
+include = ["servers*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "servers.__version__" }

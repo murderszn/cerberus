@@ -9,6 +9,7 @@ command palette, and the same AgentLoop runtime as the REPL.
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -20,6 +21,7 @@ from textual.command import Hit, Hits, Provider
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.message import Message
 from textual.screen import ModalScreen
+from rich.markup import escape as _escape
 from textual.widgets import (
     Button,
     Collapsible,
@@ -85,6 +87,22 @@ Screen {
     padding: 1 2 0 2;
     color: #575C55;
 }
+/* WORKBENCH rail zones (read-only display; actions stay in the composer). */
+#side .wb {
+    height: auto;
+    padding: 1 2 0 2;
+    color: #575C55;
+}
+#wb-next {
+    height: auto;
+    padding: 1 2 0 2;
+    color: #171817;
+    text-style: bold;
+}
+.dark #side .wb { color: #8B9089; }
+.dark #wb-next { color: #EDECE7; }
+.black #side .wb { color: #9A9A9A; }
+.black #wb-next { color: #FFFFFF; }
 #work { padding: 1 3; }
 #work .sess {
     color: #575C55;
@@ -436,8 +454,8 @@ class ApprovalScreen(ModalScreen):
     def compose(self) -> ComposeResult:
         with Vertical(id="approval-box"):
             yield Static("ALLOW THIS?", classes="dlg-title")
-            yield Static(self._command, classes="dlg-cmd")
-            yield Static(self._reason, classes="dlg-why")
+            yield Static(self._command, classes="dlg-cmd", markup=False)
+            yield Static(self._reason, classes="dlg-why", markup=False)
             with Horizontal(id="approval-btns"):
                 yield Button("Once [y]", id="ap-once")
                 yield Button("Always [a]", id="ap-always")
@@ -497,6 +515,13 @@ class InkApp(App):
         self.view = "task"
         self.run_token = 0
         self.running = False
+        self._blocks = {}
+        self._wb_run_state = "idle"
+        self._wb_stop_reason = ""
+        self._approval_pending = False
+        self._proposal_ready = False
+        self._wb_cache_at = 0.0
+        self._wb_cache_changed = None
         self._draft_text = ""
         self._draft_widget = None
         self._suggest_matches: list = []
@@ -506,7 +531,7 @@ class InkApp(App):
     def compose(self) -> ComposeResult:
         yield Horizontal(
             Static("▪ C E R B E R U S", classes="brand", id="brand"),
-            Static(self._env_text(), classes="env", id="env"),
+            Static(self._env_text(), classes="env", id="env", markup=False),
             id="head",
         )
         with Horizontal(id="topnav"):
@@ -517,18 +542,23 @@ class InkApp(App):
                 yield Static("WORKBENCH", classes="side-label")
                 for key, label in VIEWS:
                     yield Button(label, id="nav-" + key, classes="nav")
+                yield Static("", id="wb-session", classes="wb", markup=False)
+                yield Static("", id="wb-flow", classes="wb", markup=False)
+                yield Static("", id="wb-agents", classes="wb", markup=False)
+                yield Static("", id="wb-guards", classes="wb", markup=False)
+                yield Static("", id="wb-next", markup=False)
                 yield Static("", classes="spacer")
-                yield Static("", id="side-foot")
+                yield Static("", id="side-foot", markup=False)
             yield VerticalScroll(id="work")
         with Vertical(id="suggest"):
-            yield Static("", id="suggest-rows")
+            yield Static("", id="suggest-rows", markup=False)
         with Horizontal(id="compose"):
             yield Static("❯", classes="glyph")
             yield SubmitArea(id="prompt")
             with Vertical(id="compose-side"):
                 yield Button("SEND", id="send", variant="primary")
                 yield Button("STOP", id="stop", disabled=True)
-        yield Static(self._foot_text(), id="foot")
+        yield Static(self._foot_text(), id="foot", markup=False)
         yield Static("/ commands · ctrl+k · enter · esc", id="foot-narrow")
 
     def _env_text(self) -> str:
@@ -617,23 +647,32 @@ class InkApp(App):
         self._render_side_foot()
         self._update_foot()
 
+    @staticmethod
+    def _tok_text(total: int) -> str:
+        if total >= 1_000_000:
+            return "{:.1f}M".format(total / 1_000_000)
+        if total >= 1000:
+            return "{:.1f}k".format(total / 1000)
+        return str(total)
+
+    def _session_tokens(self) -> int:
+        try:
+            usage = getattr(getattr(self, "loop", None), "session_usage", None)
+            return int(getattr(usage, "total_tokens", 0) or 0)
+        except Exception:
+            return 0
+
     def _update_foot(self) -> None:
         """Footer hints plus live session token counter."""
         try:
             base = self._foot_text()
-            usage = getattr(getattr(self, "loop", None), "session_usage", None)
-            total = getattr(usage, "total_tokens", 0) or 0
+            total = self._session_tokens()
             if total > 0:
-                if total >= 1_000_000:
-                    tok = "{:.1f}M".format(total / 1_000_000)
-                elif total >= 1000:
-                    tok = "{:.1f}k".format(total / 1000)
-                else:
-                    tok = str(total)
-                base += " · {} tok".format(tok)
+                base += " · {} tok".format(self._tok_text(total))
             self.query_one("#foot", Static).update(base)
         except Exception:
             pass
+        self._render_workbench()
 
     def _mark_nav(self) -> None:
         for key, _label in VIEWS:
@@ -651,7 +690,207 @@ class InkApp(App):
         ws = str(self.config.workspace)
         if len(ws) > 24:
             ws = "…" + ws[-23:]
-        foot.update("{}\nmode {}".format(ws, self.config.agent_mode))
+        foot.update("{}\nmode {} · {} · f{}".format(
+            ws, self.config.agent_mode, self._wb_run_state, self._wb_flow_step()))
+
+    # -- workbench rail -------------------------------------------------
+    # Read-only sidebar display. Actions still go through the composer,
+    # the palette, and buttons — these zones never mutate anything.
+    WB_READONLY_TOOLS = frozenset({
+        "read_file", "search_workspace", "list_symbols", "lsp_symbols",
+        "diagnostics", "list_directory", "glob_files", "file_tree",
+        "git_status", "git_diff", "git_log", "git_branch",
+    })
+    WB_MUTATING_TOOLS = frozenset({
+        "write_file", "edit_file", "multiedit_file", "execute_bash_command",
+        "create_pull_request", "python_eval",
+    })
+    WB_CACHE_TTL = 5.0
+
+    def _wb_messages(self) -> list:
+        try:
+            msgs = getattr(getattr(self, "loop", None), "messages", None)
+            return list(msgs or [])
+        except Exception:
+            return []
+
+    def _wb_tool_names(self) -> list:
+        names = []
+        for m in self._wb_messages():
+            for tc in getattr(m, "tool_calls", None) or []:
+                fn = getattr(getattr(tc, "function", None), "name", None)
+                if fn:
+                    names.append(str(fn))
+        return names
+
+    def _wb_scan_attached(self) -> bool:
+        try:
+            from servers.scan_context import SCAN_DIGEST_TAG
+        except Exception:
+            SCAN_DIGEST_TAG = "[scan-context]"
+        for m in self._wb_messages():
+            if (getattr(m, "content", None) or "").startswith(SCAN_DIGEST_TAG):
+                return True
+        return False
+
+    def _wb_flow_step(self) -> int:
+        """Plan pipeline step 1-4 derived from conversation history."""
+        names = self._wb_tool_names()
+        if self._wb_scan_attached():
+            return 4
+        if self._proposal_ready or any(n in self.WB_MUTATING_TOOLS for n in names):
+            return 3
+        if names or getattr(self, "running", False):
+            return 2
+        return 1
+
+    def _wb_flow_text(self) -> str:
+        if self.config.agent_mode == "build":
+            verify = self._wb_scan_attached()
+            return "FLOW\n{} edit → {} verify".format(
+                "○" if verify else "●", "●" if verify else "○")
+        step = self._wb_flow_step()
+        labels = ("1 goal", "2 investigate", "3 propose", "4 verify")
+        lines = ["FLOW"]
+        for i, label in enumerate(labels, 1):
+            lines.append("{} {}".format("●" if i == step else "○", label))
+        return "\n".join(lines)
+
+    def _wb_session_text(self) -> str:
+        who = self.persona_name or "agent"
+        model = str(self.config.provider.model or "-")
+        if len(model) > 14:
+            model = "…" + model[-13:]
+        mode = "YOLO" if self.config.agent_mode == "build" else "plan"
+        total = self._session_tokens()
+        tok = self._tok_text(total) if total > 0 else "0"
+        return "SESSION\n{} · {} · {}\n{} tok · {}".format(
+            who, model, mode, tok, self._wb_run_state)
+
+    def _wb_agents_text(self) -> str:
+        try:
+            from servers.agent.prompts import list_personas
+        except Exception:
+            return "AGENTS\n—"
+        active = self.persona_name or "agent"
+        try:
+            tools = self.config.policy_for(active).allowed_tools if active != "agent" else None
+            scope = "{} tools".format(len(tools)) if tools is not None else "all tools"
+        except Exception:
+            scope = ""
+        names = ["agent"] + list(list_personas())
+        cells = ["{} {}".format("●" if n == active else "○", n) for n in names]
+        lines = ["AGENTS" + (" · " + scope if scope else "")]
+        for i in range(0, len(cells), 2):
+            lines.append("  ".join(cells[i:i + 2]))
+        return "\n".join(lines)
+
+    def _wb_workspace_changed(self) -> Optional[int]:
+        """Cached count of changed files (None = unknown). No full diff."""
+        try:
+            from servers.commands import git_working_tree
+        except Exception:
+            return None
+        try:
+            modified, untracked, err = git_working_tree(self.config.workspace)
+            if err:
+                return None
+            return len(modified) + len(untracked)
+        except Exception:
+            return None
+
+    def _wb_last_scan(self) -> Optional[tuple]:
+        """Latest (score, grade) parsed from attached scan digests."""
+        import re as _re
+
+        found = None
+        for m in self._wb_messages():
+            content = getattr(m, "content", None) or ""
+            if not content.startswith("[scan-context]"):
+                continue
+            hit = _re.search(r"Score:\s*(\S+)/100\s*\(grade\s*([^)]+)\)", content)
+            if hit:
+                found = (hit.group(1), hit.group(2))
+        return found
+
+    def _wb_guards_text(self) -> str:
+        try:
+            from servers.config import effective_tier
+        except Exception:
+            effective_tier = None  # type: ignore[assignment]
+        tools = getattr(self.config, "tools", None)
+        if effective_tier is not None and tools is not None:
+            ext = effective_tier(tools, "external")
+            bld = effective_tier(tools, "builds")
+        else:
+            ext, bld = "?", "?"
+        changed = self._wb_cache_changed
+        ws = "n/a" if changed is None else ("clean" if changed == 0 else "{} changed".format(changed))
+        scan = self._wb_last_scan()
+        scan_txt = "{}/{}".format(scan[0], scan[1]) if scan else "—"
+        return "GUARDS\next:{} bld:{}\nws: {}\nscan: {}".format(ext, bld, ws, scan_txt)
+
+    def _wb_next_text(self) -> str:
+        mode = self.config.agent_mode
+        state = self._wb_run_state
+        if self._approval_pending:
+            hint = "y=once · a=always · esc=deny"
+        elif state == "budget-hit":
+            hint = "budget hit — /compact or /reset"
+        elif state.startswith("tool:"):
+            hint = "esc stops after this tool"
+        elif state == "thinking":
+            hint = "investigating — esc stops run"
+        elif state == "approval":
+            hint = "y=once · a=always · esc=deny"
+        elif self._proposal_ready and mode == "plan":
+            hint = "/review or /diff to inspect"
+        elif self._wb_flow_step() == 4:
+            hint = "scan attached — ask or /save"
+        elif mode == "build":
+            hint = "YOLO: edits apply · /scan after"
+        else:
+            hint = "Describe goal, agent proposes — nothing changes"
+        return "NEXT\n" + hint
+
+    def _wb_compact_line(self) -> str:
+        who = self.persona_name or "agent"
+        model = str(self.config.provider.model or "-")
+        mode = "YOLO" if self.config.agent_mode == "build" else "plan"
+        line = "{}·{}·{} · {} · f{}".format(
+            who, model, mode, self._wb_run_state, self._wb_flow_step())
+        return line if len(line) <= 60 else line[:59] + "…"
+
+    def _render_workbench(self, force: bool = False) -> None:
+        """Refresh the 5 rail zones. Cheap except git, cached to 5s TTL."""
+        try:
+            now = time.monotonic()
+            if force or now - self._wb_cache_at > self.WB_CACHE_TTL:
+                self._wb_cache_changed = self._wb_workspace_changed()
+                self._wb_cache_at = now
+        except Exception:
+            pass
+        zones = (
+            ("#wb-session", self._wb_session_text),
+            ("#wb-flow", self._wb_flow_text),
+            ("#wb-agents", self._wb_agents_text),
+            ("#wb-guards", self._wb_guards_text),
+            ("#wb-next", self._wb_next_text),
+        )
+        for zid, fn in zones:
+            try:
+                self.query_one(zid, Static).update(fn())
+            except Exception:
+                pass
+        try:
+            self.query_one("#side-foot", Static)
+            self._render_side_foot()
+        except Exception:
+            pass
+        try:
+            self.query_one("#foot-narrow", Static).update(self._wb_compact_line())
+        except Exception:
+            pass
 
     # -- views ----------------------------------------------------------
     def show_view(self, name: str) -> None:
@@ -668,6 +907,7 @@ class InkApp(App):
         else:
             work.mount(TaskView(self))
         work.scroll_to(y=0, animate=False)
+        self._render_workbench(force=True)
 
     def action_show_help(self) -> None:
         self.show_view("task")
@@ -713,6 +953,7 @@ class InkApp(App):
         new = "build" if self.config.agent_mode == "plan" else "plan"
         self.loop.set_mode(new)
         self.loop.registry.mode = new
+        self._proposal_ready = False
         self._refresh_env()
         self._append_msg("Mode → " + ("ACCEPT-EDITS — the agent can now change files." if new == "build" else "PLAN — read-only."))
 
@@ -829,8 +1070,14 @@ class InkApp(App):
         try:
             work = self.query_one("#work", VerticalScroll)
             box = Collapsible(
-                Static("{}\n{}".format(event.reason, event.detail), classes="step-why"),
-                title="Step {} — {}".format(self._step_count(event.run), event.headline),
+                Static(
+                    "{}\n{}".format(event.reason, event.detail),
+                    classes="step-why",
+                    markup=False,
+                ),
+                title="Step {} — {}".format(
+                    self._step_count(event.run), _escape(event.headline)
+                ),
             )
             box.add_class("step")
             work.mount(box)
@@ -838,6 +1085,8 @@ class InkApp(App):
             work.scroll_end(animate=False)
         except Exception:
             pass
+        self._wb_run_state = "tool:{}".format(len(self._blocks) + 1)
+        self._render_workbench()
 
     def _step_count(self, run: int) -> int:
         self._steps = getattr(self, "_steps", {})
@@ -852,9 +1101,13 @@ class InkApp(App):
         if box is None:
             return
         try:
-            box.mount(Static("✓ {}".format(event.outcome), classes="step-out"))
+            box.mount(
+                Static("✓ {}".format(event.outcome), classes="step-out", markup=False)
+            )
         except Exception:
             pass
+        self._wb_run_state = "thinking" if self.running else "idle"
+        self._render_workbench()
 
     @on(Streamed)
     def _streamed(self, event: Streamed) -> None:
@@ -879,6 +1132,16 @@ class InkApp(App):
             return
         self._clear_thinking(event.run)
         self.running = False
+        self._wb_stop_reason = event.stopped or ""
+        if event.stopped == "circuit_breaker":
+            self._wb_run_state = "budget-hit"
+        else:
+            self._wb_run_state = "idle"
+        self._proposal_ready = bool(
+            event.text
+            and event.stopped == "completed"
+            and self.config.agent_mode == "plan"
+        )
         try:
             self.query_one("#stop", Button).disabled = True
         except Exception:
@@ -894,10 +1157,11 @@ class InkApp(App):
         try:
             work = self.query_one("#work", VerticalScroll)
             if event.text:
-                work.mount(Static(event.text, classes="answer"))
+                work.mount(Static(event.text, classes="answer", markup=False))
             work.mount(Static(
                 "done · {} tool rounds · {} · {}".format(event.rounds, event.usage, event.stopped),
                 classes="meta",
+                markup=False,
             ))
             if event.stopped != "error":
                 work.mount(Static(
@@ -905,11 +1169,13 @@ class InkApp(App):
                     if self.config.agent_mode == "plan"
                     else "Changes applied. Verify with `cerberus scan` before opening a PR.",
                     classes="meta",
+                    markup=False,
                 ))
             work.scroll_end(animate=False)
         except Exception:
             pass
         self._update_foot()
+        self._render_workbench(force=True)
 
     # -- actions ----------------------------------------------------------
     def action_command_palette(self) -> None:
@@ -924,6 +1190,9 @@ class InkApp(App):
             except Exception:
                 pass
             self._append_msg("Stopping after the current step…")
+            self._wb_run_state = "idle"
+            self._proposal_ready = False
+            self._render_workbench()
         self._dismiss_approval()
 
     def _dismiss_approval(self) -> None:
@@ -942,13 +1211,22 @@ class InkApp(App):
 
         def ask() -> None:
             try:
-                self.push_screen(
-                    ApprovalScreen(command, reason),
-                    lambda r: (box.setdefault("r", False if r is None else r), done.set()),
-                )
+                self._approval_pending = True
+                self._wb_run_state = "approval"
+                self._render_workbench()
+
+                def decided(r) -> None:
+                    box.setdefault("r", False if r is None else r)
+                    done.set()
+                    self._approval_pending = False
+                    self._wb_run_state = "tool:1" if self.running else "idle"
+                    self._render_workbench()
+
+                self.push_screen(ApprovalScreen(command, reason), decided)
             except Exception:
                 box["r"] = False
                 done.set()
+                self._approval_pending = False
 
         try:
             self.call_from_thread(ask)
@@ -1363,6 +1641,7 @@ class InkApp(App):
             except Exception:
                 pass
             self._append_msg("Session approvals cleared — will ask again.")
+            self._render_workbench(force=True)
             return
         if len(parts) == 2 and parts[0] in {"external", "builds"}:
             if parts[1] in {"on", "ask"}:
@@ -1376,6 +1655,7 @@ class InkApp(App):
                 return
             set_permission_tier(tools, parts[0], tier)
             self._append_msg("Approvals → {}: {}".format(parts[0], tier))
+            self._render_workbench(force=True)
             return
         self._append_msg("Usage: /approvals [external|builds] [on|off|ask|allow|deny] · /approvals reset")
 
@@ -1589,7 +1869,7 @@ class InkApp(App):
                 for title, body in scan_agent_sections(report):
                     content = Static("\n".join(body), classes="step-why")
                     content.markup = False
-                    box = Collapsible(content, title=title, collapsed=True)
+                    box = Collapsible(content, title=_escape(title), collapsed=True)
                     box.add_class("step")
                     work.mount(box)
                 work.scroll_end(animate=False)
@@ -1633,9 +1913,12 @@ class InkApp(App):
                         capture_output=True, timeout=10,
                     )
                 elif system == "Windows":
+                    # `start` is a cmd.exe builtin, so invoke it via
+                    # `cmd /c` with argv — never with shell=True.
                     await asyncio.to_thread(
-                        subprocess.run, ["start", "", str(html_path)],
-                        capture_output=True, timeout=10, shell=True,
+                        subprocess.run,
+                        ["cmd", "/c", "start", "", str(html_path)],
+                        capture_output=True, timeout=10,
                     )
 
                 html_opened = True
@@ -1675,6 +1958,10 @@ class InkApp(App):
         self.running = True
         self._blocks = {}
         self._steps = {}
+        self._wb_run_state = "thinking"
+        self._wb_stop_reason = ""
+        self._proposal_ready = False
+        self._render_workbench(force=True)
         try:
             self.query_one("#stop", Button).disabled = False
         except Exception:
@@ -1776,6 +2063,7 @@ class TaskView(Static):
 
     def __init__(self, app: "InkApp") -> None:
         super().__init__("")
+        self.markup = False
         self._app = app
 
     def on_mount(self) -> None:
@@ -1818,7 +2106,7 @@ class FilesView(Vertical):
         tree.root.expand()
         self._fill(tree.root, self.workspace, 0)
         yield tree
-        yield Static("", id="fileview")
+        yield Static("", id="fileview", markup=False)
 
     def _fill(self, node, path: Path, depth: int) -> None:
         if depth > 4:
@@ -1878,16 +2166,19 @@ class ChangesView(Vertical):
                 capture_output=True, text=True, timeout=20, check=False,
             )
         except Exception as exc:
-            yield Static("Could not run git: {}".format(exc))
+            yield Static("Could not run git: {}".format(exc), markup=False)
             return
         if proc.returncode != 0:
-            yield Static("Not a git repository (or git is missing). Diff view needs a checkout.")
+            yield Static(
+                "Not a git repository (or git is missing). Diff view needs a checkout.",
+                markup=False,
+            )
             return
         stat = proc.stdout.strip()
         if not stat:
-            yield Static("Workspace clean — no uncommitted changes.")
+            yield Static("Workspace clean — no uncommitted changes.", markup=False)
             return
-        yield Static(stat)
+        yield Static(stat, markup=False)
         try:
             full = subprocess.run(
                 ["git", "-C", str(self.workspace), "diff", "--", ".", ":(exclude)yarn.lock", ":(exclude)package-lock.json"],
@@ -1903,7 +2194,7 @@ class ChangesView(Vertical):
                 body.append("[red]{}[/]".format(ln[:200]))
             else:
                 body.append(ln[:200])
-        yield Static("\n".join(body) if body else "(diff body withheld)")
+        yield Static("\n".join(body) if body else "(diff body withheld)", markup=False)
 
 
 class HistoryView(Vertical):
@@ -1916,14 +2207,25 @@ class HistoryView(Vertical):
         try:
             sessions = list_sessions()
         except Exception as exc:
-            yield Static("Could not read sessions: {}".format(exc))
+            yield Static("Could not read sessions: {}".format(exc), markup=False)
             return
         if not sessions:
-            yield Static("No saved sessions yet — run something, then /save name.")
+            yield Static("No saved sessions yet — run something, then /save name.", markup=False)
             return
         items = []
-        for s in sessions:
-            items.append(ListItem(Label("{} ({} msgs) · {}".format(s.name, s.message_count, s.model or "-")), id="sess-" + s.name))
+        for index, s in enumerate(sessions):
+            safe_id = "sess-{:03d}-{}".format(
+                index, re.sub(r"[^A-Za-z0-9_-]", "_", s.name)
+            )
+            items.append(
+                ListItem(
+                    Label(
+                        "{} ({} msgs) · {}".format(s.name, s.message_count, s.model or "-"),
+                        markup=False,
+                    ),
+                    id=safe_id,
+                )
+            )
         yield ListView(*items, id="hist-list")
 
     @on(ListView.Selected)
