@@ -1040,7 +1040,7 @@
     body {
         background-color: #FFFFFF;
         color: var(--px-ink);
-        background-image: url('assets/cerberus-stipple.png');
+        background-image: url('cerberus-stipple.png');
         background-size: cover;
         background-position: center bottom;
         background-repeat: no-repeat;
@@ -1829,7 +1829,7 @@
     /* ===== Full-page backdrop — artsy stipple engraving full-bleed ===== */
     body {
         background-color: #FFFFFF;
-        background-image: url('assets/cerberus-stipple.png');
+        background-image: url('cerberus-stipple.png');
         background-size: cover;
         background-position: center bottom;
         background-repeat: no-repeat;
