@@ -1,5 +1,7 @@
 # Cerberus Labs: Agent Architecture
 
+> **Master Architecture Reference**: For the complete investor pitch architecture map, business model overview, GitHub App integration details, and GTM strategy, see [**docs/architecture-map.md**](architecture-map.md).
+
 > **Status: mostly roadmap.** §1 below (WASM enclaves, dynamic resource provisioning,
 > cross-agent deduplication, network egress for CVE lookups) describes a **planned**
 > architecture that is not what ships today. The real, shipped architecture is much
