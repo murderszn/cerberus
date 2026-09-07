@@ -58,11 +58,12 @@
         <h3>Requirements</h3>
         <p>Python 3, plus the agent runtime dependencies in <code>servers/requirements-agent.txt</code>. The deterministic scanner (<code>examine.py</code>) stays stdlib-only and needs nothing extra.</p>
         <h3>Install</h3>
-        <pre class="release-install"><code>pipx install "cerberus[agent] @ git+https://github.com/murderszn/cerberus.git"
-cerberus --help
-cerberus scan .</code></pre>
-        <p>Scanner only, no agent runtime: <code>pipx install git+https://github.com/murderszn/cerberus.git</code> — <code>cerberus scan</code> stays stdlib-only. Prefer a checkout? <code>git clone https://github.com/murderszn/cerberus.git</code>, then <code>pip install -r servers/requirements-agent.txt</code> and <code>python -m servers.cli --help</code>.</p>
+        <pre class="release-install"><code>npx cerberus-agent scan .
+npx cerberus-agent agent "audit this repository"</code></pre>
+        <p>The npm launcher installs the Cerberus Python runtime into your active Python environment, then forwards commands to the CLI. It requires Node.js 18+ and Python 3.10+.</p>
+        <p>Direct Python install: <code>pipx install "cerberus[agent] @ git+https://github.com/murderszn/cerberus.git"</code>. Scanner-only install: <code>pipx install git+https://github.com/murderszn/cerberus.git</code>.</p>
         <p class="release-links">
+          <a class="note-link" href="https://www.npmjs.com/package/cerberus-agent" target="_blank" rel="noopener noreferrer">Get it on npm <span aria-hidden="true">↗</span></a>
           <a class="note-link" href="https://github.com/murderszn/cerberus" target="_blank" rel="noopener noreferrer">Get it on GitHub <span aria-hidden="true">↗</span></a>
           <a class="note-link" href="https://github.com/murderszn/cerberus/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Changelog <span aria-hidden="true">→</span></a>
           <a class="note-link" href="documentation/index.html">Read the docs <span aria-hidden="true">→</span></a>

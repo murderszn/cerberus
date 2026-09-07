@@ -70,6 +70,17 @@ Cerberus is built to serve three core workflows:
 
 ## Running It
 
+### npm launcher
+
+If you already use Node.js, the published npm launcher can bootstrap and run the Python CLI:
+
+```bash
+npx cerberus-agent scan .
+npx cerberus-agent agent "audit this repository"
+```
+
+The launcher requires Node.js 18+ and Python 3.10+. It installs the current agent runtime from this repository into the active Python environment, then forwards the command. The browser interface remains available at [Cerberus Agent](https://murderszn.github.io/cerberus/agent.html).
+
 ### 🌐 Web App (GitHub repositories only)
 
 Open the [research homepage](index.html), then choose [Cerberus Agent](agent.html) in any modern browser, or serve the repository root using any static file server:

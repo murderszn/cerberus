@@ -1,0 +1,26 @@
+{
+  "name": "cerberus-agent",
+  "version": "1.0.0-beta.0",
+  "description": "Run the Cerberus security scanner and agent CLI through npm.",
+  "keywords": ["security", "scanner", "cli", "agents", "cerberus"],
+  "homepage": "https://murderszn.github.io/cerberus/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/murderszn/cerberus.git"
+  },
+  "bugs": {
+    "url": "https://github.com/murderszn/cerberus/issues"
+  },
+  "license": "MIT",
+  "bin": {
+    "cerberus": "bin/cerberus.js"
+  },
+  "files": ["bin", "README.md"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --check bin/cerberus.js",
+    "pack:check": "npm pack --dry-run"
+  }
+}
