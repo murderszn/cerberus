@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffd400">
+  <title>Hermes — Voice Assistant</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --yellow: #ffd400;
+      --yellow-light: #ffe95f;
+      --yellow-deep: #e9bd00;
+      --ink: #080807;
+      --eye-x: 0px;
+      --eye-y: 0px;
+      --left-rotate: -8deg;
+      --right-rotate: 8deg;
+      --left-scale-x: 1;
+      --right-scale-x: 1;
+      --eye-scale-y: 1;
+      --shine-x: 0px;
+      --shine-y: 0px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--yellow);
+    }
+
+    body {
+      min-height: 100svh;
+      color: var(--ink);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .assistant {
+      position: relative;
+      display: grid;
+      min-height: 100svh;
+      place-items: center;
+      isolation: isolate;
+      cursor: default;
+      overflow: hidden;
+      background: var(--yellow);
+    }
+
+    .eyes {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(2.8rem, 8vw, 8.5rem);
+      width: min(78vw, 780px);
+      transform: translateY(clamp(-8rem, -14vh, -4rem));
+      transition: transform 420ms cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .eye {
+      position: relative;
+      width: clamp(112px, 21vw, 230px);
+      aspect-ratio: .78;
+      overflow: hidden;
+      background: var(--ink);
+      will-change: transform, border-radius;
+      transition:
+        transform 180ms cubic-bezier(.2, .8, .2, 1),
+        border-radius 400ms cubic-bezier(.2, .8, .2, 1),
+        box-shadow 300ms ease;
+    }
+
+    .eye--left {
+      border-radius: 56% 44% 48% 52% / 47% 45% 55% 53%;
+      transform:
+        translate(var(--eye-x), var(--eye-y))
+        rotate(var(--left-rotate))
+        scaleX(var(--left-scale-x))
+        scaleY(var(--eye-scale-y));
+    }
+
+    .eye--right {
+      border-radius: 45% 55% 52% 48% / 45% 48% 52% 55%;
+      transform:
+        translate(var(--eye-x), var(--eye-y))
+        rotate(var(--right-rotate))
+        scaleX(var(--right-scale-x))
+        scaleY(var(--eye-scale-y));
+    }
+
+    .shine {
+      position: absolute;
+      top: 20%;
+      left: 22%;
+      width: 18%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: #ffdc18;
+      transform: translate(var(--shine-x), var(--shine-y));
+      will-change: transform;
+      transition: transform 160ms cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .eye--right .shine {
+      left: auto;
+      right: 22%;
+    }
+
+    .hint {
+      position: absolute;
+      top: max(1.2rem, env(safe-area-inset-top));
+      left: 50%;
+      margin: 0;
+      color: rgba(55, 41, 0, .43);
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      transform: translateX(-50%);
+      transition: opacity 500ms ease;
+    }
+
+    button,
+    input { font: inherit; }
+
+    button { color: inherit; }
+
+    input,
+    .conversation { user-select: text; }
+
+    .settings-button {
+      position: absolute;
+      top: max(1rem, env(safe-area-inset-top));
+      right: max(1rem, env(safe-area-inset-right));
+      display: grid;
+      width: 2.7rem;
+      height: 2.7rem;
+      padding: 0;
+      place-items: center;
+      border: 1px solid rgba(39, 29, 0, .09);
+      border-radius: 50%;
+      background: rgba(216, 171, 0, .2);
+      cursor: pointer;
+      transition: background 180ms ease, transform 180ms ease;
+    }
+
+    .settings-button:hover { background: rgba(216, 171, 0, .35); transform: rotate(12deg); }
+    .settings-button svg { width: 1.1rem; height: 1.1rem; }
+
+    .connection {
+      position: absolute;
+      top: max(4.25rem, calc(env(safe-area-inset-top) + 4.25rem));
+      right: max(1rem, env(safe-area-inset-right));
+      z-index: 5;
+      width: min(26rem, calc(100vw - 2rem));
+      padding: 1rem;
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: 1.25rem;
+      background: rgba(8, 8, 7, .92);
+      color: #fff2a8;
+      box-shadow: 0 24px 70px rgba(76, 55, 0, .3);
+      opacity: 0;
+      transform: translateY(-10px) scale(.98);
+      visibility: hidden;
+      backdrop-filter: blur(18px);
+      transition: opacity 180ms ease, transform 180ms ease, visibility 180ms;
+    }
+
+    .connection[data-open="true"] { opacity: 1; transform: none; visibility: visible; }
+    .connection label { display: block; margin: 0 0 .55rem; font-size: .7rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .connection__row { display: flex; gap: .55rem; }
+    .connection input {
+      min-width: 0;
+      flex: 1;
+      padding: .76rem .85rem;
+      border: 1px solid rgba(255, 242, 168, .22);
+      border-radius: .8rem;
+      outline: none;
+      background: rgba(255, 255, 255, .07);
+      color: #fff8d1;
+      font-size: .78rem;
+    }
+    .connection input:focus { border-color: #ffd400; }
+    .connection__save {
+      padding: 0 1rem;
+      border: 0;
+      border-radius: .8rem;
+      background: var(--yellow);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: .72rem;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .connection__note { margin: .7rem 0 0; color: rgba(255, 248, 209, .57); font-size: .68rem; line-height: 1.45; }
+
+    .conversation {
+      position: absolute;
+      top: 55%;
+      left: 50%;
+      z-index: 2;
+      width: min(42rem, calc(100vw - 2rem));
+      padding: 1.2rem 1.35rem 1.3rem;
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-radius: 1.6rem;
+      background: rgba(15, 14, 8, .91);
+      color: #fff9d8;
+      box-shadow: 0 28px 80px rgba(105, 76, 0, .28);
+      opacity: 0;
+      transform: translate(-50%, 1rem) scale(.97);
+      visibility: hidden;
+      backdrop-filter: blur(22px) saturate(1.2);
+      -webkit-backdrop-filter: blur(22px) saturate(1.2);
+      transition: opacity 300ms ease, transform 420ms cubic-bezier(.2, .9, .2, 1), visibility 300ms;
+    }
+
+    .conversation[data-visible="true"] { opacity: 1; transform: translate(-50%, 0) scale(1); visibility: visible; }
+    .conversation__prompt { margin: 0 2rem .72rem 0; color: #e0c84e; font-size: .68rem; font-weight: 750; letter-spacing: .06em; line-height: 1.45; }
+    .conversation__response { margin: 0; font-size: clamp(.98rem, 2vw, 1.15rem); font-weight: 520; line-height: 1.55; white-space: pre-wrap; }
+    .conversation__close {
+      position: absolute;
+      top: .8rem;
+      right: .8rem;
+      display: grid;
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .08);
+      color: rgba(255, 249, 216, .65);
+      cursor: pointer;
+    }
+
+    .composer {
+      position: absolute;
+      right: 0;
+      bottom: max(1rem, env(safe-area-inset-bottom));
+      left: 0;
+      z-index: 3;
+      display: flex;
+      gap: .55rem;
+      width: min(42rem, calc(100vw - 2rem));
+      margin: auto;
+      padding: .42rem;
+      border: 1px solid rgba(70, 51, 0, .1);
+      border-radius: 999px;
+      background: rgba(255, 237, 112, .64);
+      box-shadow: 0 16px 50px rgba(102, 73, 0, .16);
+      backdrop-filter: blur(20px) saturate(1.15);
+      -webkit-backdrop-filter: blur(20px) saturate(1.15);
+    }
+
+    .composer input {
+      min-width: 0;
+      flex: 1;
+      padding: 0 .6rem 0 1rem;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: .92rem;
+    }
+    .composer input::placeholder { color: rgba(45, 34, 0, .45); }
+
+    .composer button {
+      display: grid;
+      width: 3.05rem;
+      height: 3.05rem;
+      flex: 0 0 auto;
+      padding: 0;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 150ms ease, background 150ms ease;
+    }
+    .composer button:hover { transform: scale(1.05); }
+    .send-button { background: rgba(8, 8, 7, .1); }
+    .mic-button { background: var(--ink); color: var(--yellow); }
+    .mic-button[data-active="true"] { animation: micGlow 900ms ease-in-out infinite alternate; }
+    .composer svg { width: 1.22rem; height: 1.22rem; }
+
+    @keyframes micGlow {
+      to { box-shadow: 0 0 0 8px rgba(8, 8, 7, .09), 0 0 28px rgba(255, 242, 139, .8); transform: scale(.95); }
+    }
+
+    .assistant[data-engaged="true"] .hint { opacity: 0; }
+
+    @media (max-width: 520px) {
+      .eyes { gap: clamp(2rem, 10vw, 3.2rem); width: 84vw; }
+      .eye { width: clamp(105px, 30vw, 155px); }
+      .conversation { top: 51%; max-height: 29vh; overflow: auto; border-radius: 1.3rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="assistant" data-state="idle" aria-label="Voice interface for Hermes assistant">
+    <p class="hint">Hermes · Voice interface</p>
+
+    <button class="settings-button" type="button" aria-label="Connection settings" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.95 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.53-1H3v-4h.08A1.7 1.7 0 0 0 4.6 8.95a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8.95 4.6 1.7 1.7 0 0 0 10 3.08V3h4v.08a1.7 1.7 0 0 0 1.03 1.53 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+    </button>
+
+    <section class="connection" data-open="false" aria-label="Hermes connection settings">
+      <label for="endpoint">Hermes endpoint</label>
+      <div class="connection__row">
+        <input id="endpoint" type="url" spellcheck="false" value="http://localhost:8787/api/chat" aria-describedby="connection-note">
+        <button class="connection__save" type="button">Save</button>
+      </div>
+      <p class="connection__note" id="connection-note">Use the LAN URL of the PC running the Hermes bridge. The address stays only in this browser.</p>
+    </section>
+
+    <div class="eyes" aria-hidden="true">
+      <div class="eye eye--left"><span class="shine"></span></div>
+      <div class="eye eye--right"><span class="shine"></span></div>
+    </div>
+
+    <section class="conversation" data-visible="false" aria-live="polite" aria-label="Conversation">
+      <button class="conversation__close" type="button" aria-label="Dismiss response">×</button>
+      <p class="conversation__prompt"></p>
+      <p class="conversation__response"></p>
+    </section>
+
+    <form class="composer" aria-label="Ask Hermes">
+      <input id="message" type="text" autocomplete="off" placeholder="Ask Hermes anything…" aria-label="Message to Hermes">
+      <button class="send-button" type="submit" aria-label="Send message">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 14-7-4.7 14-2.8-5.5L5 12Z"/><path d="m11.5 13.5 3.2-3.2"/></svg>
+      </button>
+      <button class="mic-button" type="button" aria-label="Start voice input" data-active="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>
+      </button>
+    </form>
+  </main>
+
+  <script>
+    const assistant = document.querySelector('.assistant');
+    const root = document.documentElement;
+    const messageInput = document.querySelector('#message');
+    const composer = document.querySelector('.composer');
+    const micButton = document.querySelector('.mic-button');
+    const conversation = document.querySelector('.conversation');
+    const promptText = document.querySelector('.conversation__prompt');
+    const responseText = document.querySelector('.conversation__response');
+    const closeResponse = document.querySelector('.conversation__close');
+    const settingsButton = document.querySelector('.settings-button');
+    const connectionPanel = document.querySelector('.connection');
+    const endpointInput = document.querySelector('#endpoint');
+    const saveEndpoint = document.querySelector('.connection__save');
+
+    let state = 'idle';
+    let thinkingTimer;
+    let blinkTimer;
+    let recognition;
+    let isListening = false;
+
+    const savedEndpoint = localStorage.getItem('hermes.endpoint');
+    if (savedEndpoint) endpointInput.value = savedEndpoint;
+
+    function setPose({ x = 0, y = 0, shineX = 0, shineY = 0, left = -8, right = 8, scaleY = 1, leftX = 1, rightX = 1 } = {}) {
+      root.style.setProperty('--eye-x', `${x}px`);
+      root.style.setProperty('--eye-y', `${y}px`);
+      root.style.setProperty('--shine-x', `${shineX}px`);
+      root.style.setProperty('--shine-y', `${shineY}px`);
+      root.style.setProperty('--left-rotate', `${left}deg`);
+      root.style.setProperty('--right-rotate', `${right}deg`);
+      root.style.setProperty('--eye-scale-y', scaleY);
+      root.style.setProperty('--left-scale-x', leftX);
+      root.style.setProperty('--right-scale-x', rightX);
+    }
+
+    function setState(next) {
+      state = next;
+      assistant.dataset.state = next;
+    }
+
+    function wait(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function blink() {
+      if (state === 'thinking') return;
+      root.style.setProperty('--eye-scale-y', .055);
+      await wait(105);
+      root.style.setProperty('--eye-scale-y', 1);
+    }
+
+    function scheduleBlink() {
+      clearTimeout(blinkTimer);
+      blinkTimer = setTimeout(async () => {
+        await blink();
+        scheduleBlink();
+      }, 2300 + Math.random() * 3200);
+    }
+
+    const thinkingPoses = [
+      { x: -18, y: 2, shineX: -7, left: -4, right: 12 },
+      { x: 14, y: -9, shineX: 6, shineY: -4, left: -12, right: 4 },
+      { x: 0, y: 4, scaleY: .62, left: -3, right: 3, leftX: 1.08, rightX: 1.08 },
+      { x: -8, y: -4, shineY: -7, left: 7, right: 17 },
+      { x: 11, y: 2, scaleY: .84, left: -15, right: -4 },
+      { x: 0, y: 0, scaleY: .08, left: 0, right: 0 },
+      { x: 0, y: 0, scaleY: 1.06, left: -8, right: 8 }
+    ];
+
+    function startThinkingMotion() {
+      let frame = 0;
+      clearInterval(thinkingTimer);
+      setPose(thinkingPoses[frame]);
+      thinkingTimer = setInterval(() => {
+        frame = (frame + 1) % thinkingPoses.length;
+        setPose(thinkingPoses[frame]);
+      }, 430);
+    }
+
+    function stopThinkingMotion() {
+      clearInterval(thinkingTimer);
+      thinkingTimer = undefined;
+    }
+
+    function sessionId() {
+      let id = localStorage.getItem('hermes.session');
+      if (!id) {
+        id = crypto.randomUUID ? crypto.randomUUID() : `web-${Date.now()}`;
+        localStorage.setItem('hermes.session', id);
+      }
+      return id;
+    }
+
+    function extractReply(payload) {
+      return payload.reply || payload.response || payload.message || payload.output || payload.choices?.[0]?.message?.content;
+    }
+
+    async function sendMessage(rawMessage) {
+      const message = rawMessage.trim();
+      if (!message || state === 'thinking') return;
+
+      assistant.dataset.engaged = 'true';
+      promptText.textContent = `YOU · ${message}`;
+      responseText.textContent = 'Thinking…';
+      conversation.dataset.visible = 'true';
+      setState('thinking');
+      startThinkingMotion();
+
+      try {
+        const response = await fetch(endpointInput.value.trim(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, sessionId: sessionId() })
+        });
+        if (!response.ok) throw new Error(`Hermes returned ${response.status}`);
+        const payload = await response.json();
+        const reply = extractReply(payload);
+        if (!reply) throw new Error('Hermes returned no readable reply');
+
+        responseText.textContent = reply;
+        setState('responded');
+        setPose({ y: -4, scaleY: 1.06, left: -10, right: 10, leftX: 1.04, rightX: 1.04 });
+      } catch (error) {
+        setState('error');
+        setPose({ y: 5, scaleY: .72, left: -3, right: 3, leftX: 1.08, rightX: 1.08 });
+        responseText.textContent = `${error.message}. Open connection settings and enter the LAN address of your Hermes PC.`;
+      } finally {
+        stopThinkingMotion();
+        messageInput.value = '';
+        scheduleBlink();
+      }
+    }
+
+    function finishListening() {
+      isListening = false;
+      micButton.dataset.active = 'false';
+      micButton.setAttribute('aria-label', 'Start voice input');
+    }
+
+    function setupSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) return;
+
+      recognition = new SpeechRecognition();
+      recognition.lang = navigator.language || 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        isListening = true;
+        assistant.dataset.engaged = 'true';
+        micButton.dataset.active = 'true';
+        micButton.setAttribute('aria-label', 'Stop voice input');
+        setState('listening');
+        setPose({ y: -7, scaleY: 1.06, left: -7, right: 7, leftX: 1.03, rightX: 1.03 });
+      };
+
+      recognition.onresult = event => {
+        let transcript = '';
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          transcript += event.results[i][0].transcript;
+          if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+        }
+        messageInput.value = transcript;
+        if (finalTranscript) sendMessage(finalTranscript);
+      };
+
+      recognition.onerror = event => {
+        finishListening();
+        setState('error');
+        promptText.textContent = 'MICROPHONE';
+        responseText.textContent = event.error === 'not-allowed'
+          ? 'Microphone access was not granted. You can still type below.'
+          : `Speech recognition stopped: ${event.error}. You can still type below.`;
+        conversation.dataset.visible = 'true';
+      };
+
+      recognition.onend = () => {
+        finishListening();
+        if (state === 'listening') {
+          setState('idle');
+          setPose();
+        }
+      };
+    }
+
+    function toggleListening() {
+      if (!recognition) {
+        promptText.textContent = 'VOICE INPUT';
+        responseText.textContent = 'This browser does not support built-in speech recognition. Type your message below, or open the page in Chrome or Edge.';
+        conversation.dataset.visible = 'true';
+        messageInput.focus();
+        return;
+      }
+      if (isListening) recognition.stop();
+      else recognition.start();
+    }
+
+    function followPointer(event) {
+      if (state !== 'idle') return;
+      const xRatio = (event.clientX / window.innerWidth - .5) * 2;
+      const yRatio = (event.clientY / window.innerHeight - .5) * 2;
+      setPose({
+        x: xRatio * 15,
+        y: yRatio * 11,
+        shineX: xRatio * 8,
+        shineY: yRatio * 7,
+        left: -8 + xRatio * 3,
+        right: 8 + xRatio * 3
+      });
+    }
+
+    assistant.addEventListener('pointermove', followPointer);
+    assistant.addEventListener('pointerleave', () => state === 'idle' && setPose());
+    composer.addEventListener('submit', event => {
+      event.preventDefault();
+      sendMessage(messageInput.value);
+    });
+    micButton.addEventListener('click', toggleListening);
+    closeResponse.addEventListener('click', () => {
+      conversation.dataset.visible = 'false';
+      setState('idle');
+      setPose();
+    });
+    settingsButton.addEventListener('click', () => {
+      const open = connectionPanel.dataset.open !== 'true';
+      connectionPanel.dataset.open = String(open);
+      settingsButton.setAttribute('aria-expanded', String(open));
+      if (open) endpointInput.focus();
+    });
+    saveEndpoint.addEventListener('click', () => {
+      localStorage.setItem('hermes.endpoint', endpointInput.value.trim());
+      connectionPanel.dataset.open = 'false';
+      settingsButton.setAttribute('aria-expanded', 'false');
+      setState('idle');
+    });
+    window.addEventListener('keydown', event => {
+      if (event.code === 'Space' && document.activeElement === document.body) {
+        event.preventDefault();
+        toggleListening();
+      }
+    });
+
+    setupSpeechRecognition();
+    scheduleBlink();
+  </script>
+</body>
+</html>

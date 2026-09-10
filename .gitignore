@@ -8,6 +8,7 @@ __pycache__/
 !logo.png
 !assets/cerberus-social.png
 !assets/shop/*.png
+!assets/concepts/*.png
 cerberus-report.html
 
 # secrets
