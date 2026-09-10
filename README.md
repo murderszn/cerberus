@@ -20,7 +20,9 @@
 <p align="center">
   <a href="#what-is-cerberus"><strong>About</strong></a> &bull;
   <a href="#running-it"><strong>Run a Scan</strong></a> &bull;
-  <a href="#the-agent-swarm"><strong>Meet the Swarm</strong></a> &bull;
+  <a href="#agent-cli-workbench"><strong>Agent CLI</strong></a> &bull;
+  <a href="#github-app--cloud-agent"><strong>GitHub App</strong></a> &bull;
+  <a href="#the-10-agent-deployment"><strong>Meet the Swarm</strong></a> &bull;
   <a href="#architecture"><strong>Architecture</strong></a> &bull;
   <a href="#developer-guide"><strong>Developer Guide</strong></a>
 </p>
@@ -29,13 +31,13 @@
 
 ## What is Cerberus?
 
-**Cerberus** is an automated, zero-configuration security scanner designed for modern, rapid-deployment engineering teams. As developers leverage AI assistants to ship features in minutes, security reviews are frequently compromised. Cerberus replaces slow, costly human auditing with a high-rigor, collaborative **AI agent swarm** that validates code, infrastructure, and configuration against a comprehensive checks catalog.
+**Cerberus** is an automated, zero-configuration security scanner and agent workbench designed for modern, rapid-deployment engineering teams. As developers leverage AI assistants to ship features in minutes, security reviews are frequently compromised. Cerberus replaces slow, costly human auditing with a high-rigor, collaborative **AI agent swarm** that validates code, infrastructure, and configuration against a comprehensive checks catalog — then helps you fix the findings.
 
-Its native scanner operates locally with **no server, no build step, and no signup**:
-- **The Web App ([agent.html](agent.html))** runs completely in your browser, analyzing public GitHub repositories using the GitHub API. It features real-time progress indicators, interactive check filters, history persistence, and shareable deep links.
-- **The CLI ([examine.py](examine.py))** uses Python 3 and the standard library for native checks, ALIGNMENT, orchestration, normalization, and reporting. Optional feeder executables are installed separately only when their specialized analysis is wanted.
+The project spans three product surfaces:
 
-Both interfaces consume the same native [`checks.json`](checks.json) catalog and preserve the same native scoring semantics. ALIGNMENT and external feeders are additive CLI capabilities and do not alter web scanner behavior.
+1. **Deterministic Scanner** — a catalog-driven, zero-dependency engine that runs identically in the browser and on the CLI. No server, no build step, no signup.
+2. **Agent CLI Workbench** — an interactive terminal (scrollback REPL or full-screen Ink TUI) that deploys nine named security-specialist personas against your codebase, with tool use, plan/accept-edits modes, session persistence, and swarm fan-out.
+3. **GitHub App & Cloud Agent** — a Cloudflare Workers deployment with GitHub OAuth sign-in, GitHub App installation, scan-grounded conversations, AI-generated change sets with inline diffs, and one-click draft pull requests.
 
 ---
 
@@ -51,20 +53,14 @@ Cerberus is built to serve three core workflows:
 
 ## Key Features
 
-- **Security Orchestration**: Nine catalog-driven native agents remain the scoring engine, while the CLI can add a native ALIGNMENT review and normalized findings from specialized open-source scanners.
-- **Deterministic Verification**: Every vulnerability is mapped to a concrete, verifiable failure condition. This drastically reduces the noise and false positives common in legacy static analysis.
+- **Deterministic Security Scan**: Nine catalog-driven native agents score your repository from `0` to `100`. Every vulnerability is mapped to a concrete, verifiable failure condition — drastically reducing noise and false positives.
 - **Unified Engine**: Both the web dashboard and CLI execute the same rules from [`checks.json`](checks.json), emitting matching `cerberus.report/2` reports.
-- **Frictionless Integration**: Drop a repository URL in the browser, run it locally via a terminal, or gate pull requests in CI/CD using `--fail-under`.
+- **Agent CLI Workbench**: Chat with an AI orchestrator or individual specialist personas. The agents can read files, search your workspace, edit code, run commands, browse the web, create PRs, and verify fixes with a scan — all within a permission-controlled tool loop.
+- **GitHub App Cloud Agent**: Sign in with GitHub, install the Cerberus App on your repositories, start a scan-grounded conversation, and let the agent propose file-level changes. Review the diff, approve, and a draft PR is created on your repo — all from the browser.
+- **Orchestration & External Feeders**: The CLI can add a native ALIGNMENT review and normalized findings from five specialized open-source scanners (Gitleaks, OSV-Scanner, Zizmor, OpenSSF Scorecard, actionlint).
+- **Frictionless Integration**: Drop a repository URL in the browser, run it locally via a terminal, or gate pull requests in CI/CD using `--fail-under` and `--fail-on`.
 - **GitHub Actions Template**: Copy [`.github/workflow-templates/cerberus-security-review.yml`](.github/workflow-templates/cerberus-security-review.yml) into another repository to run JSON, HTML, and SARIF reviews on pull requests and main-branch pushes. See the [deployment guide](docs/cerberus-github-action-template.md).
-
-### What the orchestration release adds
-
-- Five allowlisted Phase 1 adapters: Gitleaks, OSV-Scanner, Zizmor, OpenSSF Scorecard, and actionlint.
-- A native ALIGNMENT analyzer for unsafe, conflicting, or incomplete coding-agent guidance and workflow policy.
-- Versioned normalized findings with source provenance, stable fingerprints, severity mapping, deduplication, and secret redaction.
-- Independent native and ALIGNMENT scores plus a combined policy result with strict-feeder controls.
-- Multi-producer JSON, HTML, and SARIF reports that still render when no feeder is installed.
-- Safe execution boundaries: argv-only subprocesses, per-tool timeouts, bounded output, fixed executable allowlists, isolated filtered scan trees, and `.cerberusignore` support.
+- **Hermes Voice Interface**: [`assistant-eyes.html`](assistant-eyes.html) is a browser-based voice assistant client with animated eye tracking, speech-to-text input, and text reply display — designed to bridge to a local Hermes agent instance over LAN.
 
 ---
 
@@ -92,7 +88,7 @@ python3 -m http.server 8000
 Then visit `http://localhost:8000/agent.html` and paste any public GitHub repository URL. The research homepage lives at `/`; existing `index.html#/scan/...` and `index.html#/report/...` links forward to the Agent page, preserving their targets.
 
 > [!NOTE]
-> Due to browser CORS policies, the web app can only fetch public repositories. To scan private repositories, input a GitHub **Personal Access Token (PAT)** in the provided web UI field, or use the CLI.
+> Due to browser CORS policies, the web app can only fetch public repositories. To scan private repositories, input a GitHub **Personal Access Token (PAT)** in the provided web UI field, or use the CLI. With the GitHub App installed, authenticated users can scan private repositories through the cloud agent.
 
 ---
 
@@ -113,7 +109,7 @@ python3 examine.py <path-to-local-directory-or-github-url>
 
 The default invocation runs the unchanged native checks plus ALIGNMENT, with external feeders disabled. Use `--native-only` for the exact native/offline path, or `--feeders auto` to discover all Phase 1 tools without installing anything automatically.
 
-#### CLI Reference & Flags
+#### Scanner CLI Reference & Flags
 
 | Flag | Argument | Description |
 | :--- | :--- | :--- |
@@ -164,9 +160,63 @@ The template never installs scanner binaries. Build a reviewed runner image with
 
 ---
 
-## The Agent Swarm
+## Agent CLI Workbench
 
-The scan logic is divided among **9 specialized security agents**. Each agent owns a specific domain, evaluates a dedicated set of rules, and starts with a max weight. Failed checks subtract points from that agent's weight based on check severity (capped per check), and the agent scores are summed to produce a final score from `0` to `100`.
+The `cerberus` entry point (installed via `pipx install "cerberus[agent] @ ..."`) provides an interactive agent runtime powered by Pollinations-compatible LLM providers. The deterministic scanner (`cerberus scan`) remains stdlib-only and never needs the agent dependencies.
+
+### Subcommands
+
+| Command | Description |
+| :--- | :--- |
+| `cerberus scan <args…>` | Passthrough to the deterministic engine. No login, no dependencies. |
+| `cerberus agent [GOAL…]` | Orchestrator session with all 9 specialist personas available. |
+| `cerberus <persona> [TASK…]` | Chat directly with one named specialist (e.g. `cerberus sentinel "fix the login bug"`). |
+| `cerberus run "goal" [--format json]` | Headless one-shot execution (accepts stdin). |
+| `cerberus model [name]` | List models or switch the persisted default. |
+| `cerberus models` | Grouped model catalog table. |
+| `cerberus init` | Scaffold `~/.cerberus/config.yaml` and a project `CERBERUS.md`. |
+| `cerberus config show\|get\|set` | Inspect and edit the layered config. |
+| `cerberus sessions list\|resume\|fork\|delete` | Manage saved conversation transcripts (`~/.cerberus/sessions/`). |
+| `cerberus permissions allow\|ask\|deny` | Set tool permission tiers (global/project/session scopes). |
+| `cerberus completions bash\|zsh\|fish` | Output shell completion scripts. |
+| `cerberus login\|logout\|status\|logs` | Authenticate, check status, and view diagnostic logs. |
+
+### Agent features
+
+- **Plan & accept-edits modes**: Plan mode (default) is read-only; Shift-Tab toggles accept-edits live. `--yolo` starts in accept-edits.
+- **Full-screen Ink workbench**: `--workbench` launches a Textual TUI with panels, scrollback, and inline diffs. Falls back to a classic scrollback REPL.
+- **Swarm fan-out**: `--swarm` classifies a goal and delegates subtasks concurrently across the 9 personas with map-reduce coordination.
+- **Tool safety**: Permission tiers (`allow|ask|deny`), workspace-boundary enforcement, `.cerberusignore` support, secret redaction, destructive-command approval gates, and bounded bash timeouts.
+- **Tools available**: `read_file`, `edit_file`, `multi_edit_file`, `write_file`, `search_workspace`, `grep_search`, `list_symbols`, `list_directory`, `glob_files`, `file_tree`, `execute_bash_command`, `git_status`, `git_diff`, `git_log`, `git_branch`, `browse_web_content`, `http_request`, `python_diagnostics` (LSP), `mcp_invoke`, `create_pull_request`.
+- **Layered config**: `global (~/.cerberus/config.yaml) < project (CERBERUS.md) < env < CLI flags`. Per-provider model maps with endpoint, key, and temperature overrides.
+- **Session persistence**: Conversations are saved as JSONL transcripts and can be resumed, forked, or deleted.
+- **Slash commands in REPL**: `/scan`, `/review`, `/undo`, `/model`, `/models`, `/approvals`, `/team`, `/compact`, `/add`, and more.
+- **PR creation**: `--pr` opens a GitHub pull request from workspace changes after a run.
+- **Streamlined output**: Long responses are auto-summarized into grouped digests; full text is available on request or with `-v`.
+
+---
+
+## GitHub App & Cloud Agent
+
+The [`workers/github-auth/`](workers/github-auth/) directory contains a **Cloudflare Workers** deployment that powers the authenticated product backend:
+
+- **GitHub OAuth sign-in** with PKCE, secure session cookies, and D1-backed account storage.
+- **GitHub App installation** — users install the `cerberus-security-agent` App on their repositories, granting scoped `contents:write` and `pull_requests:write` permissions.
+- **Scan-grounded conversations** — after a browser scan, authenticated users open a conversation pinned to an immutable commit SHA. The cloud agent has repository tools (`list_repository_paths`, `read_file`) and can inspect the codebase at the scanned commit.
+- **Change set proposals** — the agent calls `propose_changes` to produce a reviewed file-level change set with diffs and rationale, stored server-side.
+- **Draft PR creation** — users review the change set in the browser UI, approve it, and a draft PR is created on their repository via the GitHub App's installation token.
+- **Webhook sync** — `installation` and `installation_repositories` events keep the repository list in sync.
+- **Engineering intent tracking** — each conversation captures a concise engineering objective distilled by the agent.
+
+The worker is configured in [`wrangler.jsonc`](workers/github-auth/wrangler.jsonc) with a D1 database, static asset serving, and a nightly cron.
+
+---
+
+## The 10-Agent Deployment
+
+The native scan logic is divided among **9 deterministic security specialists**. Each owns a specific domain, evaluates a dedicated set of rules, and starts with a max weight. Failed checks subtract points from that agent's weight based on check severity (capped per check), and the specialist scores are summed to produce a final score from `0` to `100`.
+
+In the web deployment, **CURATOR is agent 10**. It deploys alongside the specialists, waits on their evidence, and automatically asks the selected Pollinations model to synthesize their combined returns into a prioritized, user-facing brief. CURATOR is explicitly non-scoring: it cannot alter check states or the native 100-point result. Without a Pollinations connection, the nine specialists still complete and CURATOR is marked as awaiting connection.
 
 | Agent | Domain | Target Focus | Weight | Active Checks |
 | :--- | :--- | :--- | :---: | :---: |
@@ -179,9 +229,12 @@ The scan logic is divided among **9 specialized security agents**. Each agent ow
 | 🖥️ **SHIELD** | Client Security | XSS vectors, CSRF, insecure client-side session management | **11** | 6 checks |
 | 📝 **AUDITOR** | Logging & Monitoring | Verbose logging, lack of audit trails, missing security contacts | **8** | 4 checks |
 | 🏗️ **ARCHITECT** | Infrastructure | Dockerfile practices, IaC misconfigurations, root privileges | **8** | 5 checks |
+| 🧠 **CURATOR** | AI Evidence Synthesis | Reviews the nine specialist returns and prioritizes the user brief | **Non-scoring** | Post-evidence curation |
 | **Total** | | | **100** | **59 checks** |
 
 The table above is the native score model and is unchanged. The CLI's additional **ALIGNMENT** agent examines repository instructions and operational surfaces used by coding agents—for example conflicting policy, destructive commands, secret-exposure directions, prompt-injection-like instructions, and risky workflow permissions. ALIGNMENT has its own score and grade and is not added to the 100 native points.
+
+In the **Agent CLI**, the same nine specialist names are available as interactive personas. Each persona has a dedicated system prompt, domain-restricted tool set, and default mode (plan or build). The orchestrator can classify goals and fan out tasks to the relevant specialists concurrently using the swarm coordinator.
 
 ### External feeders
 
@@ -231,6 +284,29 @@ Applicability is evaluated before availability: OSV-Scanner requires a supported
                                       v
                 cerberus.report/2 + HTML + SARIF + feeder JSON
                    native score | alignment | feeders | policy
+
+
+              ┌────────────────────────────────────────────────┐
+              │            Agent CLI Workbench                 │
+              │  Pollinations / OpenAI-compatible provider     │
+              │  ┌─────────┐  ┌────────┐  ┌──────────────┐   │
+              │  │  REPL   │  │Ink TUI │  │ Headless run │   │
+              │  └────┬────┘  └───┬────┘  └──────┬───────┘   │
+              │       └───────────┼───────────────┘           │
+              │                   v                           │
+              │          AgentLoop (tool loop)                │
+              │          9 persona prompts                    │
+              │          CerberusSwarm (fan-out)              │
+              │          ToolRegistry (20+ tools)             │
+              │          Session persistence                  │
+              └────────────────────────────────────────────────┘
+
+              ┌────────────────────────────────────────────────┐
+              │       Cloudflare Workers (GitHub App)          │
+              │  GitHub OAuth · D1 database · Webhooks         │
+              │  Scan-grounded conversations · Change sets     │
+              │  Draft PR creation · Installation sync         │
+              └────────────────────────────────────────────────┘
 ```
 
 - **[`checks.json`](checks.json)** remains the single source of truth for native checks and scoring. Feeder adapters and ALIGNMENT are additive CLI orchestration layers; they do not change the browser scanner or silently affect the native score.
@@ -238,6 +314,8 @@ Applicability is evaluated before availability: OSV-Scanner requires a supported
 - **[`examine.py`](examine.py)** parses the same rules and evaluates them locally.
 - **[`alignment.py`](alignment.py)** performs bounded, read-only analysis of coding-agent policies, operational scripts, project metadata, and GitHub Actions workflows.
 - **[`feeders/`](feeders/)** contains the fixed registry, safe subprocess runner, normalization utilities, and five Phase 1 adapters.
+- **[`servers/`](servers/)** is the agent CLI runtime — entry point ([`cli.py`](servers/cli.py)), agent loop, swarm coordinator, 9 persona prompt files, 20+ tool implementations, Textual TUI, Rich console UI, config system, session store, auth/login, and provider client.
+- **[`workers/github-auth/`](workers/github-auth/)** is the Cloudflare Workers backend — GitHub OAuth, App installation, scan-grounded conversations, change sets, draft PR creation, and webhook sync.
 - **[`scripts/generate-checks-docs.py`](scripts/generate-checks-docs.py)** compiles the JSON catalog into customer-facing markdown files (`docs/scanner-checks.md`) and HTML sites (`documentation/checks.html`).
 
 ---
@@ -330,7 +408,7 @@ python3 examine.py . --feeders auto --json /tmp/cerberus-full.json --no-color
 git diff --check
 ```
 
-The test suite covers registry behavior, applicability, unavailable tools, timeouts, malformed output, exit codes, normalization, redaction, fingerprint stability, deduplication, report rendering, CLI modes, ALIGNMENT rules, workflow checks, and scanner-checkout exclusion.
+The test suite covers registry behavior, applicability, unavailable tools, timeouts, malformed output, exit codes, normalization, redaction, fingerprint stability, deduplication, report rendering, CLI modes, ALIGNMENT rules, workflow checks, scanner-checkout exclusion, agent loop behavior, swarm coordination, TUI markup, console output, slash commands, approval tiers, LSP/MCP stubs, and scan context.
 
 ### Current limitations
 
@@ -340,27 +418,36 @@ The test suite covers registry behavior, applicability, unavailable tools, timeo
 - Scorecard may require repository metadata, credentials, or network access that are unavailable in restricted environments.
 - ALIGNMENT is contextual static analysis and can produce false positives in documentation, fixtures, or quoted unsafe examples.
 - The combined policy result is report data. It does not implicitly replace the native `--fail-under` exit gate; `--strict-feeders` additionally fails on unavailable or failed requested feeders.
+- The cloud agent runs over Pollinations and is subject to model availability and rate limits.
 
 ---
 
 ## Repository Structure
 
 * [index.html](index.html) — The research homepage with three framed, full-bleed details from the Cerberus engraving and titles overlaid on the images.
-* [agent.html](agent.html) — The browser scanner, progress view, and interactive report.
+* [agent.html](agent.html) — The browser scanner, progress view, interactive report, GitHub App integration, and scan-grounded conversation UI.
+* [assistant-eyes.html](assistant-eyes.html) — Hermes voice assistant interface — animated eye tracking, speech-to-text input, configurable LAN bridge connection.
 * [releases.html](releases.html) — Compact, stackable release list with collapsible install blocks and status badges.
 * [shop.html](shop.html) — Pre-order reservation page (email only, $0 due today).
 * [cerberus-classic.html](cerberus-classic.html) — The legacy static HTML scanner page.
+* [cerberus-report.html](cerberus-report.html) — Sample standalone HTML report (dark/light mode, interactive).
 * [examine.py](examine.py) — The Python CLI, native report builder, orchestration entry point, and JSON/HTML/SARIF renderer.
 * [alignment.py](alignment.py) — Native repository and coding-agent alignment analyzer.
 * [feeders/](feeders/) — Phase 1 external-tool adapters, registry, runner, and normalization contract.
-* [checks.json](checks.json) — Native check catalog and scoring source of truth.
+* [servers/](servers/) — **Agent CLI runtime**: entry point (`cli.py`), commands, config system, session store, auth/login, provider client, agent loop, swarm coordinator, 9 persona prompts, 20+ tool implementations (file I/O, search, edit, bash, git, web, LSP, MCP, PR creation), and UI (Rich console, Textual TUI, narration, summarization).
+* [workers/](workers/) — **Cloudflare Workers**: GitHub OAuth, App installation, D1-backed conversations, change sets, draft PR creation, webhook sync.
+* [npm/](npm/) — `cerberus-agent` npm package — Node.js launcher that bootstraps the Python CLI.
+* [checks.json](checks.json) — Native check catalog and scoring source of truth (59 checks across 9 agents).
+* [pyproject.toml](pyproject.toml) — Python packaging with `cerberus` console entry point and `agent` extra.
 * [logo.png](logo.png) — The official Cerberus Labs logo.
-* [assets/](assets/) — Scanner scripts, the original engraving, social preview, shared `site.css`, Agent styling in `agent-polish.css`, and legacy-route forwarding in `home.js`.
+* [assets/](assets/) — Scanner scripts (`scanner.js`, `checks.js`), agent UI (`agent.js`, `agent.css`), the original engraving, social preview, shared `site.css`, concept art, and legacy-route forwarding (`home.js`).
 * [documentation/](documentation/) — Static documentation site.
-* [docs/](docs/) — Scanner catalog, examination specification, GitHub Actions guide, product documentation, and compliance material.
-* [scripts/](scripts/) — Check asset builders, documentation generation, and the browser scanner integration harness.
-* [tests/](tests/) — Native engine, feeder, ALIGNMENT, CLI mode, orchestration, SARIF, HTML, and safety tests.
+* [docs/](docs/) — Scanner catalog, examination specification, agent architecture, GitHub Actions guide, product documentation, roadmap, and compliance material.
+* [scripts/](scripts/) — Check asset builders, documentation generation, and browser scanner integration harness.
+* [tests/](tests/) — Native engine, feeder, ALIGNMENT, CLI mode, orchestration, agent loop, swarm, TUI, console, commands, approvals, LSP/MCP, SARIF, HTML, and safety tests.
 * [.github/workflow-templates/cerberus-security-review.yml](.github/workflow-templates/cerberus-security-review.yml) — Pinned native-first CI review template with optional feeders.
+* [HERMES_INTERFACE_SETUP_PROMPT.md](HERMES_INTERFACE_SETUP_PROMPT.md) — Setup instructions for the Hermes voice-interface HTTP bridge.
+* [team.md](team.md) — Founding team roles, equity structure, and governance.
 
 ---
 
