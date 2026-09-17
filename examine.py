@@ -1533,6 +1533,16 @@ class _Handler(SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; "
+            "img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; "
+            "object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        )
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        # No HSTS here: this is a DEV-ONLY loopback HTTP server; HSTS must
+        # only be emitted by the HTTPS production edge.
         super().end_headers()
 
 

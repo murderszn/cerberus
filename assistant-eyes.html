@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http: https: ws: wss:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
   <meta name="theme-color" content="#ffd400">
   <title>Hermes — Voice Assistant</title>
   <style>
@@ -433,13 +434,15 @@
       thinkingTimer = undefined;
     }
 
+    // Ephemeral per-page-load correlation ID only — never persisted to Web
+    // Storage. Server-issued Secure; HttpOnly; SameSite cookies own auth.
+    let cachedSessionId = null;
     function sessionId() {
-      let id = localStorage.getItem('hermes.session');
-      if (!id) {
-        id = crypto.randomUUID ? crypto.randomUUID() : `web-${Date.now()}`;
-        localStorage.setItem('hermes.session', id);
+      if (!cachedSessionId) {
+        cachedSessionId = crypto.randomUUID ? crypto.randomUUID() : `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        try { localStorage.removeItem('hermes.session'); } catch (_) {}
       }
-      return id;
+      return cachedSessionId;
     }
 
     function extractReply(payload) {
@@ -460,6 +463,7 @@
       try {
         const response = await fetch(endpointInput.value.trim(), {
           method: 'POST',
+          credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message, sessionId: sessionId() })
         });
