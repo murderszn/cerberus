@@ -27,7 +27,7 @@ dependencies = []
 # and never needs these.
 agent = [
   "httpx>=0.28.1",
-  "rich>=13.7",
+  "rich>=15.0.0",
   "pyyaml>=6.0.3",
   "prompt_toolkit>=3.0.53",
   "beautifulsoup4>=4.15.0",
