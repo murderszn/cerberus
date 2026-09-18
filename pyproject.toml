@@ -26,7 +26,7 @@ dependencies = []
 # deterministic scanner (`cerberus scan` / examine.py) stays stdlib-only
 # and never needs these.
 agent = [
-  "httpx>=0.27",
+  "httpx>=0.28.1",
   "rich>=13.7",
   "pyyaml>=6.0.3",
   "prompt_toolkit>=3.0",

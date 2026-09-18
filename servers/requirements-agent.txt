@@ -1,7 +1,7 @@
 # Agent-runtime dependencies for cerberus/servers/ (the LLM CLI).
 # The deterministic scanner (examine.py) stays stdlib-only and MUST NOT
 # depend on anything listed here. Install only when using `cerberus agent`.
-httpx>=0.27
+httpx>=0.28.1
 rich>=13.7
 pyyaml>=6.0.3
 prompt_toolkit>=3.0
