@@ -6,6 +6,7 @@
 <title>Reading Reports — Cerberus Documentation</title>
 <meta name="description" content="How to read a Cerberus report: check states, the executive score, per-agent breakdown, findings, and coverage metadata.">
 <link rel="stylesheet" href="assets/docs.css">
+<link rel="stylesheet" href="../assets/finish.css?v=20260917-1">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute"><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
@@ -40,6 +41,7 @@
     <a class="sidebar-link" href="agents.html">Agent Swarm</a>
     <a class="sidebar-link" href="checks.html">Check Catalog</a>
     <a class="sidebar-link" href="scoring.html">Severity & Scoring</a>
+    <a class="sidebar-link" href="jev.html">Jev Triage</a>
 
     <div class="sidebar-title">Report Topics</div>
     <a class="sidebar-link" href="#summary">Executive Summary</a>
@@ -92,6 +94,7 @@
       <li><strong>alignment</strong> contains a separate score, grade, counts, and findings for repository and coding-agent policy.</li>
       <li><strong>feeders</strong> summarizes <code>completed</code>, <code>not_applicable</code>, <code>unavailable</code>, and <code>failed</code> tools and preserves per-tool provenance.</li>
       <li><strong>policy</strong> records combined blockers and warnings. Critical evidence or at least two high findings fails the default policy; optional missing tools warn, while strict requested-tool failures block.</li>
+      <li><strong>triage</strong> appears only on opt-in Jev runs: an advisory <code>cerberus.triage/1</code> review queue that never changes native scores. See <a href="jev.html">Jev Triage</a>.</li>
     </ul>
     <p>The combined policy is visible report data. It does not implicitly replace the native <code>--fail-under</code> exit gate.</p>
 
@@ -168,6 +171,6 @@
   </div>
 </footer>
 
-<script src="assets/docs.js"></script>
+<script src="assets/docs.js?v=20260917-1"></script>
 </body>
 </html>

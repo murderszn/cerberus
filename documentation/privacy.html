@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub Account Privacy — Cerberus Labs</title>
+<meta name="description" content="How Cerberus handles GitHub identity, verified email, sessions, and repository scan credentials.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="assets/privacy.css">
+<link rel="stylesheet" href="../assets/finish.css?v=20260917-1">
+</head>
+<body class="privacy-page">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header">
+  <a href="../index.html" class="brand-link" aria-label="Cerberus Labs home"><img src="../logo.png" alt="Cerberus Labs" class="nav-logo"></a>
+  <nav class="site-nav" aria-label="Primary">
+    <a href="../index.html">Home</a>
+    <a href="../agent.html">Cerberus Agent</a>
+    <a href="../releases.html">Releases</a>
+    <a href="../shop.html">Shop</a>
+    <a href="index.html">Docs</a>
+    <a href="https://github.com/murderszn/cerberus" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+  </nav>
+</header>
+
+<main id="main-content" class="privacy-main">
+  <article class="privacy-card">
+    <p class="eyebrow">Account &amp; data</p>
+    <h1>GitHub account privacy</h1>
+    <p class="privacy-lead">A plain-language record of what Cerberus receives, what it keeps, and what signing out changes.</p>
+
+    <section>
+      <h2>Identity data</h2>
+      <p>When you sign in with GitHub, Cerberus stores your GitHub user ID, username, verified primary email address, and the time your account was updated. These records identify your Cerberus account. Your public GitHub profile email is not used as proof of a verified email address.</p>
+    </section>
+
+    <section>
+      <h2>OAuth credentials</h2>
+      <p>Account records are stored in the deployment operator's Cloudflare D1 database and remain after logout. Cerberus uses your GitHub access token on the server to retrieve your identity and email. It does not save that token or send it to the browser.</p>
+    </section>
+
+    <section>
+      <h2>Sessions</h2>
+      <p>A secure, HttpOnly cookie keeps you signed in for seven days. The database stores a hash of this session identifier. Signing out invalidates the current session. Expired sessions and temporary ten-minute sign-in records are removed by a daily cleanup job.</p>
+    </section>
+
+    <section>
+      <h2>Repository access</h2>
+      <p>Account sign-in does not grant repository access. You separately choose repositories when installing the Cerberus GitHub App. Cerberus stores the installation ID and basic repository metadata, then creates short-lived, repository-scoped installation tokens only when it needs to read files or create an approved draft pull request. You can remove this access from GitHub at any time.</p>
+      <p>Public scans continue to use GitHub's public API. If you manually enter a personal access token for scanning, it is stored separately in this browser tab's session storage until removed or the tab is closed, and is sent directly to GitHub.</p>
+    </section>
+
+    <section>
+      <h2>Agent conversations and proposed changes</h2>
+      <p>For repository-aware agent sessions, Cerberus stores the scan report, your conversation messages, model responses, the pinned commit, and proposed file changes. Prompts and the repository files the agent reads are sent to the configured Pollinations model so it can reason about the request. Proposed changes remain reviewable in Cerberus. The app creates a branch and draft pull request only after you separately approve the complete change set.</p>
+    </section>
+
+    <section>
+      <h2>Account deletion</h2>
+      <p>Contact the operator of the Cerberus deployment you use to request account deletion. Operators can delete the account and its sessions using the documented account maintenance procedure.</p>
+    </section>
+
+    <a class="privacy-return" href="../agent.html"><span aria-hidden="true">←</span> Return to Cerberus Agent</a>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <a href="../index.html">Cerberus Labs</a>
+  <span>Open research. Observable security.</span>
+  <span>© 2026</span>
+</footer>
+</body>
+</html>

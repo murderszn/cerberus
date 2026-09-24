@@ -1430,7 +1430,39 @@ def color(s, code, enabled):
     return f"\033[{code}m{s}\033[0m"
 
 
-def print_terminal(report, quiet, use_color, severity_min, only_agents):
+def resolve_color(args):
+    """Decide ANSI output. Precedence: --no-color > --color > env > TTY."""
+    if args.no_color:
+        return False
+    mode = getattr(args, "color", "auto")
+    if mode == "never":
+        return False
+    if mode == "always":
+        return True
+    if os.environ.get("NO_COLOR") is not None:
+        return False
+    if os.environ.get("CLICOLOR") == "0":
+        return False
+    return sys.stdout.isatty()
+
+
+def term_rule(char="=", fallback=60):
+    try:
+        width = shutil.get_terminal_width().columns
+    except Exception:
+        width = fallback
+    return char * max(20, min(width, fallback))
+
+
+def dash():
+    try:
+        "—".encode(sys.stdout.encoding or "utf-8")
+        return "—"
+    except Exception:
+        return "-"
+
+
+def print_terminal(report, quiet, use_color, severity_min, only_agents, limit=5):
     def c(s, code):
         return color(s, code, use_color)
 
@@ -1439,9 +1471,9 @@ def print_terminal(report, quiet, use_color, severity_min, only_agents):
         return
 
     target = report["target"]
-    print(c("=" * 60, "90"))
-    print(f"CERBERUS — {target.get('display', '')}")
-    print(c("=" * 60, "90"))
+    print(c(term_rule(), "90"))
+    print(f"CERBERUS {dash()} {target.get('display', '')}")
+    print(c(term_rule(), "90"))
     score = report["score"]
     grade = report["grade"]
     score_code = "92" if score >= 80 else "93" if score >= 60 else "91"
@@ -1464,6 +1496,8 @@ def print_terminal(report, quiet, use_color, severity_min, only_agents):
         print(f"  {agent['name']:<12} {agent['score']:>5.1f} / {agent['weight']:<4} {agent['domain']}")
     print()
     print(c("Failed checks:", "1"))
+    if severity_min != "low":
+        print(f"  (showing {severity_min} and above)")
     any_failed = False
     for agent in report["agents"]:
         if only_agents and agent["id"] not in only_agents:
@@ -1483,10 +1517,11 @@ def print_terminal(report, quiet, use_color, severity_min, only_agents):
             )
             if check.get("reason"):
                 print(f"      {check['reason']}")
-            for fnd in check["findings"][:5]:
+            shown = check["findings"][:limit] if limit else []
+            for fnd in shown:
                 print(f"      {fnd['path']}:{fnd['line']}  {fnd['snippet']}")
-            if check["totalFindings"] > 5:
-                print(f"      ... and {check['totalFindings'] - 5} more")
+            if check["totalFindings"] > len(shown):
+                print(f"      ... and {check['totalFindings'] - len(shown)} more")
     if not any_failed:
         print("  (none at or above severity threshold)")
     if report["notes"]:
@@ -1561,7 +1596,16 @@ def run_dev_server(catalog, port=8080):
 # --------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Cerberus security scanner (CLI)")
+    parser = argparse.ArgumentParser(
+        description="Cerberus security scanner (CLI)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="examples:\n"
+               "  %(prog)s . --native-only\n"
+               "  %(prog)s owner/repo --json report.json --fail-under 80\n"
+               "  %(prog)s . --feeders auto --feeder-timeout 120\n"
+               "  %(prog)s . --only sentinel,vault --severity high",
+    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {ENGINE_VERSION}")
     parser.add_argument("target", nargs="?", default=".",
                          help="Local directory, GitHub URL, or owner/repo")
     parser.add_argument("--json", help="Write the full Report JSON to this path")
@@ -1589,6 +1633,15 @@ def main():
                          help="Minimum severity to show in the terminal summary")
     parser.add_argument("--quiet", action="store_true", help="Only print the final score line")
     parser.add_argument("--no-color", action="store_true", help="Disable ANSI colour output")
+    parser.add_argument("--color", default="auto",
+                         choices=["auto", "always", "never"],
+                         help="ANSI colour mode (default: auto; honors NO_COLOR and CLICOLOR)")
+    parser.add_argument("--progress", action="store_true",
+                         help="Show scan phase progress on stderr (default: on when stderr is a TTY)")
+    parser.add_argument("--no-progress", action="store_true",
+                         help="Hide scan phase progress")
+    parser.add_argument("--limit", type=int, default=5,
+                         help="Max findings shown per failed check in the terminal summary (default: 5)")
     parser.add_argument("--serve", action="store_true",
                          help="Start a dev-only static file server on 127.0.0.1 (drops scanning)")
     parser.add_argument("--port", type=int, default=8080, help="Port for --serve")
@@ -1596,6 +1649,10 @@ def main():
 
     if args.feeder_timeout <= 0:
         parser.error("--feeder-timeout must be greater than zero")
+    if args.fail_under is not None and not 0 <= args.fail_under <= 100:
+        parser.error("--fail-under must be between 0 and 100")
+    if args.limit is not None and args.limit < 0:
+        parser.error("--limit must be zero or greater")
     if args.native_only and str(args.feeders).lower() not in ("none", "off", ""):
         parser.error("--native-only cannot be combined with enabled --feeders")
     try:
@@ -1616,13 +1673,21 @@ def main():
         valid_ids = {a["id"] for a in catalog["agents"]}
         unknown = only_agents - valid_ids
         if unknown:
-            print(f"error: unknown agent id(s) in --only: {', '.join(sorted(unknown))}",
+            print(f"error: unknown agent id(s) in --only: {', '.join(sorted(unknown))} "
+                  f"(valid: {', '.join(sorted(valid_ids))})",
                   file=sys.stderr)
             sys.exit(2)
 
     notes = []
     tmp_root = None
     token = os.environ.get("GITHUB_TOKEN")
+
+    show_progress = (not args.quiet and not args.no_progress
+                     and (args.progress or sys.stderr.isatty()))
+
+    def phase(msg):
+        if show_progress:
+            print(f"cerberus: {msg}", file=sys.stderr)
 
     try:
         parsed = parse_target(args.target)
@@ -1669,8 +1734,10 @@ def main():
                 },
             }
 
+        phase(f"scanning {target_info['display_block']['display']}")
         report = build_report(catalog, target_info, root_dir, repo_meta, only_agents, notes)
         if args.native_only:
+            phase("skipping alignment and feeders (--native-only)")
             alignment_result = {
                 "schema": "cerberus.alignment/1",
                 "agent": {"id": "alignment", "name": "ALIGNMENT",
@@ -1682,9 +1749,12 @@ def main():
             feeder_results = []
         else:
             from alignment import analyze_alignment
+            phase("running alignment review")
             alignment_result = analyze_alignment(root_dir)
             if feeder_selection:
                 from feeders import run_feeders
+                phase(f"running {len(feeder_selection)} feeder(s) "
+                      f"(timeout {args.feeder_timeout:g}s each)")
                 feeder_results = run_feeders(
                     root_dir, feeder_selection, args.feeder_timeout, target_info
                 )
@@ -1702,27 +1772,28 @@ def main():
         if tmp_root:
             shutil.rmtree(tmp_root, ignore_errors=True)
 
-    use_color = sys.stdout.isatty() and not args.no_color
-    print_terminal(report, args.quiet, use_color, args.severity, only_agents)
+    use_color = resolve_color(args)
+    print_terminal(report, args.quiet, use_color, args.severity, only_agents,
+                   limit=args.limit)
 
     if args.json:
         with open(args.json, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
         if not args.quiet:
-            print(f"\nJSON report written to {args.json}")
+            print(f"JSON report written to {args.json}", file=sys.stderr)
 
     if args.html:
         with open(args.html, "w", encoding="utf-8") as f:
             f.write(render_html(report))
         if not args.quiet:
-            print(f"HTML report written to {args.html}")
+            print(f"HTML report written to {args.html}", file=sys.stderr)
 
     if args.sarif:
         sarif = render_sarif(report)
         with open(args.sarif, "w", encoding="utf-8") as f:
             json.dump(sarif, f, indent=2)
         if not args.quiet:
-            print(f"SARIF report written to {args.sarif}")
+            print(f"SARIF report written to {args.sarif}", file=sys.stderr)
 
     if args.feeder_json:
         feeder_bundle = report.get("feeders", {
@@ -1733,23 +1804,37 @@ def main():
         with open(args.feeder_json, "w", encoding="utf-8") as f:
             json.dump(feeder_bundle, f, indent=2)
         if not args.quiet:
-            print(f"Feeder report written to {args.feeder_json}")
+            print(f"Feeder report written to {args.feeder_json}", file=sys.stderr)
 
     if args.fail_under is not None and report["score"] < args.fail_under:
+        print(f"cerberus: FAIL score {report['score']} < --fail-under={args.fail_under}",
+              file=sys.stderr)
         sys.exit(1)
     if args.fail_on is not None:
         threshold = SEVERITY_ORDER[args.fail_on]
         sev_counts = report.get("counts", {}) or {}
-        if any(sev_counts.get(sev, 0) > 0 and SEVERITY_ORDER[sev] >= threshold
-               for sev in SEVERITY_ORDER):
+        worst = next((sev for sev in SEVERITY_ORDER
+                      if sev_counts.get(sev, 0) > 0 and SEVERITY_ORDER[sev] >= threshold),
+                     None)
+        if worst is not None:
+            print(f"cerberus: FAIL {sev_counts[worst]} {worst} finding(s) "
+                  f"at or above --fail-on={args.fail_on}", file=sys.stderr)
             sys.exit(1)
     if args.strict_feeders and any(
         tool.get("status") in ("failed", "unavailable")
         for tool in report.get("feeders", {}).get("tools", [])
     ):
+        print("cerberus: FAIL feeder(s) failed or unavailable (--strict-feeders)",
+              file=sys.stderr)
         sys.exit(1)
     sys.exit(0)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BrokenPipeError:
+        sys.exit(0)
+    except KeyboardInterrupt:
+        print("\ncerberus: interrupted", file=sys.stderr)
+        sys.exit(130)

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jev Triage — Cerberus Documentation</title>
+<meta name="description" content="Opt-in Jev file triage for Cerberus: setup, CLI and Python usage, live browser preview, reading the advisory review queue, and contract limits.">
+<link rel="stylesheet" href="assets/docs.css">
+<link rel="stylesheet" href="../assets/finish.css?v=20260917-1">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol></svg>
+
+<header class="docs-header">
+  <nav class="left">
+    <a class="brand-mini" href="../index.html">
+      <img src="../logo.png" alt="Cerberus Labs" class="brand-logo">
+      <span>Cerberus Labs</span>
+    </a>
+    <a class="nav-link" href="../agent.html">Cerberus Agent</a>
+  </nav>
+  <nav class="right">
+    <form class="search-form" onsubmit="return false">
+      <svg class="search-icon"><use href="#i-search"/></svg>
+      <input class="search-input" placeholder="Search docs…" aria-label="Search docs">
+    </form>
+    <a class="nav-link" href="../agent.html#/report/oso95/scroll-world">Sample Report</a>
+    <button class="menu-toggle" aria-label="Open menu">☰</button>
+  </nav>
+</header>
+
+<div class="docs-shell">
+  <aside class="docs-sidebar">
+    <div class="sidebar-title">Get Started</div>
+    <a class="sidebar-link" href="index.html">Overview</a>
+    <a class="sidebar-link" href="quickstart.html">Quickstart</a>
+    <a class="sidebar-link" href="scanner.html">CLI Scanner</a>
+    <a class="sidebar-link" href="reports.html">Reading Reports</a>
+
+    <div class="sidebar-title">Architecture</div>
+    <a class="sidebar-link" href="agents.html">Agent Swarm</a>
+    <a class="sidebar-link" href="checks.html">Check Catalog</a>
+    <a class="sidebar-link" href="scoring.html">Severity & Scoring</a>
+    <a class="sidebar-link active" href="jev.html">Jev Triage</a>
+
+    <div class="sidebar-title">Jev Topics</div>
+    <a class="sidebar-link" href="#setup">Setup</a>
+    <a class="sidebar-link" href="#cli">CLI Usage</a>
+    <a class="sidebar-link" href="#python">Python Usage</a>
+    <a class="sidebar-link" href="#reading">Reading Triage</a>
+    <a class="sidebar-link" href="#live">Live Preview</a>
+    <a class="sidebar-link" href="#limits">Contract & Limits</a>
+
+    <div class="sidebar-title">Support</div>
+    <a class="sidebar-link" href="faq.html">FAQ</a>
+    <a class="sidebar-link" href="security.html">Security & Privacy</a>
+  </aside>
+
+  <main class="docs-content">
+    <h1>Jev Triage</h1>
+    <p class="lead">Jev is an opt-in, file-level risk triage powered by TypeSafe's Jev API. It ranks which files deserve human review first. Normal Cerberus scans never invoke Jev — it runs only when you call it explicitly.</p>
+
+    <div class="callout warning">
+      <div class="callout-title">Opt-in: source leaves your machine</div>
+      <p>Running triage sends eligible, redacted source files to TypeSafe and may incur API charges. Only triage repositories you are authorized to share. Filename exclusions and redaction are best-effort — review the code and provider policies first.</p>
+    </div>
+
+    <h2 id="setup">Setup</h2>
+    <p>Set <code>JEV_API_KEY</code> in your environment, or add <code>JEV_API_KEY</code> / <code>jev_api_key</code> to the current directory's <code>.env</code> file (do not commit it). Environment values take precedence; the CLI reads literal values without executing shell expressions. Optionally set <code>GITHUB_TOKEN</code> for private repositories or higher GitHub rate limits.</p>
+    <pre><code>JEV_API_KEY=your-key-here
+# optional, for private repos / rate limits
+GITHUB_TOKEN=your-github-token</code></pre>
+
+    <h2 id="cli">CLI usage</h2>
+    <pre><code>python -m servers.jev https://github.com/owner/repo \
+  --criteria vulnerabilities "quality issues" maintainability &gt; triage.json</code></pre>
+    <p>The default criteria are <code>vulnerabilities</code>, <code>quality issues</code>, and <code>maintainability</code> (at most 10 criteria, each ≤200 characters). The command pins the repository's default branch to its immutable commit, evaluates up to 100 eligible files, and prints a report object whose <code>triage.files</code> list is already sorted in review order. To run the mocked test suite (no credentials or network needed):</p>
+    <pre><code>python -m unittest discover -s tests -p 'test_jev.py'</code></pre>
+
+    <h2 id="python">Python usage</h2>
+    <pre><code>import os
+from servers.jev import integrate_jev_with_cerberus, integrate_with_cerberus
+
+files = integrate_jev_with_cerberus(
+    "https://github.com/owner/repo",
+    {"api_key": os.environ["JEV_API_KEY"],
+     "api_endpoint": "https://api.typesafe.ai/v1/systemone"},
+    ["vulnerabilities", "quality issues", "maintainability"],
+)
+# Optionally attach to an existing Cerberus report for the SAME commit:
+integrate_with_cerberus(files, report=cerberus_report)</code></pre>
+    <p><code>integrate_with_cerberus</code> attaches <code>cerberus.triage/1</code> under <code>report["triage"]</code> with <code>analyzed</code> / <code>skipped</code> counts. It raises if the triage commit does not match the report's commit. The conversational scan digest includes this advisory queue; native scores, findings, SARIF, and policy gates are unchanged.</p>
+
+    <h2 id="reading">Reading triage results</h2>
+    <p>Each assessed file carries its path, a commit-pinned URL, status, priority, <code>riskScore</code>, per-criterion <code>potentialRisks</code>, and <code>requiresReview</code> (always <code>true</code> — every result needs review).</p>
+    <ul>
+      <li><strong>riskScore</strong> is 100 × the maximum concern probability. It is <em>not</em> a vulnerability severity or a Cerberus security score.</li>
+      <li><strong>Priorities:</strong> <code>high</code> starts at 0.7, <code>medium</code> at 0.4, otherwise <code>low</code>. All assessed files keep every criterion's probability, even below those thresholds.</li>
+      <li><strong>Skipped files</strong> follow with <code>unassessed</code> priority, a null score, and an explicit reason (<code>cerberusignore</code>, <code>file_size_limit</code>, <code>file_count_limit</code>, <code>unsupported_file_type</code>, <code>generated_or_dependency</code>, <code>sensitive_filename</code>, <code>non_text_or_oversized</code>, …). They are not declared safe.</li>
+      <li><strong>Sort order</strong> is descending <code>riskScore</code> with path as tie-breaker.</li>
+    </ul>
+    <div class="callout info">
+      <div class="callout-title">Verify before you fix</div>
+      <p>Jev produces no finding descriptions or line-level evidence here. Treat priorities as a review queue: native scanners and specialists must verify each concern before remediation.</p>
+    </div>
+
+    <h2 id="live">Live browser preview</h2>
+    <p>From the repository root, run <code>python3 -m servers.jev_live</code> alongside the static preview at <code>http://127.0.0.1:8765/agent.html</code>. The bridge listens only on loopback port 8766, loads the Jev key from <code>.env</code>, serves no files, and accepts only JSON POSTs from the exact localhost preview origins — keys are never returned to the browser. Only one triage runs at a time.</p>
+    <p>Select <strong>Jev · Live file intelligence</strong> before starting a scan. Native checks run first; Jev then uses the native report's exact commit. Real streamed events update the candidate file map and high/medium/low review lanes. Select a tile to inspect category probabilities; select it again to return to following the latest file. After completion, select <strong>Open security report</strong> — advisory triage is included in the report JSON. Cancellation stops the client stream and the server stops at the next event write, although an in-flight API request may still complete and be billed. Errors leave the native report available and never mark partial triage as completed.</p>
+    <p>The local agent screen also offers <strong>Generate with Pollinations</strong> after opening the report: a bounded summary of native findings, the exact commit, and up to 20 assessed Jev file priorities is sent to Pollinations through the same loopback bridge (using the Cerberus saved credential or <code>POLLINATIONS_API_KEY</code>). It runs only when selected and never alters the native score. The hosted page shows the option as unavailable — production needs a separately authenticated, quota-limited bridge; the local key is never uploaded or embedded into public assets.</p>
+
+    <h2 id="limits">Contract & limits</h2>
+    <p>The <a href="https://docs.typesafe.ai/api">documented API</a> uses POST <code>/v1/systemone</code> with Bearer [REDACTED] authentication, <code>model</code>, <code>state</code>, and typed <code>questions</code>; answers are read from <code>answers</code>. Each file is sent as one state with independent Noul questions per criterion. Only the fixed endpoint <code>https://api.typesafe.ai/v1/systemone</code> is accepted — custom endpoints are rejected to prevent credential/source exfiltration (<code>api_secret</code> is accepted in the credentials dictionary but never transmitted).</p>
+    <ul>
+      <li>At most 100 eligible files, 64 KiB each, selected in path order with no per-file truncation. Selection is bounded, not risk-ranked in advance.</li>
+      <li>Source/config extensions are allowlisted. Binaries, symlinks, submodules, common generated/dependency folders, and sensitive filenames are excluded.</li>
+      <li>Root <code>.cerberusignore</code> supports case-sensitive path globs and directory prefixes; bare names match at any depth (no gitignore negation).</li>
+      <li>Truncated GitHub inventories fail explicitly. Private repositories require a GitHub token; credentials never appear in result objects.</li>
+      <li>HTTPS endpoints are fixed; redirects are rejected; responses are bounded; requests time out after 30 seconds. Rate-limit/overload errors retry at most twice with exponential backoff — retries can consume additional quota. Other failures abort the run with no misleading partial-success result.</li>
+      <li>Redaction may remove context and reduce model accuracy. File-local analysis cannot see cross-file flows and cannot certify repository safety.</li>
+    </ul>
+
+    <div class="callout tip">
+      <div class="callout-title">Full specification</div>
+      <p>See <code>docs/JEV_INTEGRATION.md</code> in the repository for the complete integration contract.</p>
+    </div>
+  </main>
+</div>
+
+<footer class="docs-footer">
+  <div class="inner">
+    <span>Cerberus Labs 2026</span>
+  </div>
+</footer>
+
+<script src="assets/docs.js?v=20260917-1"></script>
+</body>
+</html>

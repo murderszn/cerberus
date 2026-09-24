@@ -122,7 +122,7 @@ PAGE_FOOTER = '''</main>
   </div>
 </footer>
 
-<script src="assets/docs.js"></script>
+<script src="assets/docs.js?v=20260917-1"></script>
 </body>
 </html>
 '''
@@ -181,6 +181,7 @@ def build_checks_html():
 <title>Check Catalog — Cerberus Documentation</title>
 <meta name="description" content="The complete Cerberus check catalog: {total} checks across nine agent domains, generated directly from checks.json.">
 <link rel="stylesheet" href="assets/docs.css">
+<link rel="stylesheet" href="../assets/finish.css?v=20260917-1">
 </head>
 <body>
 {HEADER_SVG}

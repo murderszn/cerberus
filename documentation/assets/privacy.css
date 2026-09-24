@@ -1,0 +1,117 @@
+.privacy-page {
+  min-height: 100vh;
+  color: var(--ink);
+  background-color: #fff;
+  background-image: url('../../assets/cerberus-stipple.png');
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.privacy-page .site-header {
+  background: rgba(255, 255, 255, .88);
+}
+
+.privacy-main {
+  width: min(1155px, 100%);
+  margin: 0 auto;
+  padding: 56px 29px 72px;
+}
+
+.privacy-card {
+  width: min(760px, 100%);
+  padding: 42px 46px 45px;
+  border: 2px solid var(--ink);
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 7px 7px 0 var(--ink);
+  backdrop-filter: blur(5px);
+}
+
+.privacy-card .eyebrow {
+  margin: 0 0 13px;
+}
+
+.privacy-card h1 {
+  max-width: 16ch;
+  margin: 0 0 18px;
+  font: 400 clamp(20px, 3vw, 31px)/1.55 var(--font-pixel);
+  letter-spacing: -.045em;
+  text-transform: uppercase;
+}
+
+.privacy-lead {
+  max-width: 58ch;
+  margin: 0 0 35px;
+  color: var(--muted);
+  font: 500 14px/1.85 var(--font-mono);
+}
+
+.privacy-card section {
+  padding: 23px 0 21px;
+  border-top: 1px solid var(--rule);
+}
+
+.privacy-card h2 {
+  margin: 0 0 9px;
+  font: 700 11px/1.6 var(--font-mono);
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.privacy-card section p {
+  margin: 0;
+  color: #34343a;
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.privacy-return {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 11px 14px;
+  border: 2px solid var(--ink);
+  background: #fff;
+  box-shadow: 3px 3px 0 var(--ink);
+  font: 700 10px/1.5 var(--font-mono);
+  letter-spacing: .035em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.privacy-return:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.privacy-page .site-footer {
+  background: rgba(255, 255, 255, .9);
+  padding-left: 17px;
+  padding-right: 17px;
+}
+
+@media (max-width: 680px) {
+  .privacy-page {
+    background-size: auto 100vh;
+    background-position: 65% bottom;
+  }
+
+  .privacy-main {
+    padding: 34px 21px 55px;
+  }
+
+  .privacy-card {
+    padding: 30px 24px 34px;
+    box-shadow: 5px 5px 0 var(--ink);
+  }
+
+  .privacy-card h1 {
+    font-size: clamp(17px, 6vw, 23px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .privacy-return { transition: none; }
+}

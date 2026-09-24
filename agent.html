@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.github.com https://raw.githubusercontent.com http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://enter.pollinations.ai https://gen.pollinations.ai http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>Cerberus Agent — Cerberus Labs</title>
 <meta name="description" content="Examine a GitHub repository with nine security agents. Explore evidence, review findings, and export your report in the browser.">
 <meta property="og:type" content="website">
@@ -29,6 +29,8 @@
 <meta name="twitter:image" content="https://murderszn.github.io/cerberus/assets/cerberus-social.png">
 <meta property="og:url" content="https://murderszn.github.io/cerberus/agent.html">
 <link rel="stylesheet" href="assets/finish.css?v=20260917-1">
+<link rel="stylesheet" href="assets/jev-live.css?v=20260922-2">
+<link rel="stylesheet" href="assets/agent-workspace.css?v=20260923-3">
 </head>
 <body class="agent-page">
     <a class="skip-link" href="#main-content">Skip to content</a>
@@ -64,33 +66,49 @@
                     </form>
             <p class="entry-note">Nine agents. Evidence for every finding. Runs in your browser.</p>
 
-                    <details class="pat-field">
-                        <summary>GitHub token <span class="optional-label">Optional · higher rate limits</span></summary>
-                        <div class="pat-row">
-                            <label for="pat-input" class="visually-hidden">GitHub personal access token</label>
-                            <input type="password" id="pat-input" placeholder="ghp_... (kept in this tab only)" autocomplete="off">
-                            <button type="button" class="small" id="pat-save-btn">Save</button>
-                        </div>
-                        <div class="pat-note" id="pat-status">No token stored. Token is kept in sessionStorage only and never saved to disk.</div>
-                    </details>
-
-                    <details class="pat-field">
-                        <summary>Local AI analyst <span class="optional-label">Optional · Ollama</span></summary>
-                        <div class="pat-row">
-                            <label for="ai-base-url" class="visually-hidden">Ollama base URL</label>
-                            <input type="text" id="ai-base-url" placeholder="http://127.0.0.1:11434" autocomplete="off" spellcheck="false">
-                            <label for="ai-model" class="visually-hidden">Ollama model</label>
-                            <input type="text" id="ai-model" placeholder="gemma4:latest" autocomplete="off" spellcheck="false">
-                            <button type="button" class="small" id="ai-test-btn">Test</button>
-                        </div>
-                        <div class="pat-note" id="ai-status">No AI endpoint configured. Reports stay algorithmic until you connect.</div>
-                    </details>
-
                     <div class="chips">
                         <button type="button" class="chip" data-fill="https://github.com/pallets/flask">Explore Flask <span aria-hidden="true">↗</span></button>
                         <button type="button" class="chip" data-fill="https://github.com/oso95/scroll-world">Explore Scroll World <span aria-hidden="true">↗</span></button>
                         <a class="sample-report-link" href="#/report/oso95/scroll-world">View sample report <span aria-hidden="true">→</span></a>
                     </div>
+
+                    <section class="connections" aria-label="Account connections">
+                        <div class="connection-item" id="github-connection">
+                            <div class="connection-row">
+                                <div><span class="connection-name">GitHub</span><span class="connection-description">Account &amp; repository access</span></div>
+                                <div class="connection-actions"><button type="button" class="connection-button" id="github-login-btn">Connect ↗</button><button type="button" class="connection-action" id="github-logout-btn" hidden>Disconnect</button></div>
+                            </div>
+                            <p class="connection-status" id="github-status" role="status" aria-live="polite">Checking account connection…</p>
+                            <div class="connection-repo-access" id="github-app-panel" hidden><button type="button" class="connection-action" id="github-install-btn">Choose repositories ↗</button><span class="connection-status" id="github-app-status">Repository access is separate from account sign-in.</span></div>
+                            <details class="connection-key" id="github-token-disclosure"><summary>Use a token for scans</summary>
+                                <div class="connection-input-row"><label for="pat-input" class="visually-hidden">GitHub personal access token</label><input type="password" id="pat-input" placeholder="ghp_…" autocomplete="off"><button type="button" class="small" id="pat-save-btn">Save token</button></div>
+                                <p class="connection-status" id="pat-status">Token stays in this tab only.</p>
+                            </details>
+                            <p class="connection-fineprint">Hosted sign-in uses your verified GitHub email. <a href="documentation/privacy.html">Privacy details</a></p>
+                        </div>
+                        <div class="connection-item" id="pollinations-connection">
+                            <div class="connection-row">
+                                <div><span class="connection-name">Pollinations</span><span class="connection-description">AI report synthesis</span></div>
+                                <div class="connection-actions"><button type="button" class="connection-button" id="pollinations-login-btn">Connect ↗</button><button type="button" class="connection-action" id="pollinations-logout-btn" hidden>Disconnect</button></div>
+                            </div>
+                            <p class="connection-status" id="pollinations-status" role="status" aria-live="polite">Connect to turn scan findings into a concise brief.</p>
+                            <label class="connection-setting-label" for="ai-provider">Report engine</label>
+                            <select id="ai-provider"><option value="pollinations">Pollinations</option><option value="ollama">Ollama · local</option></select>
+                            <div id="pollinations-settings">
+                                <label class="connection-setting-label" for="pollinations-model">Model</label>
+                                <select id="pollinations-model"><option value="gpt-5.6-sol">GPT-5.6 Sol</option><option value="gpt-5.6-luna">GPT-5.6 Luna</option><option value="kimi-k3">Kimi K3</option></select>
+                                <details class="connection-key"><summary>Use an API key instead</summary>
+                                    <div class="connection-input-row"><label for="pollinations-key" class="visually-hidden">Pollinations API key</label><input type="password" id="pollinations-key" placeholder="sk_…" autocomplete="off"><button type="button" class="small" id="pollinations-save-btn">Use key</button></div>
+                                </details>
+                            </div>
+                            <div id="ollama-settings" hidden>
+                                <label class="connection-setting-label" for="ai-base-url">Ollama URL</label><input type="text" id="ai-base-url" placeholder="http://127.0.0.1:11434" autocomplete="off" spellcheck="false">
+                                <label class="connection-setting-label" for="ai-model">Model</label><input type="text" id="ai-model" placeholder="gemma4:latest" autocomplete="off" spellcheck="false">
+                            </div>
+                            <button type="button" class="connection-action connection-test" id="ai-test-btn">Test connection</button>
+                            <p class="connection-status" id="ai-status" role="status" aria-live="polite"></p>
+                        </div>
+                    </section>
 
 
                     <div class="recent-section" id="recent-section">
@@ -359,6 +377,9 @@
     <script src="assets/report-review.js"></script>
     <script src="assets/checks.js?v=20260905-2"></script>
     <script src="assets/scanner.js?v=20260907-1"></script>
-    <script src="assets/agent.js?v=20260907-1"></script>
+    <script src="assets/jev-live.js?v=20260922-3"></script>
+    <script src="assets/agent-workspace.js?v=20260923-2"></script>
+    <script src="assets/agent.js?v=20260923-4"></script>
+    <script src="assets/agent-connections.js?v=20260923-1"></script>
 </body>
 </html>

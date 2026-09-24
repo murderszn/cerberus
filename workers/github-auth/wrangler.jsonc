@@ -1,0 +1,15 @@
+{
+  "name": "cerberus-github-auth",
+  "main": "index.mjs",
+  "compatibility_date": "2026-09-07",
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/auth/*", "/api/*", "/github/*"] },
+  "vars": {
+    "APP_ORIGIN": "https://cerberus-github-auth.jjohnso75.workers.dev",
+    "GITHUB_CLIENT_ID": "Ov23licG0ASuQVGGl0J9",
+    "GITHUB_APP_ID": "4862218",
+    "GITHUB_APP_SLUG": "cerberus-security-agent"
+  },
+  "d1_databases": [{ "binding": "DB", "database_name": "cerberus-accounts", "database_id": "70a14fe9-1ba3-426c-9239-c2c985fce188", "migrations_dir": "migrations" }],
+  "triggers": { "crons": ["17 3 * * *"] },
+  "observability": { "enabled": false }
+}

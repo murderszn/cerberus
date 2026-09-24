@@ -12,6 +12,7 @@ __pycache__/
 cerberus-report.html
 
 # secrets
+.wrangler/
 .env
 .env.*
 !.env.example

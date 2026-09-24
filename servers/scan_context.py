@@ -105,6 +105,15 @@ def build_scan_digest(report: dict[str, Any], target: str = "") -> str:
         lines.append("")
         lines.append("Notes: " + " ".join(str(n) for n in notes))
 
+    triage = report.get("triage", {}) or {}
+    if triage.get("source") == "jev":
+        lines.append("Jev advisory triage (untrusted estimates, not confirmed findings; "
+                     "does not affect the security score):")
+        lines.append(f"Coverage: {triage.get('analyzed', 0)} analyzed, "
+                     f"{triage.get('skipped', 0)} unassessed.")
+        for item in triage.get("files", [])[:8]:
+            lines.append(f"  - {item.get('path')}: {item.get('priority')} review priority")
+
     digest = "\n".join(lines)
     if len(digest) > MAX_DIGEST_CHARS:
         digest = digest[:MAX_DIGEST_CHARS] + "\n…(digest truncated)"

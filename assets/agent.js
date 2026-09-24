@@ -803,11 +803,12 @@
             }
         }
 
-        /* ============================== AI analyst (Ollama) ============================== */
+        /* ============================== AI report (Pollinations or Ollama) ============================== */
 
         var AI_DEFAULT_BASE = 'http://127.0.0.1:11434';
         var AI_DEFAULT_MODEL = 'gemma4:latest';
         var aiBaseUrlInput = document.getElementById('ai-base-url');
+        var aiProviderInput = document.getElementById('ai-provider');
         var aiModelInput = document.getElementById('ai-model');
         var aiTestBtn = document.getElementById('ai-test-btn');
         var aiStatus = document.getElementById('ai-status');
@@ -819,6 +820,15 @@
         var aiCancelBtn = document.getElementById('ai-cancel-btn');
         var aiLastMarkdown = null;
         var aiAbortController = null;
+        var pollinationsLocal = /^(127\.0\.0\.1|localhost)$/.test(location.hostname) && location.port === '8765';
+        if (aiProviderInput) {
+            aiProviderInput.addEventListener('change', function () {
+                var ollama = aiProviderInput.value === 'ollama';
+                if (aiReportBtn) aiReportBtn.textContent = ollama ? 'Generate with Ollama' : 'Generate with Pollinations';
+                aiSetStatus(ollama ? 'Connect to a local Ollama host to generate a report.' : 'Generation sends finding summaries and Jev priorities to Pollinations. Source snippets are omitted.');
+            });
+            aiProviderInput.dispatchEvent(new Event('change'));
+        }
 
         try {
             if (aiBaseUrlInput) aiBaseUrlInput.value = localStorage.getItem('cerberus:ai-base-v3') || AI_DEFAULT_BASE;
@@ -832,12 +842,15 @@
             var base = (aiBaseUrlInput && aiBaseUrlInput.value.trim()) || AI_DEFAULT_BASE;
             base = base.replace(/\/+$/, '');
             var model = (aiModelInput && aiModelInput.value.trim()) || AI_DEFAULT_MODEL;
-            return { base: base, model: model };
+            var provider = aiProviderInput ? aiProviderInput.value : 'ollama';
+            var account = window.CerberusConnections && window.CerberusConnections.pollinations();
+            return { base: base, model: provider === 'pollinations' && account ? account.model : model, key: account ? account.key : '', provider: provider };
         }
 
         function aiPersistCfg() {
             try {
                 var cfg = aiGetCfg();
+                if (cfg.provider !== 'ollama') return;
                 localStorage.setItem('cerberus:ai-base-v3', cfg.base);
                 localStorage.setItem('cerberus:ai-model-v3', cfg.model);
             } catch (e) { /* ignore */ }
@@ -848,6 +861,10 @@
         if (aiTestBtn) aiTestBtn.addEventListener('click', function () {
             var cfg = aiGetCfg();
             aiPersistCfg();
+            if (cfg.provider === 'pollinations') {
+                if (window.CerberusConnections) window.CerberusConnections.testPollinations();
+                return;
+            }
             aiSetStatus('Pinging ' + cfg.base + ' …');
             fetch(cfg.base + '/api/tags').then(function (resp) {
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -878,9 +895,10 @@
             return s.length > 160 ? s.slice(0, 157) + '…' : s;
         }
 
-        function aiBuildPrompt(report) {
+        function aiBuildPrompt(report, includeSnippets) {
             var lines = [];
             lines.push('TARGET: ' + report.target.display + ' (' + report.target.url + ')');
+            lines.push('COMMIT SHA: ' + (report.target.sha || 'unknown'));
             lines.push('ALGORITHMIC SCORE: ' + report.score + '/100, grade ' + report.grade);
             var c = report.counts || {};
             lines.push('CHECK COUNTS: pass=' + (c.pass || 0) + ' fail=' + (c.fail || 0) +
@@ -905,7 +923,7 @@
                 if (f.check.summary) lines.push('  why it matters: ' + aiTrimSnippet(f.check.summary));
                 (f.check.findings || []).slice(0, 6).forEach(function (fd) {
                     lines.push('  - ' + fd.path + ':' + fd.line +
-                        (fd.snippet ? ' :: ' + aiTrimSnippet(fd.snippet) : ''));
+                    (includeSnippets && fd.snippet ? ' :: ' + aiTrimSnippet(fd.snippet) : ''));
                 });
                 if ((f.check.findings || []).length > 6) {
                     lines.push('  - …and ' + (f.check.findings.length - 6) + ' more location(s)');
@@ -918,6 +936,14 @@
             if (skipped.length) {
                 lines.push('');
                 lines.push('SKIPPED CHECKS (inconclusive — do not treat as clean): ' + skipped.slice(0, 20).join(', '));
+            }
+            if (report.triage && report.triage.source === 'jev') {
+                lines.push('');
+                lines.push('JEV ADVISORY TRIAGE — probabilities are review priorities, not verified vulnerabilities:');
+                (report.triage.files || []).filter(function (file) { return file.status === 'analyzed'; }).slice(0, 20).forEach(function (file) {
+                    lines.push('- ' + file.path + ' · ' + file.priority + ' priority · concern probability ' + file.riskScore + '/100');
+                });
+                lines.push('Jev assessed ' + report.triage.analyzed + ' files; ' + report.triage.skipped + ' were unassessed.');
             }
             lines.push('');
             lines.push('Write a markdown security report with exactly these sections:');
@@ -1002,23 +1028,30 @@
             if (!report || !aiReportSection) return;
             var cfg = aiGetCfg();
             aiPersistCfg();
+            if (cfg.provider === 'pollinations' && !cfg.key && !pollinationsLocal) {
+                if (window.CerberusConnections) window.CerberusConnections.startPollinationsLogin();
+                return;
+            }
             if (aiAbortController) { try { aiAbortController.abort(); } catch (e) { /* ignore */ } }
             aiAbortController = (typeof AbortController !== 'undefined') ? new AbortController() : null;
             aiLastMarkdown = null;
             aiReportSection.hidden = false;
             aiReportBody.innerHTML = '';
+            var isPollinations = cfg.provider === 'pollinations';
+            var modelLabel = isPollinations ? 'Pollinations / ' + cfg.model : cfg.model + ' @ ' + cfg.base;
             aiReportBody.appendChild(el('p', { class: 'mono', style: 'font-size:0.75rem;' },
-                ['Consulting ' + cfg.model + ' on ' + cfg.base + ' — this runs on your hardware and can take a minute…']));
-            aiReportMeta.textContent = cfg.model + ' @ ' + cfg.base;
+                ['Consulting ' + modelLabel + ' on this report' + (report.triage ? ' and Jev triage' : '') + '…']));
+            aiReportMeta.textContent = modelLabel;
             aiCancelBtn.hidden = false;
             aiReportBtn.disabled = true;
             if (aiReportSection.scrollIntoView) {
                 aiReportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
-            fetch(cfg.base + '/api/generate', {
+            var browserPollinations = isPollinations && !!cfg.key;
+            fetch(isPollinations ? (browserPollinations ? 'https://gen.pollinations.ai/v1/chat/completions' : 'http://127.0.0.1:8766/synthesis') : cfg.base + '/api/generate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: cfg.model, prompt: aiBuildPrompt(report), stream: false }),
+                headers: browserPollinations ? { 'Content-Type': 'application/json', Authorization: 'Bearer ' + cfg.key } : { 'Content-Type': 'application/json' },
+                body: JSON.stringify(browserPollinations ? {model:cfg.model,messages:[{role:'system',content:'Summarize only the supplied Cerberus findings and Jev advisory priorities. Never invent evidence or treat probabilities as confirmed findings.'},{role:'user',content:aiBuildPrompt(report,false)}],stream:false,temperature:0.2} : isPollinations ? {prompt: aiBuildPrompt(report, false)} : { model: cfg.model, prompt: aiBuildPrompt(report, true), stream: false }),
                 signal: aiAbortController ? aiAbortController.signal : undefined
             }).then(function (resp) {
                 return resp.json().then(function (data) { return { ok: resp.ok, status: resp.status, data: data }; });
@@ -1026,12 +1059,12 @@
                 aiAbortController = null;
                 aiCancelBtn.hidden = true;
                 aiReportBtn.disabled = false;
-                if (!res.ok) throw new Error((res.data && res.data.error) || ('Ollama HTTP ' + res.status));
-                if (!res.data || !res.data.response) throw new Error('Ollama returned an empty response.');
-                aiLastMarkdown = res.data.response;
+                if (!res.ok) throw new Error(res.status === 401 ? 'Pollinations rejected this key. Reconnect your account.' : (res.data && typeof res.data.error === 'string' ? res.data.error : 'AI provider HTTP ' + res.status));
+                aiLastMarkdown = browserPollinations ? res.data && res.data.choices && res.data.choices[0] && res.data.choices[0].message && res.data.choices[0].message.content : res.data && res.data.response;
+                if (!aiLastMarkdown) throw new Error('AI provider returned an empty response.');
                 aiReportBody.innerHTML = '';
                 aiReportBody.appendChild(renderAiMarkdown(aiLastMarkdown));
-                aiReportMeta.textContent = cfg.model + ' @ ' + cfg.base + ' · ' + aiLastMarkdown.length + ' chars';
+                aiReportMeta.textContent = modelLabel + ' · ' + aiLastMarkdown.length + ' chars';
             }).catch(function (err) {
                 aiAbortController = null;
                 aiCancelBtn.hidden = true;
@@ -1044,10 +1077,10 @@
                 aiReportBody.innerHTML = '';
                 var msg = (err && err.message) || String(err);
                 aiReportBody.appendChild(el('div', { class: 'ai-error' }, [
-                    el('div', {}, [el('b', {}, ['AI analyst unreachable.']), ' The algorithmic score above is unaffected.']),
+                    el('div', {}, [el('b', {}, ['AI report unavailable.']), ' The algorithmic score above is unaffected.']),
                     el('div', { style: 'margin-top:0.5rem;' }, ['Error: ' + msg]),
-                    el('div', { style: 'margin-top:0.5rem;' }, ['On the Ollama host, allow this page and make sure the model is pulled:']),
-                    el('pre', {}, ['OLLAMA_HOST=0.0.0.0\nOLLAMA_ORIGINS=http://*  (or your page origin)\nollama pull ' + cfg.model])
+                    el('div', { style: 'margin-top:0.5rem;' }, [isPollinations ? (browserPollinations ? 'Reconnect Pollinations or use a different API key.' : 'Start the local bridge with python3 -m servers.jev_live or connect Pollinations above.') : 'On the Ollama host, allow this page and make sure the model is pulled:']),
+                    !isPollinations ? el('pre', {}, ['OLLAMA_HOST=0.0.0.0\nOLLAMA_ORIGINS=http://*  (or your page origin)\nollama pull ' + cfg.model]) : ''
                 ]));
             });
         }
@@ -1093,6 +1126,7 @@
         }
 
         function triggerKickoffAnimation(onComplete, opts) {
+            if (document.body.classList.contains('workspace-page')) { if(onComplete) onComplete(); return; }
             var overlay = document.getElementById('jules-kickoff-overlay');
             var fill = document.getElementById('jules-kickoff-fill');
             var status = document.getElementById('jules-kickoff-status');
@@ -1816,6 +1850,7 @@
         }
 
         function renderReport(report) {
+            window.dispatchEvent(new CustomEvent('cerberus:report', {detail:report}));
             aiReset();
             reportTargetText.textContent = 'TARGET: ' + report.target.display + '  ·  SHA ' + (report.target.sha || '').slice(0, 10);
             finalScoreEl.textContent = Math.round(report.score * 10) / 10;
@@ -2149,7 +2184,7 @@
                 showView('splash');
                 renderRecentList();
             } else if (r.view === 'scan') {
-                var cached = CacheStore.get(r.owner, r.repo);
+                var cached = document.body.classList.contains('workspace-page') ? null : CacheStore.get(r.owner, r.repo);
                 if (cached) {
                     navigate('#/report/' + encodeURIComponent(r.owner) + '/' + encodeURIComponent(r.repo), true);
                     return;
