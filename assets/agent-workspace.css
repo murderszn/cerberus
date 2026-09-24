@@ -118,8 +118,9 @@
   .workspace-roster-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 
-/* The landing surface stays compact so the guardian illustration remains visible. */
-.agent-page.workspace-page #view-splash { width:min(744px,100%); max-width:744px; margin-left:clamp(0px,4vw,64px); padding:34px 38px; background:#fff!important; border:1px solid var(--workspace-line); }
+/* Align every workspace state with the footer rule. */
+.agent-page.workspace-page main { width:min(calc(var(--finish-width) - 2 * var(--finish-gutter)),calc(100% - 2 * var(--finish-gutter))); max-width:none; padding:48px 0 80px; }
+.agent-page.workspace-page #view-splash { width:100%; max-width:none; margin:0 auto; padding:38px 42px; background:#fff!important; border:1px solid var(--workspace-line); }
 .workspace-page .mission-control-grid { display:block; }
 .workspace-page .mission-briefing { text-align:left; }
 .workspace-page .mission-header { text-align:left; margin-bottom:26px; padding-bottom:24px; border-bottom:1px solid var(--workspace-line); }
@@ -156,5 +157,5 @@
 .workspace-page #view-splash select,.workspace-page #ollama-settings input { display:block; width:100%; min-height:35px; padding:7px 9px; border:1px solid var(--workspace-line); border-radius:0; box-shadow:none; background:#fff; color:#20201e; font:10px 'JetBrains Mono',monospace; }
 .workspace-page .connection-test { margin-top:12px; }
 .workspace-page #view-splash .recent-section { margin-top:20px; }
-@media(max-width:840px) { .agent-page.workspace-page #view-splash { margin-left:0; } }
+@media(max-width:680px) { .agent-page.workspace-page main { padding:28px 0 60px; } }
 @media(max-width:600px) { .agent-page.workspace-page #view-splash { padding:25px 20px; } .workspace-page #view-splash .connections { grid-template-columns:1fr; } .workspace-page #view-splash .connection-item,.workspace-page #view-splash .connection-item + .connection-item { padding:18px 0; border-left:0; } .workspace-page #view-splash .connection-item + .connection-item { border-top:1px solid var(--workspace-line); } .workspace-page #view-splash .sample-report-link { margin-left:0; } }
