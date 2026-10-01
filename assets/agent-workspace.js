@@ -15,7 +15,7 @@
     var hero=node('div','mission-header');
     hero.append(node('p','workspace-kicker','CERBERUS / REPOSITORY SECURITY'),
         node('h1','','See the risk.\nFind the evidence.'),
-        node('p','','Nine specialists examine the repository. Jev orders the files for review. Pollinations can turn the findings into a clear brief.'));
+        node('p','','Nine specialists examine the repository. Use your Pollinations balance for Jev review decisions and a clear AI brief.'));
     briefing.prepend(hero);
     shell.append(briefing);
     splash.append(shell);
@@ -37,7 +37,7 @@
         var intelligence=node('section','workspace-intelligence');
         intelligence.id=isReport?'workspace-report-jev':'workspace-scan-jev';
         var empty=node('div','workspace-jev-empty');
-        empty.append(node('p','workspace-kicker','JEV / FILE INTELLIGENCE'),node('h2','','The order before\nthe investigation.'),node('p','','Enable Jev before a scan to watch files become a prioritized review queue. Native security checks work independently.'));
+        empty.append(node('p','workspace-kicker','JEV / FILE INTELLIGENCE'),node('h2','','The order before\nthe investigation.'),node('p','','Build the Jev review queue above to group findings by next action. Local source triage is also available with the TypeSafe bridge.'));
         intelligence.append(empty);
         var specialists=node('section','workspace-specialists');
         specialists.append(node('p','workspace-kicker','CERBERUS / SPECIALIST POOL'),node('h2','',isReport?'The evidence, by domain.':'Nine perspectives. In motion.'));

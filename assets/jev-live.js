@@ -11,9 +11,9 @@
     checkbox.disabled = !local;
     var label = document.createElement('span');
     var title = document.createElement('strong');
-    title.textContent = 'Jev · Live file intelligence';
+    title.textContent = 'TypeSafe Jev · Local source triage';
     var description = document.createElement('small');
-    description.textContent = local ? 'Watch files become a review queue. Opt in to send eligible, redacted source to TypeSafe. Up to 100 files; API charges may apply.' : 'Live Jev is available in the local preview. A secure production bridge is not configured yet.';
+    description.textContent = local ? 'Watch files become a review queue. Opt in to send eligible, redacted source to TypeSafe. Up to 100 files; API charges may apply.' : 'Source triage requires the local bridge. The hosted Jev review queue is available after scanning, using your Pollinations connection.';
     label.append(title, description);
     consent.append(checkbox, label);
     var anchor = document.querySelector('#view-splash .chips') || document.querySelector('.chips');

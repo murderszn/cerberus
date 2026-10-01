@@ -27,7 +27,7 @@
         var ollama = $('ai-provider').value === 'ollama';
         $('pollinations-login-btn').hidden = ollama || connected;
         $('pollinations-logout-btn').hidden = ollama || !connected;
-        if (connected) status('pollinations-status', 'Connected for this tab. Report findings are sent only when you generate a brief.');
+        if (connected) status('pollinations-status', 'Connected for this tab. Finding summaries are sent only when you build a Jev queue or generate a brief.');
     }
     function updateGithub() {
         $('github-login-btn').hidden = !!githubUser;

@@ -72,6 +72,25 @@ Then visit `http://localhost:8000/agent.html` and paste a public GitHub URL.
 
 > **Note:** Due to CORS, the web app only scans public repos. Use a GitHub PAT for private repos, or the CLI.
 
+### Pollinations Jev decisions and callable agent
+
+After a browser scan, **Build Jev review queue** sends up to ten finding summaries
+(no source snippets) to Pollinations `POST /alpha/decisions`. Jev chooses
+`contain`, `investigate`, or `maintain`; code groups the review queue accordingly
+and displays the returned probabilities. Connect Pollinations on the repository
+screen first. The existing Cerberus App Key attributes connected users and their
+usage; callers control their own Pollen budget. Your own usage and Quest Pollen
+do not count toward the external Paid Pollen quest.
+
+The root [`agent.ts`](agent.ts) is also deployable as a Pollinations code agent
+from this public repository. It chooses a security review playbook with Jev,
+then uses `openai/gpt-5.4-nano` to explain the selected action. It does not execute
+repository code or change files. Register the repository under **My Models →
+Create agent → Code agent**, then test with a security finding or scan summary.
+Public listing requires Pollinations publisher approval.
+
+Verification: `node --test tests/pollinations-agent.test.mjs tests/jev-decisions.test.cjs`.
+
 ### 💻 CLI (Local, Private, CI)
 
 ```bash
