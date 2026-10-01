@@ -92,6 +92,37 @@
                                 <div class="connection-actions"><button type="button" class="connection-button" id="pollinations-login-btn">Connect ↗</button><button type="button" class="connection-action" id="pollinations-logout-btn" hidden>Disconnect</button></div>
                             </div>
                             <p class="connection-status" id="pollinations-status" role="status" aria-live="polite">Connect to turn scan findings into a concise brief.</p>
+
+                            <!-- Bold Pollinations Key Status Card (Active State) -->
+                            <div class="pollinations-key-card" id="pollinations-key-card" hidden>
+                                <div class="pk-badge-row">
+                                    <span class="pk-status-badge">● KEY ACQUIRED &amp; ACTIVE</span>
+                                    <span class="pk-provider-tag mono">POLLINATIONS AI</span>
+                                </div>
+                                <div class="pk-token-box">
+                                    <span class="pk-token-label mono">TOKEN:</span>
+                                    <span class="pk-token-code mono" id="pk-token-display">pk_••••••••••••••••</span>
+                                    <button type="button" class="pk-copy-token-btn" id="pk-copy-token-btn" title="Copy token">Copy</button>
+                                </div>
+                                <p class="pk-info-text">Pollinations key is authenticated for this session. Jev review queue decisions and AI report briefings are unlocked.</p>
+                                <div class="pk-card-actions">
+                                    <button type="button" class="outline small pk-verify-action" id="pk-card-verify-btn">Verify token ↗</button>
+                                    <button type="button" class="connection-action pk-disconnect-action" id="pk-card-disconnect-btn">Disconnect key</button>
+                                </div>
+                            </div>
+
+                            <!-- High-visibility Device Authentication Banner (OAuth Waiting State) -->
+                            <div class="pollinations-device-banner" id="pollinations-device-banner" hidden>
+                                <div class="pk-device-kicker mono">[POLLINATIONS DEVICE AUTHENTICATION]</div>
+                                <div class="pk-device-code-row">
+                                    <span class="pk-device-code-label mono">USER CODE:</span>
+                                    <span class="pk-device-code mono" id="pk-device-code-val">----</span>
+                                    <button type="button" class="outline small pk-copy-code-btn" id="pk-copy-code-btn">Copy code</button>
+                                </div>
+                                <p class="pk-device-instructions">Enter this code in the Pollinations approval window to link your account.</p>
+                                <div class="pk-device-waiting mono"><span class="pk-pulsar"></span> Waiting for authorization on Pollinations…</div>
+                            </div>
+
                             <label class="connection-setting-label" for="ai-provider">Report engine</label>
                             <select id="ai-provider"><option value="pollinations">Pollinations</option><option value="ollama">Ollama · local</option></select>
                             <div id="pollinations-settings">
@@ -171,17 +202,20 @@
         <section id="view-report" hidden>
             <!-- Agent Tab Navigation -->
             <div class="jules-tab-strip" role="tablist" aria-label="Agent Views">
+                <button type="button" class="jules-tab" id="tab-failed-btn" role="tab" aria-selected="false" aria-controls="jules-view-scorecard" title="View failed security checks requiring immediate attention">
+                    <svg class="mi" aria-hidden="true"><use href="#i-score"/></svg> <span class="tab-label">Failed checks</span> <span class="jules-tab-pill fail-pill" id="failed-tab-count">0</span>
+                </button>
                 <button type="button" class="jules-tab active" id="tab-scorecard-btn" role="tab" aria-selected="true" aria-controls="jules-view-scorecard" title="Score, per-check findings, and filterable results">
-                    <svg class="mi" aria-hidden="true"><use href="#i-score"/></svg> Security Scorecard &amp; Checks <span class="jules-tab-pill" id="scorecard-tab-score">—</span>
+                    <svg class="mi" aria-hidden="true"><use href="#i-score"/></svg> <span class="tab-label">Findings</span> <span class="jules-tab-pill" id="scorecard-tab-score">—</span>
                 </button>
                 <button type="button" class="jules-tab" id="tab-pr-btn" role="tab" aria-selected="false" aria-controls="jules-view-pr" title="Review the proposed code changes file by file">
-                    <svg class="mi" aria-hidden="true"><use href="#i-pr"/></svg> Suggested Pull Request <span class="jules-tab-pill" id="pr-tab-count">—</span>
+                    <svg class="mi" aria-hidden="true"><use href="#i-pr"/></svg> <span class="tab-label">Review patches</span> <span class="jules-tab-pill" id="pr-tab-count">—</span>
                 </button>
                 <button type="button" class="jules-tab" id="tab-plan-btn" role="tab" aria-selected="false" aria-controls="jules-view-plan" title="Scan-specific findings, learnings, assumptions, and next steps">
-                    <svg class="mi" aria-hidden="true"><use href="#i-plan"/></svg> Agent Plan &amp; Reasoning
+                    <svg class="mi" aria-hidden="true"><use href="#i-plan"/></svg> <span class="tab-label">Engineering plan</span>
                 </button>
                 <button type="button" class="jules-tab" id="tab-console-btn" role="tab" aria-selected="false" aria-controls="jules-view-console" title="Ask follow-up questions about this report">
-                    <svg class="mi" aria-hidden="true"><use href="#i-console"/></svg> Agent Console
+                    <svg class="mi" aria-hidden="true"><use href="#i-console"/></svg> <span class="tab-label">Ask Cerberus</span>
                 </button>
             </div>
 
@@ -294,12 +328,29 @@
                             <button type="button" class="outline small" id="export-html-btn">Download HTML</button>
                             <button type="button" class="outline small" id="export-md-btn">Copy Markdown</button>
                             <button type="button" class="outline small" id="ai-report-btn">Generate AI report</button>
+                            <div class="report-pollinations-badge mono" id="report-pollinations-badge"></div>
                             <button type="button" class="outline small" id="new-scan-btn">New Scan</button>
                         </div>
 
                     </div>
 
                     <div class="report-right">
+                        <!-- Dedicated Failed Checks Hero / Triage Section -->
+                        <div class="failed-checks-hero" id="failed-checks-hero" hidden>
+                            <div class="fc-hero-top">
+                                <div class="fc-hero-title-group">
+                                    <span class="fc-hero-badge mono">[SECURITY ALERT]</span>
+                                    <h4 class="fc-hero-heading" id="fc-hero-heading">FAILED CHECKS REQUIRING ATTENTION</h4>
+                                </div>
+                                <div class="fc-hero-meta mono" id="fc-hero-stats">0 FAILURES · 0.0 PTS DEDUCTED</div>
+                            </div>
+                            <p class="fc-hero-desc" id="fc-hero-desc">These security checks violated rules from the authoritative catalog. Immediate containment or remediation is advised.</p>
+                            <div class="fc-hero-actions">
+                                <button type="button" class="fc-filter-btn active" id="fc-show-failed-btn">Show Failed Checks Only</button>
+                                <button type="button" class="fc-filter-btn" id="fc-show-all-btn">Show All 59 Catalog Checks</button>
+                            </div>
+                        </div>
+
                         <h3 class="findings-title-header" id="findings-title">All Checks</h3>
                         <div id="details-container"></div>
                     </div>

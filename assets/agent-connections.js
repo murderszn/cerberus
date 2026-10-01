@@ -11,6 +11,14 @@
     var $ = function (id) { return document.getElementById(id); };
     var githubUser = null;
     var loginTimer = null;
+    function maskKey(key) {
+        if (!key) return '';
+        var clean = String(key).trim();
+        if (clean.length <= 8) return '••••' + clean.slice(-4);
+        var prefix = clean.slice(0, 4);
+        var suffix = clean.slice(-4);
+        return prefix + '••••••••' + suffix;
+    }
     function status(id, message) { if ($(id)) $(id).textContent = message; }
     function readKey() { try { return sessionStorage.getItem(KEY) || ''; } catch (e) { return ''; } }
     function saveKey(value, approved) {
@@ -21,13 +29,44 @@
             else sessionStorage.removeItem(AUTH);
         } catch (e) { /* private browsing may block storage */ }
         updatePollinations();
+        window.dispatchEvent(new CustomEvent('cerberus:pollinations-updated', {
+            detail: { connected: !!value, key: value || '', masked: maskKey(value || '') }
+        }));
     }
     function updatePollinations() {
-        var connected = !!readKey();
+        var key = readKey();
+        var connected = !!key;
         var ollama = $('ai-provider').value === 'ollama';
         $('pollinations-login-btn').hidden = ollama || connected;
         $('pollinations-logout-btn').hidden = ollama || !connected;
-        if (connected) status('pollinations-status', 'Connected for this tab. Finding summaries are sent only when you build a Jev queue or generate a brief.');
+
+        var keyCard = $('pollinations-key-card');
+        if (keyCard) {
+            keyCard.hidden = ollama || !connected;
+            if (connected) {
+                var tokenDisplay = $('pk-token-display');
+                if (tokenDisplay) tokenDisplay.textContent = maskKey(key);
+            }
+        }
+        var devBanner = $('pollinations-device-banner');
+        if (devBanner && connected) devBanner.hidden = true;
+
+        if (connected) {
+            status('pollinations-status', 'Connected and validated for this session. Jev review queue & AI briefs are active.');
+        } else {
+            status('pollinations-status', 'Connect to turn scan findings into a concise brief.');
+        }
+
+        var reportBadge = $('report-pollinations-badge');
+        if (reportBadge) {
+            if (connected) {
+                reportBadge.className = 'report-pollinations-badge mono active';
+                reportBadge.innerHTML = '<span class="pk-badge-dot">●</span> POLLINATIONS: ACTIVE KEY <span class="pk-token-pill">' + maskKey(key) + '</span>';
+            } else {
+                reportBadge.className = 'report-pollinations-badge mono inactive';
+                reportBadge.innerHTML = '<span class="pk-badge-dot-off">○</span> POLLINATIONS: NO KEY · <a href="#/" class="pk-connect-link">CONNECT ↗</a>';
+            }
+        }
     }
     function updateGithub() {
         $('github-login-btn').hidden = !!githubUser;
@@ -93,35 +132,89 @@
             var verify = device.verification_uri || POLLINATIONS_AUTH + '/device';
             if (verify.charAt(0) === '/') verify = POLLINATIONS_AUTH + verify;
             if (!verify.startsWith(POLLINATIONS_AUTH + '/')) throw new Error('Unexpected Pollinations approval URL.');
+
+            var devBanner = $('pollinations-device-banner');
+            if (devBanner) {
+                devBanner.hidden = false;
+                var codeVal = $('pk-device-code-val');
+                if (codeVal) codeVal.textContent = device.user_code;
+                var copyBtn = $('pk-copy-code-btn');
+                if (copyBtn) {
+                    copyBtn.onclick = function () {
+                        navigator.clipboard.writeText(device.user_code).then(function () {
+                            copyBtn.textContent = 'Copied!';
+                            setTimeout(function () { copyBtn.textContent = 'Copy code'; }, 2000);
+                        });
+                    };
+                }
+            }
+
             if (popup && !popup.closed) popup.location.href = verify;
             else window.open(verify, '_blank', 'noopener,noreferrer');
             var interval = Math.max(2000, Number(device.interval || 5) * 1000);
             var deadline = Date.now() + Math.min(600000, Number(device.expires_in || 600) * 1000);
             status('pollinations-status', 'Enter code ' + device.user_code + ' on the Pollinations approval page. Waiting for approval…');
             function poll() {
-                if (Date.now() > deadline) { button.disabled = false; status('pollinations-status', 'Sign-in expired. Try connecting again.'); return; }
+                if (Date.now() > deadline) {
+                    button.disabled = false;
+                    if (devBanner) devBanner.hidden = true;
+                    status('pollinations-status', 'Sign-in expired. Try connecting again.');
+                    return;
+                }
                 fetch(POLLINATIONS_AUTH + '/api/device/token', {method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({device_code:device.device_code})}).then(function (response) {
                     return response.json().then(function (data) { return {data:data,status:response.status}; });
                 }).then(function (result) {
                     var data = result.data || {};
-                    if (data.access_token) { saveKey(data.access_token, true); button.disabled = false; return; }
+                    if (data.access_token) {
+                        saveKey(data.access_token, true);
+                        button.disabled = false;
+                        if (devBanner) devBanner.hidden = true;
+                        return;
+                    }
                     if (data.error === 'authorization_pending') { loginTimer = setTimeout(poll, interval); return; }
                     if (data.error === 'slow_down') { loginTimer = setTimeout(poll, Math.max(interval, Number(data.retry_after || 10) * 1000)); return; }
                     throw new Error(data.error || 'Pollinations sign-in was not completed.');
-                }).catch(function (error) { button.disabled = false; status('pollinations-status', 'Sign-in failed: ' + error.message); });
+                }).catch(function (error) {
+                    button.disabled = false;
+                    if (devBanner) devBanner.hidden = true;
+                    status('pollinations-status', 'Sign-in failed: ' + error.message);
+                });
             }
             loginTimer = setTimeout(poll, interval);
         }).catch(function (error) {
             if (popup && !popup.closed) popup.close();
-            button.disabled = false; status('pollinations-status', 'Sign-in failed: ' + error.message);
+            button.disabled = false;
+            var devBanner = $('pollinations-device-banner');
+            if (devBanner) devBanner.hidden = true;
+            status('pollinations-status', 'Sign-in failed: ' + error.message);
         });
     }
     $('pollinations-login-btn').addEventListener('click', startPollinationsLogin);
-    $('pollinations-logout-btn').addEventListener('click', function () {
+    function disconnectPollinations() {
         if (loginTimer) clearTimeout(loginTimer);
         saveKey('', false); $('pollinations-key').value = '';
         status('pollinations-status', 'Disconnected from Pollinations in this tab.');
-    });
+    }
+    $('pollinations-logout-btn').addEventListener('click', disconnectPollinations);
+
+    var cardDisconnectBtn = $('pk-card-disconnect-btn');
+    if (cardDisconnectBtn) cardDisconnectBtn.addEventListener('click', disconnectPollinations);
+
+    var cardVerifyBtn = $('pk-card-verify-btn');
+    if (cardVerifyBtn) cardVerifyBtn.addEventListener('click', testPollinations);
+
+    var copyTokenBtn = $('pk-copy-token-btn');
+    if (copyTokenBtn) {
+        copyTokenBtn.addEventListener('click', function () {
+            var k = readKey();
+            if (!k) return;
+            navigator.clipboard.writeText(k).then(function () {
+                copyTokenBtn.textContent = 'Copied!';
+                setTimeout(function () { copyTokenBtn.textContent = 'Copy'; }, 2000);
+            });
+        });
+    }
+
     $('pollinations-save-btn').addEventListener('click', function () {
         var key = $('pollinations-key').value.trim();
         if (!key) { status('pollinations-status', 'Enter an API key first.'); return; }
@@ -139,7 +232,7 @@
         fetch(POLLINATIONS_API + '/v1/models', {headers:{Authorization:'Bearer ' + key,Accept:'application/json'}}).then(function (response) {
             if (response.status === 401) throw new Error('The saved key was rejected. Reconnect or use another key.');
             if (!response.ok) throw new Error('Pollinations returned HTTP ' + response.status);
-            status('pollinations-status', 'Connected. Ready to generate a report.');
+            status('pollinations-status', 'Key verified successfully. Models and Jev queue ready.');
         }).catch(function (error) { status('pollinations-status', error.message); });
     }
     function syncProvider() {
@@ -148,13 +241,24 @@
         $('ollama-settings').hidden = !ollama;
         $('pollinations-login-btn').hidden = ollama || !!readKey();
         $('pollinations-logout-btn').hidden = ollama || !readKey();
+        var keyCard = $('pollinations-key-card');
+        if (keyCard) keyCard.hidden = ollama || !readKey();
         $('ai-test-btn').textContent = ollama ? 'Test Ollama' : 'Test Pollinations';
     }
     $('ai-provider').addEventListener('change', syncProvider);
     updateGithub(); updatePollinations(); syncProvider();
     window.CerberusConnections = {
-        pollinations: function () { return {key:readKey(),model:$('pollinations-model').value}; },
-        startPollinationsLogin:startPollinationsLogin,
-        testPollinations:testPollinations
+        pollinations: function () {
+            var k = readKey();
+            return {
+                key: k,
+                model: $('pollinations-model').value,
+                connected: !!k,
+                masked: maskKey(k)
+            };
+        },
+        startPollinationsLogin: startPollinationsLogin,
+        testPollinations: testPollinations,
+        updatePollinations: updatePollinations
     };
 })();

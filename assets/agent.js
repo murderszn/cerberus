@@ -1424,18 +1424,23 @@
 
         function switchJulesTab(tabName) {
             var tabs = {
+                failed: { btn: document.getElementById('tab-failed-btn'), panel: document.getElementById('jules-view-scorecard') },
+                scorecard: { btn: document.getElementById('tab-scorecard-btn'), panel: document.getElementById('jules-view-scorecard') },
                 pr: { btn: document.getElementById('tab-pr-btn'), panel: document.getElementById('jules-view-pr') },
                 plan: { btn: document.getElementById('tab-plan-btn'), panel: document.getElementById('jules-view-plan') },
-                scorecard: { btn: document.getElementById('tab-scorecard-btn'), panel: document.getElementById('jules-view-scorecard') },
                 console: { btn: document.getElementById('tab-console-btn'), panel: document.getElementById('jules-view-console') }
             };
             Object.keys(tabs).forEach(function (k) {
                 var item = tabs[k];
-                if (!item.btn || !item.panel) return;
+                if (!item.btn) return;
                 var isActive = (k === tabName);
                 item.btn.classList.toggle('active', isActive);
                 item.btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-                item.panel.hidden = !isActive;
+            });
+            var panelToShow = (tabs[tabName] && tabs[tabName].panel) || tabs.scorecard.panel;
+            ['jules-view-scorecard', 'jules-view-pr', 'jules-view-plan', 'jules-view-console'].forEach(function (id) {
+                var p = document.getElementById(id);
+                if (p) p.hidden = (p !== panelToShow);
             });
         }
 
@@ -1458,6 +1463,15 @@
             currentJulesDiffs = julesData.diffs;
 
             // Tab badges
+            var failTotal = 0;
+            report.agents.forEach(function (a) {
+                failTotal += a.checks.filter(function (c) { return c.status === 'fail'; }).length;
+            });
+            var failedTabCount = document.getElementById('failed-tab-count');
+            if (failedTabCount) {
+                failedTabCount.textContent = String(failTotal);
+                failedTabCount.classList.toggle('has-fails', failTotal > 0);
+            }
             var prTabCount = document.getElementById('pr-tab-count');
             if (prTabCount) prTabCount.textContent = julesData.filesCount + ' Diffs';
             var scorecardTabScore = document.getElementById('scorecard-tab-score');
@@ -1651,14 +1665,40 @@
 
 
             // Tab strip event listeners
+            var tabFailed = document.getElementById('tab-failed-btn');
+            var tabScorecard = document.getElementById('tab-scorecard-btn');
             var tabPr = document.getElementById('tab-pr-btn');
             var tabPlan = document.getElementById('tab-plan-btn');
-            var tabScorecard = document.getElementById('tab-scorecard-btn');
             var tabConsole = document.getElementById('tab-console-btn');
 
+            if (tabFailed) {
+                tabFailed.onclick = function () {
+                    state.reportFilters.status = 'fail';
+                    state.reportFilters.agent = 'all';
+                    syncAgentCardSelection();
+                    renderChecklist(report);
+                    switchJulesTab('failed');
+                    var hero = document.getElementById('failed-checks-hero') || document.getElementById('jules-checklist');
+                    if (hero) {
+                        try {
+                            hero.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } catch (e) {
+                            hero.scrollIntoView();
+                        }
+                    }
+                };
+            }
+            if (tabScorecard) {
+                tabScorecard.onclick = function () {
+                    state.reportFilters.status = 'all';
+                    state.reportFilters.agent = 'all';
+                    syncAgentCardSelection();
+                    renderChecklist(report);
+                    switchJulesTab('scorecard');
+                };
+            }
             if (tabPr) tabPr.onclick = function () { switchJulesTab('pr'); };
             if (tabPlan) tabPlan.onclick = function () { switchJulesTab('plan'); };
-            if (tabScorecard) tabScorecard.onclick = function () { switchJulesTab('scorecard'); };
             if (tabConsole) tabConsole.onclick = function () { switchJulesTab('console'); };
 
             // Setup Interactive Console
@@ -1852,6 +1892,9 @@
         function renderReport(report) {
             window.dispatchEvent(new CustomEvent('cerberus:report', {detail:report}));
             aiReset();
+            if (window.CerberusConnections && window.CerberusConnections.updatePollinations) {
+                window.CerberusConnections.updatePollinations();
+            }
             reportTargetText.textContent = 'TARGET: ' + report.target.display + '  ·  SHA ' + (report.target.sha || '').slice(0, 10);
             finalScoreEl.textContent = Math.round(report.score * 10) / 10;
             finalScoreEl.setAttribute('aria-label', finalScoreEl.textContent + ' out of 100');
@@ -1972,6 +2015,51 @@
             if (!report) return;
             detailsContainer.innerHTML = '';
             var totalShown = 0;
+
+            // Update Failed Checks Hero Banner
+            var fcHero = document.getElementById('failed-checks-hero');
+            if (fcHero) {
+                var allFailures = [];
+                var totalDeduction = 0;
+                report.agents.forEach(function (ag) {
+                    ag.checks.forEach(function (ch) {
+                        if (ch.status === 'fail') {
+                            allFailures.push(ch);
+                            totalDeduction += (ch.deduction || 0);
+                        }
+                    });
+                });
+                if (allFailures.length > 0) {
+                    fcHero.hidden = false;
+                    var heading = document.getElementById('fc-hero-heading');
+                    if (heading) heading.textContent = allFailures.length + ' FAILED SECURITY CHECK' + (allFailures.length === 1 ? '' : 'S') + ' REQUIRING ATTENTION';
+                    var stats = document.getElementById('fc-hero-stats');
+                    if (stats) stats.textContent = allFailures.length + ' FAILURE' + (allFailures.length === 1 ? '' : 'S') + ' · -' + (Math.round(totalDeduction * 10) / 10) + ' PTS DEDUCTED';
+                    var btnFailed = document.getElementById('fc-show-failed-btn');
+                    var btnAll = document.getElementById('fc-show-all-btn');
+                    if (btnFailed && btnAll) {
+                        var isFailOnly = (state.reportFilters.status === 'fail');
+                        btnFailed.classList.toggle('active', isFailOnly);
+                        btnAll.classList.toggle('active', !isFailOnly);
+                        btnFailed.onclick = function () {
+                            state.reportFilters.status = 'fail';
+                            state.reportFilters.agent = 'all';
+                            syncAgentCardSelection();
+                            renderChecklist(report);
+                            switchJulesTab('failed');
+                        };
+                        btnAll.onclick = function () {
+                            state.reportFilters.status = 'all';
+                            state.reportFilters.agent = 'all';
+                            syncAgentCardSelection();
+                            renderChecklist(report);
+                            switchJulesTab('scorecard');
+                        };
+                    }
+                } else {
+                    fcHero.hidden = true;
+                }
+            }
 
             var findingsTitle = document.getElementById('findings-title');
             if (state.reportFilters.status === 'fail' && state.reportFilters.agent === 'all') {

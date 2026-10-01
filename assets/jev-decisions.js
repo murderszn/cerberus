@@ -22,18 +22,44 @@
     }).sort(function (a, b) { return order[a.action] - order[b.action] || a.index - b.index; });
   }
   if (typeof module !== 'undefined' && module.exports) { module.exports = { requestFor: requestFor, queueFor: queueFor }; return; }
-  var reportView = document.getElementById('view-report');
   var panel = document.createElement('section'); panel.className = 'review-section'; panel.hidden = true;
   var heading = document.createElement('h2'); heading.textContent = 'Jev review queue · powered by Pollinations';
+  var keyPill = document.createElement('div'); keyPill.className = 'jev-auth-badge mono';
   var explanation = document.createElement('p'); explanation.textContent = 'Jev chooses the next review action; Cerberus groups the queue by that decision. Sends up to 10 finding summaries to Pollinations using your connected Pollen budget. Source code is omitted. Your scanner score stays the same.';
   var button = document.createElement('button'); button.type = 'button'; button.className = 'outline small'; button.textContent = 'Build Jev review queue';
   var status = document.createElement('p'); status.setAttribute('role', 'status');
   var list = document.createElement('ol'); list.className = 'review-list';
   var credit = document.createElement('a'); credit.href = 'https://pollinations.ai'; credit.textContent = 'Powered by Pollinations'; credit.target = '_blank'; credit.rel = 'noopener noreferrer';
-  panel.append(heading, explanation, button, status, list, credit);
-  reportView.prepend(panel);
+  panel.append(heading, keyPill, explanation, button, status, list, credit);
+
+  function mountPanel() {
+    var jevContainer = document.getElementById('workspace-report-jev');
+    if (jevContainer) {
+      var empty = jevContainer.querySelector('.workspace-jev-empty');
+      if (empty) empty.hidden = true;
+      if (!jevContainer.contains(panel)) jevContainer.append(panel);
+    } else {
+      var rv = document.getElementById('view-report');
+      if (rv && !rv.contains(panel)) rv.prepend(panel);
+    }
+  }
+
+  function syncKeyPill() {
+    var connection = root.CerberusConnections && root.CerberusConnections.pollinations();
+    if (connection && connection.key) {
+      keyPill.className = 'jev-auth-badge mono active';
+      keyPill.innerHTML = '<span class="pk-dot">●</span> AUTHENTICATED VIA POLLINATIONS KEY <span class="pk-token-pill">' + (connection.masked || 'ACTIVE') + '</span>';
+    } else {
+      keyPill.className = 'jev-auth-badge mono inactive';
+      keyPill.innerHTML = '<span class="pk-dot-off">○</span> POLLINATIONS KEY DISCONNECTED · <a href="#/" class="pk-connect-link">CONNECT TO ENABLE JEV ↗</a>';
+    }
+  }
+
   var items = [], revision = 0, pending = false;
+  window.addEventListener('cerberus:pollinations-updated', syncKeyPill);
   window.addEventListener('cerberus:report', function (event) {
+    mountPanel();
+    syncKeyPill();
     revision++; list.replaceChildren(); status.textContent = '';
     var review = root.CerberusReview.build(event.detail);
     items = review.failures.slice(0, 10); panel.hidden = false; button.disabled = pending || !items.length;

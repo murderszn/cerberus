@@ -45,8 +45,7 @@
         if(grid) specialists.append(grid);
         specialists.append(node('p','workspace-pool-note',isReport?'Select a specialist to filter its findings. Curator synthesis does not change the native score.':'Statuses reflect actual check execution. Jev assesses the same revision after native checks finish.'));
         stage.append(intelligence,specialists);
-        if(isReport) view.prepend(stage);
-        else {
+        if(!isReport) {
             var loader=document.getElementById('pack-loader');
             view.insertBefore(stage,loader);
             specialists.append(loader);
@@ -55,24 +54,55 @@
     }
     stage('view-scan',false);
     var reportStage=stage('view-report',true);
+    var reportView=document.getElementById('view-report');
     var scorecard=document.getElementById('jules-view-scorecard');
-    if(scorecard) {
-        var header=scorecard.querySelector('.report-header');
-        if(header) { header.classList.add('workspace-report-header'); reportStage.before(header); }
-        var score=scorecard.querySelector('.score-container-box');
-        if(score && header) header.append(score);
-        var overviewHeading=header && header.querySelector('h1'); if(overviewHeading) overviewHeading.textContent='Repository intelligence';
-        var actions=scorecard.querySelector('.report-actions');
-        if(actions) { actions.classList.add('workspace-report-actions'); reportStage.before(actions); }
-    }
-    var labels={'tab-scorecard-btn':'Findings','tab-console-btn':'Ask Cerberus','tab-pr-btn':'Review patches','tab-plan-btn':'Engineering plan'};
-    Object.keys(labels).forEach(function(id) { var tab=document.getElementById(id); if(tab) tab.textContent=labels[id]; });
+    var header=scorecard ? scorecard.querySelector('.report-header') : null;
+    var actions=scorecard ? scorecard.querySelector('.report-actions') : null;
     var tabs=document.querySelector('.jules-tab-strip');
-    if(tabs) tabs.prepend(document.getElementById('tab-scorecard-btn'));
+
+    if(header && reportView) {
+        header.classList.add('workspace-report-header');
+        reportView.prepend(header);
+        var score=scorecard.querySelector('.score-container-box');
+        if(score) header.append(score);
+        var overviewHeading=header.querySelector('h1');
+        if(overviewHeading) overviewHeading.textContent='Repository intelligence';
+    }
+    if(actions && header) {
+        actions.classList.add('workspace-report-actions');
+        header.after(actions);
+    }
+    if(tabs && actions) {
+        actions.after(tabs);
+    }
+    if(scorecard && reportStage) {
+        scorecard.prepend(reportStage);
+    }
+
+    var labels = {
+        'tab-failed-btn': 'Failed checks',
+        'tab-scorecard-btn': 'Findings',
+        'tab-pr-btn': 'Review patches',
+        'tab-plan-btn': 'Engineering plan',
+        'tab-console-btn': 'Ask Cerberus'
+    };
+    Object.keys(labels).forEach(function(id) {
+        var tab=document.getElementById(id);
+        if(!tab) return;
+        var labelEl=tab.querySelector('.tab-label');
+        if(labelEl) labelEl.textContent=labels[id];
+    });
+
     var grid=document.getElementById('report-agent-grid');
-    if(grid) grid.addEventListener('click',function(e) { if(e.target.closest('[role="checkbox"],button,.agent-card-mini')) document.getElementById('tab-scorecard-btn').click(); });
+    if(grid) grid.addEventListener('click',function(e) {
+        if(e.target.closest('[role="checkbox"],button,.agent-card-mini')) {
+            var scBtn = document.getElementById('tab-scorecard-btn');
+            if(scBtn) scBtn.click();
+        }
+    });
     wrapDetails(document.querySelector('.scan-log-wrap'),'Execution log');
     window.addEventListener('cerberus:report',function(e) {
-        document.getElementById('workspace-report-jev').classList.toggle('has-jev',!!e.detail.triage);
+        var jevPanel = document.getElementById('workspace-report-jev');
+        if (jevPanel) jevPanel.classList.toggle('has-jev',!!e.detail.triage);
     });
 })();
