@@ -6,4 +6,4 @@ rich>=15.0.0
 pyyaml>=6.0.3
 prompt_toolkit>=3.0.53
 beautifulsoup4>=4.15.0  # optional: richer browse_web_content parsing
-textual>=0.80  # Ink full-screen terminal workbench
+textual>=8.2.8  # Ink full-screen terminal workbench
